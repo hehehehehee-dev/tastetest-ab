@@ -25,6 +25,8 @@ import {
   Link2,
 } from "lucide-react";
 import "./styles.css";
+import "./lab.css";
+import { TasteMap, usePointerLight } from "./interactions.jsx";
 
 const categoryIcons = {
   Music: Disc3,
@@ -44,6 +46,7 @@ async function api(path, options = {}) {
 }
 function navigate(url) {
   window.history.pushState({}, "", url);
+  window.scrollTo({ top: 0, left: 0, behavior: "instant" });
   window.dispatchEvent(new Event("popstate"));
 }
 function useRoute() {
@@ -826,8 +829,8 @@ function TestView({ id, sample = false }) {
           </a>
         </div>
       )}
-      <div className="page-heading">
-        <div>
+      <div className="page-heading experiment-heading">
+        <div className="experiment-title">
           <div className="test-meta">
             <span className={`status-tag ${test.closedAt ? "" : "live"}`}>
               {test.closedAt ? <CheckCircle2 size={12} /> : <Radio size={12} />}
@@ -842,11 +845,9 @@ function TestView({ id, sample = false }) {
           <h1>
             {sample ? (
               <>
-                A better weekend.
+                Which poster
                 <br />
-                <span className="heading-muted">
-                  Which poster gets them in?
-                </span>
+                <span className="heading-muted">gets them in?</span>
               </>
             ) : (
               test.title
@@ -859,16 +860,17 @@ function TestView({ id, sample = false }) {
                 ? "Your hypothesis is ready. Now put it in front of real people."
                 : "See what your audience chooses, then make the call."}
           </p>
+          {sample && (
+            <div className="hero-actions">
+              <Button className="primary" onClick={() => navigate("/create")}>
+                <Plus size={16} />
+                Create a test
+              </Button>
+              <span>YOUR NEXT IDEA STARTS HERE</span>
+            </div>
+          )}
         </div>
-        {sample && (
-          <Button
-            className="primary new-test-cta"
-            onClick={() => navigate("/create")}
-          >
-            <Plus size={16} />
-            Create a test
-          </Button>
-        )}
+        <TasteMap seeds={test.seeds} />
       </div>
       <Audience test={test} />
       <ErrorMessage>{error}</ErrorMessage>
@@ -1145,6 +1147,7 @@ function PollPage({ id }) {
   );
 }
 function App() {
+  usePointerLight();
   const route = useRoute();
   const match = route.match(/^\/(test|poll)\/([a-f0-9-]{36})$/);
   return (

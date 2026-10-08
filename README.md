@@ -48,6 +48,10 @@ The project is deployable; a live deployment requires a Netlify account/site. Ke
 
 ## Architecture
 
+### Interface and interaction
+
+The updated taste-lab interface uses graphite surfaces, lime controls, Space Grotesk headings, and monospace data labels. A mouse spotlight and restrained card tilt respond directly to pointer movement. The taste network is built from the selected audience seeds: hover or focus a node to see its cues, click to select it, or drag it with a mouse to rearrange the diagram. On touch devices the nodes remain tappable and page scrolling stays native. Reduced-motion preferences disable ambient pointer effects and animated transforms. The network and decorative lighting are excluded from print reports.
+
 ```text
 src/                         React UI; no mock fixtures or server secrets
 server/fixtures.mjs          Synthetic seeds, affinities, sample input

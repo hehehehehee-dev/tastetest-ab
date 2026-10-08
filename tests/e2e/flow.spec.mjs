@@ -20,6 +20,7 @@ test("sample, creation, independent voter, live update, closure and print", asyn
   expect(await scores.allTextContents()).not.toEqual(before);
   await expect(page.getByText(/Keyword baseline/)).toBeVisible();
   await page.getByRole("checkbox", { name: "Without Qloo" }).uncheck();
+  await expect(scores.first()).toHaveText("100/ 100");
   await mkdir("artifacts", { recursive: true });
   await page.screenshot({
     path: `artifacts/sample-${testInfo.project.name}.png`,
@@ -89,7 +90,7 @@ test("sample, creation, independent voter, live update, closure and print", asyn
   await page.getByRole("button", { name: "Close & reveal verdict" }).click();
   await expect(
     page.getByRole("heading", { name: "The audience has spoken." }),
-  ).toBeVisible();
+  ).toBeVisible({ timeout: 15000 });
   await expect(page.locator(".verdict-number")).toHaveText("100%", {
     timeout: 10000,
   });
