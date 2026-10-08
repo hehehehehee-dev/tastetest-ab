@@ -91,14 +91,112 @@ const locations = [
   [79, 74],
   [50, 12],
 ];
+// Spring the whole diagram from ordinary pointer movement. No press is needed.
+function useHoverField() {
+  const target = useRef({ x: 0, y: 0, power: 0 });
+  const physics = useRef({ x: 0, y: 0, power: 0, vx: 0, vy: 0, vp: 0 });
+  const frame = useRef(0);
+  const enabled = useRef(false);
+  const [motion, setMotion] = useState({ x: 0, y: 0, power: 0 });
+  useEffect(() => {
+    const reduced = matchMedia("(prefers-reduced-motion: reduce)");
+    const fine = matchMedia("(hover: hover) and (pointer: fine)");
+    const update = () => {
+      enabled.current = !reduced.matches && fine.matches;
+      if (!enabled.current) {
+        cancelAnimationFrame(frame.current);
+        frame.current = 0;
+        target.current = { x: 0, y: 0, power: 0 };
+        physics.current = { x: 0, y: 0, power: 0, vx: 0, vy: 0, vp: 0 };
+        setMotion({ x: 0, y: 0, power: 0 });
+      }
+    };
+    update();
+    reduced.addEventListener("change", update);
+    fine.addEventListener("change", update);
+    return () => {
+      cancelAnimationFrame(frame.current);
+      reduced.removeEventListener("change", update);
+      fine.removeEventListener("change", update);
+    };
+  }, []);
+  const animate = () => {
+    const state = physics.current;
+    let moving = false;
+    for (const [key, velocity] of [
+      ["x", "vx"],
+      ["y", "vy"],
+      ["power", "vp"],
+    ]) {
+      state[velocity] =
+        (state[velocity] + (target.current[key] - state[key]) * 0.075) * 0.74;
+      state[key] += state[velocity];
+      if (
+        Math.abs(target.current[key] - state[key]) > 0.001 ||
+        Math.abs(state[velocity]) > 0.001
+      )
+        moving = true;
+      else {
+        state[key] = target.current[key];
+        state[velocity] = 0;
+      }
+    }
+    setMotion({ x: state.x, y: state.y, power: state.power });
+    frame.current = moving ? requestAnimationFrame(animate) : 0;
+  };
+  const wake = () => {
+    if (!frame.current) frame.current = requestAnimationFrame(animate);
+  };
+  const move = (event, board) => {
+    if (!enabled.current || event.pointerType !== "mouse" || !board) return;
+    const rect = board.getBoundingClientRect();
+    target.current = {
+      x: Math.max(
+        -1,
+        Math.min(1, ((event.clientX - rect.left) / rect.width) * 2 - 1),
+      ),
+      y: Math.max(
+        -1,
+        Math.min(1, ((event.clientY - rect.top) / rect.height) * 2 - 1),
+      ),
+      power: 1,
+    };
+    wake();
+  };
+  const leave = () => {
+    target.current = { x: 0, y: 0, power: 0 };
+    wake();
+  };
+  return { motion, move, leave };
+}
 export function TasteMap({ seeds }) {
   const board = useRef(null);
   const dragging = useRef(null);
   const [positions, setPositions] = useState({});
   const [active, setActive] = useState(null);
+  const { motion, move, leave } = useHoverField();
   const activeSeed = seeds.find((seed) => seed.entity_id === active);
-  const point = (seed, index) =>
-    positions[seed.entity_id] || locations[index % locations.length];
+  const point = (seed, index) => {
+    const [x, y] =
+      positions[seed.entity_id] || locations[index % locations.length];
+    if (dragging.current === seed.entity_id) return [x, y];
+    const dx = x - (50 + motion.x * 50);
+    const dy = y - (50 + motion.y * 50);
+    const distance = Math.hypot(dx, dy) || 1;
+    const repel = Math.max(0, 1 - distance / 48) * 13 * motion.power;
+    return [
+      Math.max(
+        13,
+        Math.min(87, x + (dx / distance) * repel + motion.x * 3 * motion.power),
+      ),
+      Math.max(
+        16,
+        Math.min(84, y + (dy / distance) * repel + motion.y * 4 * motion.power),
+      ),
+    ];
+  };
+  const coreX = 50 + motion.x * 3 * motion.power;
+  const coreY = 50 + motion.y * 4 * motion.power;
   const finishDrag = (event) => {
     if (dragging.current) {
       event.currentTarget.releasePointerCapture?.(event.pointerId);
@@ -109,6 +207,11 @@ export function TasteMap({ seeds }) {
     <figure
       className="taste-map"
       aria-label="Interactive map of the selected audience tastes"
+      onPointerMove={(event) => move(event, board.current)}
+      onPointerLeave={leave}
+      onBlur={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget)) leave();
+      }}
     >
       <figcaption className="map-caption">
         <span>
@@ -117,17 +220,41 @@ export function TasteMap({ seeds }) {
         </span>
         <span>{String(seeds.length).padStart(2, "0")} SIGNALS</span>
       </figcaption>
-      <div className="map-board" ref={board}>
+      <div
+        className="map-board"
+        ref={board}
+        style={{
+          "--field-x": motion.x,
+          "--field-y": motion.y,
+          "--field-power": motion.power,
+        }}
+        data-hover-power={motion.power.toFixed(2)}
+      >
+        <div
+          className="map-hover-halo"
+          aria-hidden="true"
+          style={{
+            left: `${50 + motion.x * 50}%`,
+            top: `${50 + motion.y * 50}%`,
+            opacity: motion.power * 0.65,
+          }}
+        />
         <svg
           className="map-links"
           viewBox="0 0 100 100"
           preserveAspectRatio="none"
           aria-hidden="true"
         >
-          <ellipse cx="50" cy="50" rx="30" ry="34" className="map-orbit" />
           <ellipse
-            cx="50"
-            cy="50"
+            cx={coreX}
+            cy={coreY}
+            rx={30 + motion.power * 3}
+            ry={34 - motion.power * 2}
+            className="map-orbit"
+          />
+          <ellipse
+            cx={coreX}
+            cy={coreY}
             rx="18"
             ry="21"
             className="map-orbit inner"
@@ -142,18 +269,44 @@ export function TasteMap({ seeds }) {
                 className={active === seed.entity_id ? "lit" : ""}
               >
                 <line
-                  x1="50"
-                  y1="50"
+                  x1={coreX}
+                  y1={coreY}
                   x2={x}
                   y2={y}
                   className="map-connection"
                 />
                 <circle r=".55" cx={x} cy={y} className="map-dot" />
+                <circle
+                  r=".6"
+                  className="map-traveler"
+                  style={{ opacity: motion.power }}
+                >
+                  <animate
+                    attributeName="cx"
+                    values={`${x};${coreX}`}
+                    dur={`${1.4 + i * 0.2}s`}
+                    repeatCount="indefinite"
+                  />
+                  <animate
+                    attributeName="cy"
+                    values={`${y};${coreY}`}
+                    dur={`${1.4 + i * 0.2}s`}
+                    repeatCount="indefinite"
+                  />
+                </circle>
               </g>
             );
           })}
         </svg>
-        <div className="map-core">
+        <div
+          className="map-core"
+          style={{ left: `${coreX}%`, top: `${coreY}%` }}
+        >
+          <span className="core-wireframe" aria-hidden="true">
+            <i />
+            <i />
+            <i />
+          </span>
           <Crosshair size={24} />
           <span>YOUR AUDIENCE</span>
           <strong>{seeds.length} tastes</strong>
@@ -222,7 +375,7 @@ export function TasteMap({ seeds }) {
         ) : (
           <>
             <Move size={12} />
-            <span>Explore a taste. Discover its cues.</span>
+            <span>Move your mouse through the network.</span>
           </>
         )}
       </div>
