@@ -1177,3 +1177,74 @@ label {
     color: #444;
   }
 }
+.research-link {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 8px 24px;
+}
+.research-link button {
+  border: 0;
+  background: none;
+  color: #b7bfad;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+}
+.case-study {
+  padding-top: 56px;
+  max-width: 960px;
+}
+.case-study h1 {
+  font-size: clamp(40px, 7vw, 76px);
+  letter-spacing: -0.05em;
+}
+.case-study p {
+  color: #a6aaa7;
+  line-height: 1.7;
+}
+.case-panel {
+  padding: 28px;
+  margin: 24px 0;
+}
+.case-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  margin: 24px 0;
+}
+.case-options > div {
+  padding: 20px;
+  border: 1px solid #303530;
+  border-radius: 12px;
+}
+.case-form {
+  display: grid;
+  gap: 18px;
+  margin-top: 28px;
+}
+.case-form label {
+  display: grid;
+  gap: 8px;
+}
+.case-form input,
+.case-form select,
+.case-form textarea {
+  width: 100%;
+  padding: 12px;
+  color: #eee;
+  background: #111411;
+  border: 1px solid #383d38;
+  border-radius: 8px;
+  font: inherit;
+}
+.case-form textarea {
+  min-height: 100px;
+}
+@media (max-width: 600px) {
+  .case-options {
+    grid-template-columns: 1fr;
+  }
+  .case-panel {
+    padding: 18px;
+  }
+}

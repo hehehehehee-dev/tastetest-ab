@@ -70,6 +70,12 @@ Each vote is a separate entry keyed by test and hashed browser identifier; paral
 
 Mock fit = **10 starting points + 0–55 affinity points + 0–35 shared-tag points − 0–15 segment penalty**, clamped to 0–100. Affinity is weighted by the concept's matching cultural cues. The component view shows the raw affinity sum and each contribution. Missing taste communities appear in the warning. The naive baseline uses exact word overlap with seed names and the audience note, without relationships or segment analysis.
 
+## Evidence and prospective evaluation
+
+Cookie Cats is now a separate [historical workflow rehearsal](research/README.md), accessible at `/case-study/cookie-cats`: commit an answer before revealing observed retention, then download the server-timestamped receipt. It is not a benchmark proving ordinary AI is wrong or Qloo is better. Public results may be memorized; the CSV contains no AI predictions. Mechanism explanations are explicitly labeled **illustrative hypotheses**.
+
+A private, Git-ignored pack of 25 taste-based case drafts is prepared locally under `research/private/`. The [evaluation protocol and CLI](research/README.md) validate real entity resolution and model artifacts, freeze predictions with timestamps/hashes before opening collection, and report AI / Qloo / observed choices with paired statistics and exclusions. No actual predictions or new audience results have been fabricated or collected. Twenty evaluable cases is a reporting floor, not proof of superiority. See the protocol before making Devpost claims. Private drafts are not distributed in the public repository.
+
 ## Prototype boundaries
 
 - The one-vote rule identifies a browser, not a person. Clearing storage or using another browser permits another vote. This is deliberately a convenience poll, not abuse-resistant survey infrastructure.

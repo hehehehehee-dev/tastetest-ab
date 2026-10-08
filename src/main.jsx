@@ -27,6 +27,7 @@ import {
 import "./styles.css";
 import "./lab.css";
 import { TasteMap, usePointerLight } from "./interactions.jsx";
+import CaseStudy from "./CaseStudy.jsx";
 
 const categoryIcons = {
   Music: Disc3,
@@ -1153,7 +1154,14 @@ function App() {
   return (
     <>
       <Header />
-      {route === "/create" ? (
+      <div className="research-link">
+        <button onClick={() => navigate("/case-study/cookie-cats")}>
+          Cookie Cats · commit → reveal → score ↗
+        </button>
+      </div>
+      {route === "/case-study/cookie-cats" ? (
+        <CaseStudy />
+      ) : route === "/create" ? (
         <CreateTest />
       ) : match ? (
         match[1] === "poll" ? (

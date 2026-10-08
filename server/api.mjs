@@ -6,6 +6,7 @@ import {
 } from "node:crypto";
 import { qlooAdapter, scoreWithoutQloo } from "./qlooAdapter.mjs";
 import { sampleInput } from "./fixtures.mjs";
+import { makeCookieCommit } from "./cookieCats.mjs";
 const fail = (message, status = 400) => {
   throw Object.assign(new Error(message), { status });
 };
@@ -151,6 +152,13 @@ export function createApi(store) {
     try {
       const url = new URL(request.url);
       const pathname = url.pathname.replace(/\/$/, "");
+      if (pathname === "/api/cookie-cats/commit" && request.method === "POST") {
+        const receipt = makeCookieCommit(await readBody(request));
+        await store.set(`rehearsals/${receipt.id}`, receipt, {
+          onlyIfNew: true,
+        });
+        return json(receipt, 201);
+      }
       if (pathname === "/api/search" && request.method === "GET")
         return json(
           await qlooAdapter.searchEntities(
