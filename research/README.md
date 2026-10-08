@@ -2,13 +2,13 @@
 
 ## Cookie Cats: chỉ diễn tập quy trình
 
-Open `/case-study/cookie-cats`: brief → paste an actual model answer (or label a human hypothesis) → server timestamps and saves a receipt → reveals historical retention → scores that choice. No LLM is called. A downloadable receipt records source, choice, rationale and outcome. The model should receive only the blind brief, not the results. This is procedural blinding, not secure concealment: public results can be looked up and may already be memorized.
+Open `/benchmark-lab/historical-case-01` from the evidence footer: blind brief → option-card/source/model/confidence/rationale → Commit → separate Reveal → MATCH/MISS. The name is shown only after scoring. The server stores the immutable prediction and a browser capability; no result is returned until explicit reveal. Reload restores the lock. No LLM is called. Downloads omit the capability token and give visible feedback. Confidence here is the contributor’s declared confidence, not a measured model accuracy. The model should receive only the brief. This is procedural blinding, not secure concealment: public results can be recognized or memorized.
 
 The CSV contains no model predictions. One case, or four cases, cannot establish AI failure or Qloo superiority. All statements such as “a later gate interrupts play less” are **illustrative hypotheses / giả thuyết minh họa**, not mechanisms established by this dataset. No cultural taste data exists here, so this case does not benchmark Qloo. Only aggregate player counts are included; the raw CSV is not redistributed. Source: [Cookie Cats](https://www.kaggle.com/datasets/mursideyarkin/mobile-games-ab-testing-cookie-cats). Aggregate totals: A 44,700 / B 45,489 players; D1 returners 20,034 / 20,119; D7 returners 8,502 / 8,279. Recompute from the original CSV rather than treating the display as independent evidence.
 
 ## Private prospective campaign
 
-`private/draft.json` contains 25 newly drafted concept pairs, not 25 completed experiments. It is ignored by Git. Do not publish prompts/options before collecting data. Newly drafted does not guarantee that similar ideas have never appeared elsewhere. The private pack is not automatically uploaded or pushed.
+25 unpublished taste-based cases are planned. Local `private/draft.json` contains 25 unvalidated concept templates, not ready cases or completed experiments. It is ignored by Git. Do not publish prompts/options before collecting data. Newly drafted does not guarantee that similar ideas have never appeared elsewhere. The private pack is not automatically uploaded or pushed.
 
 Each draft has 3–5 taste names, two concepts, blank entity IDs, blank AI/Qloo predictions, and blank outcomes. **Resolve real Qloo entities and validate both options can be scored before declaring a case ready.** Mere conceptual plausibility is not API compatibility. Existing `mock-*` IDs and keyword baseline scores are not real Qloo or ChatGPT predictions.
 
@@ -44,4 +44,4 @@ Report registered N, evaluable N, both correct counts/rates, discordant pairs, e
 
 Twenty evaluable cases is the campaign's minimum reporting threshold, **not sufficient proof of superiority**. Even a favorable result should read: “On N preregistered cases, Qloo matched X observed preference winners versus Y for [exact model/version]; paired exact p = P. These convenience samples do not establish general superiority.” If N < 20, call it a pilot. Publish all preregistered outcomes after collection, not just favorable examples. Cookie Cats is excluded from prospective accuracy counts.
 
-Safe Devpost text today: “We implemented a historical commit/reveal rehearsal and prepared 25 private prospective case drafts. Real model predictions and audience outcomes have not yet been collected. The working cultural adapter remains mock-only.”
+Safe Devpost text today: “We implemented a historical commit/reveal rehearsal and planned a 25-case private prospective study. Real model predictions and audience outcomes have not yet been collected. The working cultural adapter remains mock-only.”

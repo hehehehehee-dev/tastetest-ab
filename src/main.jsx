@@ -26,8 +26,9 @@ import {
 } from "lucide-react";
 import "./styles.css";
 import "./lab.css";
-import { TasteMap, usePointerLight } from "./interactions.jsx";
+import { TasteMap } from "./interactions.jsx";
 import CaseStudy from "./CaseStudy.jsx";
+import { predictionConfidence } from "../shared/confidence.mjs";
 
 const categoryIcons = {
   Music: Disc3,
@@ -78,7 +79,7 @@ function ownerKey(id) {
   return `tastetest-owner-${id}`;
 }
 function winnerFor(scores) {
-  return scores[0].score === scores[1].score
+  return predictionConfidence(scores).tooClose
     ? null
     : scores[0].score > scores[1].score
       ? 0
@@ -185,7 +186,7 @@ function Header() {
           TasteTest<span className="brand-ab">A/B</span>
         </a>
         <div className="header-right">
-          <span className="mock-pill">Mock signals</span>
+          <span className="mock-pill">Mock mode — Qloo not connected</span>
           <a
             href="/create"
             onClick={(e) => {
@@ -471,6 +472,7 @@ function Prediction({ test, compact = false }) {
   const [without, setWithout] = useState(false);
   const scores = without ? test.baseline : test.prediction;
   const winner = winnerFor(scores);
+  const confidence = predictionConfidence(scores);
   return (
     <section className={`prediction-section ${compact ? "compact" : ""}`}>
       <div className="section-heading">
@@ -494,6 +496,19 @@ function Prediction({ test, compact = false }) {
           : "Mock cultural model · synthetic affinity + shared taste tags"}
         <span>Scores indicate fit, not vote probability.</span>
       </p>
+      <div className="confidence-note" role="status">
+        <strong>
+          {confidence.tooClose
+            ? "Too close to call"
+            : `${confidence.level} heuristic confidence`}
+        </strong>
+        <span>
+          Fit gap: {confidence.gap} points · affinity contribution gap:{" "}
+          {confidence.affinityGap} points.{" "}
+          {without ? "Keyword baseline separation." : "Synthetic signals only."}{" "}
+          Not a calibrated likelihood of being correct.
+        </span>
+      </div>
       <div className="option-grid">
         {test.options.map((option, i) => (
           <article
@@ -671,7 +686,7 @@ function Verdict({ test }) {
             {winner === null
               ? "More evidence needed"
               : predicted === null
-                ? "Prediction was a tie"
+                ? "Prediction was too close to call"
                 : winner === predicted
                   ? "Prediction matched the poll"
                   : "Poll challenged the prediction"}
@@ -720,6 +735,7 @@ function Verdict({ test }) {
 }
 function TestView({ id, sample = false }) {
   const [test, setTest] = useState(null);
+  const [liveSample, setLiveSample] = useState(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -729,6 +745,24 @@ function TestView({ id, sample = false }) {
   );
   const owner = !sample && !!getLocal(ownerKey(id));
   const refresh = () => api(sample ? "/sample" : `/tests/${id}`);
+  useEffect(() => {
+    if (!sample) return;
+    let current = true;
+    const update = () =>
+      api("/sample-live")
+        .then((data) => {
+          if (current) setLiveSample(data);
+        })
+        .catch((e) => {
+          if (current) setError(e.message);
+        });
+    update();
+    const timer = setInterval(update, 2000);
+    return () => {
+      current = false;
+      clearInterval(timer);
+    };
+  }, [sample]);
   useEffect(() => {
     let current = true;
     setTest(null);
@@ -863,17 +897,34 @@ function TestView({ id, sample = false }) {
           </p>
           {sample && (
             <div className="hero-actions">
+              <Button
+                className="primary"
+                disabled={!liveSample}
+                onClick={() => navigate(`/poll/${liveSample.id}`)}
+              >
+                Sample — live, vote here
+              </Button>
               <Button className="primary" onClick={() => navigate("/create")}>
                 <Plus size={16} />
                 Create a test
               </Button>
-              <span>YOUR NEXT IDEA STARTS HERE</span>
             </div>
           )}
         </div>
         <TasteMap seeds={test.seeds} />
       </div>
       <Audience test={test} />
+      {sample && (
+        <div className="live-sample-note">
+          <strong>
+            Live twin · {liveSample?.totalVotes ?? "…"} visitor votes
+          </strong>
+          <span>
+            Try the same A/B poll. It stays open; its visitor votes are separate
+            from the completed 52-vote synthetic example below.
+          </span>
+        </div>
+      )}
       <ErrorMessage>{error}</ErrorMessage>
       <Prediction test={test} />
       {activePrediction ? (
@@ -942,8 +993,9 @@ function TestView({ id, sample = false }) {
                     </a>
                   </div>
                   <p>
-                    Anyone with the link can vote. Only this browser can close
-                    your test.
+                    {test.isLiveSample
+                      ? "This live demo stays open. Visitor votes are separate from the completed synthetic example."
+                      : "Anyone with the link can vote. Only the creating browser can close this test."}
                   </p>
                 </div>
               )}
@@ -1148,18 +1200,15 @@ function PollPage({ id }) {
   );
 }
 function App() {
-  usePointerLight();
   const route = useRoute();
   const match = route.match(/^\/(test|poll)\/([a-f0-9-]{36})$/);
   return (
     <>
       <Header />
-      <div className="research-link">
-        <button onClick={() => navigate("/case-study/cookie-cats")}>
-          Cookie Cats · commit → reveal → score ↗
-        </button>
-      </div>
-      {route === "/case-study/cookie-cats" ? (
+      {[
+        "/benchmark-lab/historical-case-01",
+        "/case-study/cookie-cats",
+      ].includes(route) ? (
         <CaseStudy />
       ) : route === "/create" ? (
         <CreateTest />
@@ -1177,6 +1226,18 @@ function App() {
           <Button onClick={() => navigate("/")}>Back to TasteTest</Button>
         </main>
       )}
+      <footer className="evidence-footer">
+        <span>Evidence & methodology</span>
+        <a
+          href="/benchmark-lab/historical-case-01"
+          onClick={(event) => {
+            event.preventDefault();
+            navigate("/benchmark-lab/historical-case-01");
+          }}
+        >
+          Benchmark lab · Historical case 01 ↗
+        </a>
+      </footer>
     </>
   );
 }

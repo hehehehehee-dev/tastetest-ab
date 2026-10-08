@@ -1,7 +1,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { summarizeStudy, validateDraft } from "../research/study.mjs";
-import { makeCookieCommit } from "../server/cookieCats.mjs";
+import { cookieCats, makeCookieCommit } from "../server/cookieCats.mjs";
+import { predictionConfidence } from "../shared/confidence.mjs";
 import { mkdtemp, writeFile, readFile, rm } from "node:fs/promises";
 import { spawnSync } from "node:child_process";
 import os from "node:os";
@@ -90,15 +91,30 @@ test("historical rehearsal reports correct aggregate counts, not model superiori
     choice: "B",
     model: "Human hypothesis",
     rationale: "Illustrative only",
+    source: "Human",
+    confidence: 60,
   });
-  assert.equal(r.correct, false);
+  assert.equal(r.correct, undefined);
+  assert.equal(r.result, undefined);
+  assert.equal(r.confidence, 60);
   assert.equal(
-    r.result.groups.reduce((s, g) => s + g.players, 0),
+    cookieCats.groups.reduce((s, g) => s + g.players, 0),
     90189,
   );
-  assert.equal(r.result.groups[0].day7, 8502);
+  assert.equal(cookieCats.groups[0].day7, 8502);
   assert.match(r.purpose, /not a model benchmark/);
   assert.ok(Date.parse(r.committedAt));
+});
+test("confidence has explicit gap thresholds and is too close below 10 points", () => {
+  const scores = (gap) => [
+    { score: 50 + gap, components: { affinity: 20 } },
+    { score: 50, components: { affinity: 17 } },
+  ];
+  assert.equal(predictionConfidence(scores(9)).tooClose, true);
+  assert.equal(predictionConfidence(scores(10)).level, "Moderate");
+  assert.equal(predictionConfidence(scores(25)).level, "High");
+  assert.equal(predictionConfidence(scores(0)).tooClose, true);
+  assert.equal(predictionConfidence(scores(30)).affinityGap, 3);
 });
 
 test("CLI locks artifacts before opening, refuses overwrites and detects tampering", async (t) => {

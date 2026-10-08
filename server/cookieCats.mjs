@@ -23,12 +23,18 @@ export function makeCookieCommit(body) {
     typeof body.model !== "string" ||
     !body.model.trim() ||
     body.model.length > 100 ||
+    !["LLM only", "Qloo", "TasteTest agent", "Human"].includes(body.source) ||
+    !Number.isInteger(body.confidence) ||
+    body.confidence < 0 ||
+    body.confidence > 100 ||
     typeof body.rationale !== "string" ||
     !body.rationale.trim() ||
     body.rationale.length > 2000
   ) {
     throw Object.assign(
-      new Error("Provide a model/source, an A/B choice and its rationale."),
+      new Error(
+        "Provide a source, exact model/version, A/B choice, confidence (0–100%) and rationale.",
+      ),
       { status: 400 },
     );
   }
@@ -37,9 +43,9 @@ export function makeCookieCommit(body) {
     committedAt: new Date().toISOString(),
     choice: body.choice,
     model: body.model.trim(),
+    source: body.source,
+    confidence: body.confidence,
     rationale: body.rationale.trim(),
     purpose: "Historical workflow rehearsal only; not a model benchmark.",
-    result: cookieCats,
-    correct: body.choice === cookieCats.actual,
   };
 }

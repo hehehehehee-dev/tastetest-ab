@@ -13,7 +13,7 @@ npm install
 npm run dev
 ```
 
-Open **http://localhost:5173**. No credentials or environment file are required. The default page is the completed Bloomington cafe example. Local polls persist in the ignored `.local/data/` directory. Keep the server running while testing shared links; localhost links are only usable on the same machine.
+Open **http://localhost:5173**. No credentials or environment file are required. The default page is the completed Bloomington cafe example, with a separate always-open live twin for visitors to try. Its collected votes never replace the 52 synthetic example votes. Local polls persist in the ignored `.local/data/` directory. Keep the server running while testing shared links; localhost links are only usable on the same machine.
 
 Optional: copy `.env.example` to `.env`. Leave `USE_QLOO_MOCK=true`. Setting it to `false` returns a clear error, because real mode is intentionally not implemented. Never put a key in a `VITE_*` variable.
 
@@ -50,7 +50,7 @@ The project is deployable; a live deployment requires a Netlify account/site. Ke
 
 ### Interface and interaction
 
-The updated taste-lab interface uses graphite surfaces, lime controls, Space Grotesk headings, and monospace data labels. A mouse spotlight and restrained card tilt respond directly to pointer movement. Moving the mouse anywhere across the taste network makes the nodes gently repel, tilts and separates the central wireframe layers, and lights up the connecting signals; no press or click is required. Spring motion returns the network to rest on exit. The network uses the selected audience seeds: hover or focus a node to see its cues, click to select it, or optionally drag it to rearrange the diagram. On touch devices the nodes remain tappable and page scrolling stays native. Reduced-motion preferences disable ambient pointer effects and animated transforms. The network and decorative lighting are excluded from print reports.
+The interface uses neutral graphite surfaces, white controls, compact headings, and monospace data labels. The Raycast gradient is reserved for winning score bars, Agent Pick badges and verdicts. Global cursor-follow lighting is disabled. Moving the mouse over the taste network gently moves its wireframe and nodes; keyboard/touch exploration and reduced-motion support remain. Interactive controls have at least 44px tap targets. Decorative elements are excluded from print reports.
 
 ```text
 src/                         React UI; no mock fixtures or server secrets
@@ -68,13 +68,15 @@ Each vote is a separate entry keyed by test and hashed browser identifier; paral
 
 ## Explainable scoring
 
+Heuristic confidence uses the absolute mock-fit score gap: below 10 points = low / too close to call (no Agent Pick), 10–24 = moderate, 25+ = high. The affinity contribution gap is shown separately. These thresholds are declared design rules, not calibrated probabilities or statistical confidence intervals. The keyword baseline uses the same separation rule.
+
 Mock fit = **10 starting points + 0–55 affinity points + 0–35 shared-tag points − 0–15 segment penalty**, clamped to 0–100. Affinity is weighted by the concept's matching cultural cues. The component view shows the raw affinity sum and each contribution. Missing taste communities appear in the warning. The naive baseline uses exact word overlap with seed names and the audience note, without relationships or segment analysis.
 
 ## Evidence and prospective evaluation
 
-Cookie Cats is now a separate [historical workflow rehearsal](research/README.md), accessible at `/case-study/cookie-cats`: commit an answer before revealing observed retention, then download the server-timestamped receipt. It is not a benchmark proving ordinary AI is wrong or Qloo is better. Public results may be memorized; the CSV contains no AI predictions. Mechanism explanations are explicitly labeled **illustrative hypotheses**.
+Cookie Cats is now a separate [historical workflow rehearsal](research/README.md), accessible through the footer at `/benchmark-lab/historical-case-01`: select a card, source, exact model/version, confidence and rationale; commit to lock on the server; then explicitly reveal and score. The locked receipt survives reloads in the original browser and can be downloaded. The commit response contains no observed result. The legacy `/case-study/cookie-cats` link still works. It is not a benchmark proving ordinary AI is wrong or Qloo is better. Public results may be memorized; the CSV contains no AI predictions. Mechanism explanations are explicitly labeled **illustrative hypotheses**.
 
-A private, Git-ignored pack of 25 taste-based case drafts is prepared locally under `research/private/`. The [evaluation protocol and CLI](research/README.md) validate real entity resolution and model artifacts, freeze predictions with timestamps/hashes before opening collection, and report AI / Qloo / observed choices with paired statistics and exclusions. No actual predictions or new audience results have been fabricated or collected. Twenty evaluable cases is a reporting floor, not proof of superiority. See the protocol before making Devpost claims. Private drafts are not distributed in the public repository.
+The prospective study has 25 unpublished taste-based cases planned. Local Git-ignored concept drafts under `research/private/` are unvalidated templates, not prepared benchmark evidence. The [evaluation protocol and CLI](research/README.md) validate real entity resolution and model artifacts, freeze predictions with timestamps/hashes before opening collection, and report AI / Qloo / observed choices with paired statistics and exclusions. No actual predictions or new audience results have been fabricated or collected. Twenty evaluable cases is a reporting floor, not proof of superiority. See the protocol before making Devpost claims. Private drafts are not distributed in the public repository.
 
 ## Prototype boundaries
 

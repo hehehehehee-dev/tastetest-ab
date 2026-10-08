@@ -6,7 +6,8 @@ import {
 } from "node:crypto";
 import { qlooAdapter, scoreWithoutQloo } from "./qlooAdapter.mjs";
 import { sampleInput } from "./fixtures.mjs";
-import { makeCookieCommit } from "./cookieCats.mjs";
+import { predictionConfidence } from "../shared/confidence.mjs";
+import { cookieCats, makeCookieCommit } from "./cookieCats.mjs";
 const fail = (message, status = 400) => {
   throw Object.assign(new Error(message), { status });
 };
@@ -99,19 +100,18 @@ function verdict(test, counts) {
   const total = counts[0] + counts[1];
   const actual =
     !total || counts[0] === counts[1] ? null : counts[0] > counts[1] ? 0 : 1;
-  const predicted =
-    test.prediction[0].score === test.prediction[1].score
-      ? null
-      : test.prediction[0].score > test.prediction[1].score
-        ? 0
-        : 1;
+  const predicted = predictionConfidence(test.prediction).tooClose
+    ? null
+    : test.prediction[0].score > test.prediction[1].score
+      ? 0
+      : 1;
   const share =
     actual === null ? null : Math.round((counts[actual] / total) * 100);
   const recommendation = !total
     ? "No votes were collected, so there is no audience verdict yet. The mock prediction is only a hypothesis. Run a fresh poll and collect responses before making a business decision."
     : actual === null
       ? `The poll is tied at ${counts[0]} votes per option. Neither concept has a clear audience lead. Ask voters what influenced their choice, refine the two concepts, and run another test.`
-      : `${test.options[actual].title} received ${share}% of ${total} votes. ${predicted === null ? "The mock prediction was tied, so the poll provides the first clear direction." : actual === predicted ? "The audience result supports the mock cultural prediction." : "The audience chose differently from the mock cultural prediction; favor the observed preference."} Use this option for a small trial, then measure real outcomes. This is a convenience poll, not a representative study.`;
+      : `${test.options[actual].title} received ${share}% of ${total} votes. ${predicted === null ? "The mock prediction was too close to call, so the poll provides the first clear direction." : actual === predicted ? "The audience result supports the mock cultural prediction." : "The audience chose differently from the mock cultural prediction; favor the observed preference."} Use this option for a small trial, then measure real outcomes. This is a convenience poll, not a representative study.`;
   return { actual, predicted, share, recommendation };
 }
 export function createApi(store) {
@@ -137,6 +137,7 @@ export function createApi(store) {
       totalVotes: counts[0] + counts[1],
       verdict: test.closedAt ? verdict(test, counts) : null,
       mode: "mock",
+      confidence: predictionConfidence(test.prediction),
     };
   }
   async function readBody(request) {
@@ -152,12 +153,72 @@ export function createApi(store) {
     try {
       const url = new URL(request.url);
       const pathname = url.pathname.replace(/\/$/, "");
-      if (pathname === "/api/cookie-cats/commit" && request.method === "POST") {
+      if (
+        pathname === "/api/historical-case/commit" &&
+        request.method === "POST"
+      ) {
         const receipt = makeCookieCommit(await readBody(request));
-        await store.set(`rehearsals/${receipt.id}`, receipt, {
-          onlyIfNew: true,
+        const token = randomBytes(32).toString("hex");
+        await store.set(
+          `rehearsals/${receipt.id}`,
+          { ...receipt, tokenHash: hash(token) },
+          { onlyIfNew: true },
+        );
+        return json({ ...receipt, token }, 201);
+      }
+      const rehearsal = pathname.match(
+        /^\/api\/historical-case\/([a-f0-9-]{36})(\/reveal)?$/,
+      );
+      if (rehearsal) {
+        const receipt = await store.get(`rehearsals/${rehearsal[1]}`);
+        if (!receipt) fail("Commitment not found.", 404);
+        const tokenHash = hash(request.headers.get("x-commit-token") || "");
+        if (
+          !receipt.tokenHash ||
+          !timingSafeEqual(
+            Buffer.from(tokenHash),
+            Buffer.from(receipt.tokenHash),
+          )
+        )
+          fail("This commitment needs its original browser receipt.", 403);
+        if (rehearsal[2] && request.method === "POST")
+          await store.set(
+            `revealed/${receipt.id}`,
+            { at: new Date().toISOString() },
+            { onlyIfNew: true },
+          );
+        else if (request.method !== "GET" || rehearsal[2])
+          fail("This action is not supported.", 405);
+        const revealed = await store.get(`revealed/${receipt.id}`);
+        const { tokenHash: secret, ...publicReceipt } = receipt;
+        return json({
+          ...publicReceipt,
+          ...(revealed
+            ? {
+                revealedAt: revealed.at,
+                result: cookieCats,
+                correct: receipt.choice === cookieCats.actual,
+              }
+            : {}),
         });
-        return json(receipt, 201);
+      }
+      if (pathname === "/api/sample-live" && request.method === "GET") {
+        const id = "88bd6ab2-0d0b-4b11-8d30-848b82761a20";
+        if (!(await store.get(`tests/${id}`)))
+          await store.set(
+            `tests/${id}`,
+            {
+              ...sampleInput,
+              ...(await predict(sampleInput)),
+              id,
+              ownerHash: hash(randomBytes(32)),
+              createdAt: new Date().toISOString(),
+              closedAt: null,
+              isLiveSample: true,
+            },
+            { onlyIfNew: true },
+          );
+        return json(await snapshot(await store.get(`tests/${id}`)));
       }
       if (pathname === "/api/search" && request.method === "GET")
         return json(
@@ -213,6 +274,11 @@ export function createApi(store) {
       if (!action && request.method === "GET")
         return json(await snapshot(test));
       if (action === "close" && request.method === "POST") {
+        if (test.isLiveSample)
+          fail(
+            "The live demo remains open. Create your own test to close it.",
+            403,
+          );
         const token = request.headers.get("x-owner-token") || "";
         const tokenHash = hash(token);
         if (

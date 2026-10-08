@@ -18,7 +18,9 @@ test("sample, creation, independent voter, live update, closure and print", asyn
   await page.getByRole("checkbox", { name: "Without Qloo" }).check();
   await page.waitForTimeout(700);
   expect(await scores.allTextContents()).not.toEqual(before);
-  await expect(page.getByText(/Keyword baseline/)).toBeVisible();
+  await expect(page.locator(".comparison-note")).toContainText(
+    "Keyword baseline",
+  );
   await page.getByRole("checkbox", { name: "Without Qloo" }).uncheck();
   await expect(scores.first()).toHaveText("100/ 100");
   await mkdir("artifacts", { recursive: true });

@@ -183,3 +183,85 @@ test("real mode fails explicitly without making a real API request", async () =>
     else process.env.USE_QLOO_MOCK = before;
   }
 });
+test("historical commit omits outcomes; authenticated reveal never edits the locked answer", async (t) => {
+  const { call, directory } = await harness(t);
+  const input = {
+    choice: "B",
+    source: "Human",
+    model: "Rehearsal fixture",
+    confidence: 70,
+    rationale: "Illustrative only",
+  };
+  assert.equal(
+    (
+      await call("/historical-case/commit", "POST", {
+        ...input,
+        confidence: 101,
+      })
+    ).status,
+    400,
+  );
+  assert.equal(
+    (
+      await call("/historical-case/commit", "POST", {
+        ...input,
+        confidence: null,
+      })
+    ).status,
+    400,
+  );
+  const committed = await call("/historical-case/commit", "POST", input);
+  assert.equal(committed.status, 201);
+  assert.equal(committed.data.result, undefined);
+  assert.equal(committed.data.correct, undefined);
+  const { id, token } = committed.data;
+  const api = createApi(fileStore(directory));
+  const request = (method = "GET", action = "", bearer = token) =>
+    api(
+      new Request(`http://localhost/api/historical-case/${id}${action}`, {
+        method,
+        headers: { "x-commit-token": bearer },
+        ...(method === "POST"
+          ? { body: JSON.stringify({ choice: "A", confidence: 100 }) }
+          : {}),
+      }),
+    );
+  assert.equal((await request("GET", "", "wrong")).status, 403);
+  assert.equal((await (await request()).json()).result, undefined);
+  const result = await (await request("POST", "/reveal")).json();
+  assert.equal(result.choice, "B");
+  assert.equal(result.confidence, 70);
+  assert.equal(result.correct, false);
+  assert.equal(result.result.rows, 90189);
+  assert.equal(
+    (await (await request("POST", "/reveal")).json()).revealedAt,
+    result.revealedAt,
+  );
+  assert.equal((await request("POST")).status, 405);
+  assert.equal((await (await request()).json()).choice, "B");
+});
+test("live sample twin is stable, contains only visitor votes and cannot be closed", async (t) => {
+  const { call } = await harness(t);
+  const [a, b] = await Promise.all([
+    call("/sample-live"),
+    call("/sample-live"),
+  ]);
+  assert.equal(a.data.id, b.data.id);
+  assert.equal(a.data.closedAt, null);
+  assert.equal(a.data.totalVotes, 0);
+  assert.equal(a.data.sampleVotes, undefined);
+  assert.equal(
+    (
+      await call(`/tests/${a.data.id}/vote`, "POST", {
+        option: 0,
+        voterId: randomUUID(),
+      })
+    ).data.totalVotes,
+    1,
+  );
+  assert.equal(
+    (await call(`/tests/${a.data.id}/close`, "POST", {}, "wrong")).status,
+    403,
+  );
+  assert.equal((await call("/sample")).data.totalVotes, 52);
+});
