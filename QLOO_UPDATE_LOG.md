@@ -31,3 +31,9 @@ References: [Qloo Insights documentation](https://github.com/qloo/docs-public/bl
 - Netlify needs private Functions environment variables before production fresh tests can use real mode. Browser assets and the public repository contain no credential.
 
 Primary references: [Entity Search](https://github.com/qloo/docs-public/blob/main/reference/get-search.md), [Entity lookup](https://github.com/qloo/docs-public/blob/main/reference/get-entities.md), [Insights parameters](https://github.com/qloo/docs-public/blob/main/reference/insights-api-deep-dive.md).
+
+## 2026-10-09 — Paired AI feature
+
+Added an optional AI only / AI + Qloo mode using the same configurable OpenAI Responses model, common instructions and text inputs. The grounded branch receives actual Qloo tags/affinities; the baseline does not. Both choices are persisted with timestamps, exact prompts, response IDs and an integrity hash before voting is allowed. Owner-only opening and pre-closure API redaction keep predictions away from voters. Closure reports both choices against observed votes and explicit low-response/tie/abstention states.
+
+The former Without Qloo toggle is now labeled Keyword baseline. It remains a heuristic and is separate from the model comparison. Real paired execution is not verified yet because OPENAI_API_KEY and OPENAI_MODEL are absent. Automated validation uses synthetic fixtures, not benchmark evidence. No superiority claim or new audience data has been produced.

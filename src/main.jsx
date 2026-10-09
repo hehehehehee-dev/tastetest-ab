@@ -28,6 +28,7 @@ import "./styles.css";
 import "./lab.css";
 import { TasteMap } from "./interactions.jsx";
 import CaseStudy from "./CaseStudy.jsx";
+import AiComparison from "./AiComparison.jsx";
 import { predictionConfidence } from "../shared/confidence.mjs";
 
 const categoryIcons = {
@@ -236,7 +237,9 @@ function Steps({ active }) {
   );
 }
 
-function CreateTest({ mode }) {
+function CreateTest({ mode, aiConfig, configured }) {
+  const [compareAi, setCompareAi] = useState(false);
+  const aiReady = mode === "real" && configured && aiConfig?.configured;
   const [insightCategory, setInsightCategory] = useState("Dining");
   const [options, setOptions] = useState([
     { title: "", description: "", imageUrl: "" },
@@ -299,6 +302,7 @@ function CreateTest({ mode }) {
           seedEntityIds: selected.map((e) => e.entity_id),
           audienceNote: note,
           insightCategory,
+          compareAi,
         }),
       });
       if (!saveLocal(ownerKey(data.test.id), data.ownerToken))
@@ -486,17 +490,63 @@ function CreateTest({ mode }) {
             placeholder="e.g. IU students near campus"
           />
         </section>
+        <section className="panel prediction-method">
+          <h2>How should we compare?</h2>
+          <label>
+            <input
+              type="radio"
+              name="prediction-method"
+              checked={!compareAi}
+              onChange={() => setCompareAi(false)}
+            />{" "}
+            Quick concept-fit heuristic
+          </label>
+          <label>
+            <input
+              type="radio"
+              name="prediction-method"
+              checked={compareAi}
+              onChange={() => setCompareAi(true)}
+            />{" "}
+            AI only vs. AI + Qloo
+          </label>
+          <p>
+            {compareAi
+              ? "Two separate AI calls, one model. Lock both answers before opening the poll; compare them with audience votes after closing."
+              : "A local tag-matching score. This is not an AI model comparison."}
+          </p>
+          {compareAi && (
+            <p className={aiReady ? "muted" : "error"} role="status">
+              {aiReady
+                ? `Model: ${aiConfig.model}. Each new comparison makes two paid AI API requests. Images are not evaluated.`
+                : "AI comparison is not configured yet. Set OPENAI_API_KEY and OPENAI_MODEL on the server, and enable real Qloo. No AI results will be invented."}
+            </p>
+          )}
+        </section>
         <ErrorMessage>{error}</ErrorMessage>
         <div className="form-footer">
           <p>
             <CircleHelp size={15} />
-            {mode === "real"
-              ? "Real Qloo affinities ground a local concept-fit heuristic; they do not predict demand or voting probabilities."
-              : "Mock taste signals help test the flow, not predict real demand."}
+            {compareAi
+              ? "Lock both model choices before collecting audience votes. Each comparison makes two AI API calls."
+              : mode === "real"
+                ? "Real Qloo affinities ground a local concept-fit heuristic; they do not predict demand or voting probabilities."
+                : "Mock taste signals help test the flow, not predict real demand."}
           </p>
-          <Button className="primary" busy={busy} type="submit">
+          <Button
+            className="primary"
+            busy={busy}
+            type="submit"
+            disabled={compareAi && !aiReady}
+          >
             <Sparkles size={16} />
-            {busy ? "Comparing your ideas…" : "Get agent prediction"}
+            {busy
+              ? compareAi
+                ? "Locking both AI predictions…"
+                : "Comparing your ideas…"
+              : compareAi
+                ? "Lock both AI predictions"
+                : "Get agent prediction"}
           </Button>
         </div>
       </form>
@@ -516,7 +566,7 @@ function Prediction({ test, compact = false }) {
           <h2>What the taste signals suggest</h2>
         </div>
         <label className="toggle-label">
-          <span>Without Qloo</span>
+          <span>Keyword baseline</span>
           <input
             type="checkbox"
             checked={without}
@@ -713,11 +763,13 @@ function Verdict({ test }) {
       <div className="panel verdict-panel">
         <div className="verdict-main">
           <span className="eyebrow">
-            {winner === null
-              ? test.totalVotes
-                ? "NO CLEAR WINNER"
-                : "NO VOTES COLLECTED"
-              : "AUDIENCE PICK"}
+            {test.isPairedComparison
+              ? `Paired case: ${verdict.paired.status}`
+              : winner === null
+                ? test.totalVotes
+                  ? "NO CLEAR WINNER"
+                  : "NO VOTES COLLECTED"
+                : "AUDIENCE PICK"}
           </span>
           <h3>
             {winner === null
@@ -740,43 +792,49 @@ function Verdict({ test }) {
           </p>
           <span className="agreement-label">
             <CheckCircle2 size={15} />
-            {winner === null
-              ? "More evidence needed"
-              : predicted === null
-                ? "Prediction was too close to call"
-                : winner === predicted
-                  ? "Prediction matched the poll"
-                  : "Poll challenged the prediction"}
+            {test.isPairedComparison
+              ? verdict.paired.status === "EVALUABLE"
+                ? "See both branch results above"
+                : "More evidence needed"
+              : winner === null
+                ? "More evidence needed"
+                : predicted === null
+                  ? "Prediction was too close to call"
+                  : winner === predicted
+                    ? "Prediction matched the poll"
+                    : "Poll challenged the prediction"}
           </span>
         </div>
-        <div className="verdict-comparison">
-          <div className="comparison-heading">
-            <span>PREDICTED FIT</span>
-            <span>ACTUAL VOTE</span>
-          </div>
-          {test.options.map((o, i) => (
-            <div className="comparison-row" key={i}>
-              <span>
-                <span className="tiny-letter">{i ? "B" : "A"}</span>
-                {o.title}
-              </span>
-              <strong>
-                {test.prediction[i].score}
-                <small>/100</small>
-              </strong>
-              <strong>
-                {test.totalVotes
-                  ? Math.round((test.votes[i] / test.totalVotes) * 100)
-                  : 0}
-                <small>%</small>
-              </strong>
+        {!test.isPairedComparison && (
+          <div className="verdict-comparison">
+            <div className="comparison-heading">
+              <span>PREDICTED FIT</span>
+              <span>ACTUAL VOTE</span>
             </div>
-          ))}
-          <div className="verdict-meta">
-            <span>{test.totalVotes} total votes</span>
-            <span>Poll closed</span>
+            {test.options.map((o, i) => (
+              <div className="comparison-row" key={i}>
+                <span>
+                  <span className="tiny-letter">{i ? "B" : "A"}</span>
+                  {o.title}
+                </span>
+                <strong>
+                  {test.prediction[i].score}
+                  <small>/100</small>
+                </strong>
+                <strong>
+                  {test.totalVotes
+                    ? Math.round((test.votes[i] / test.totalVotes) * 100)
+                    : 0}
+                  <small>%</small>
+                </strong>
+              </div>
+            ))}
+            <div className="verdict-meta">
+              <span>{test.totalVotes} total votes</span>
+              <span>Poll closed</span>
+            </div>
           </div>
-        </div>
+        )}
       </div>
       <div className="recommendation">
         <span className="recommendation-icon">
@@ -801,7 +859,10 @@ function TestView({ id, sample = false }) {
     new URLSearchParams(location.search).get("view") || "verdict",
   );
   const owner = !sample && !!getLocal(ownerKey(id));
-  const refresh = () => api(sample ? "/sample" : `/tests/${id}`);
+  const refresh = () =>
+    api(sample ? "/sample" : `/tests/${id}`, {
+      headers: { "x-owner-token": getLocal(ownerKey(id), "") },
+    });
   useEffect(() => {
     if (!sample) return;
     let current = true;
@@ -884,6 +945,23 @@ function TestView({ id, sample = false }) {
       setBusy(false);
     }
   }
+  async function openPoll() {
+    if (!test.isPairedComparison) return setView("verdict");
+    setBusy(true);
+    setError("");
+    try {
+      const data = await api(`/tests/${id}/open`, {
+        method: "POST",
+        headers: { "x-owner-token": getLocal(ownerKey(id), "") },
+      });
+      setTest(data);
+      setView("verdict");
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setBusy(false);
+    }
+  }
   if (!test)
     return (
       <main className="container loading-state">
@@ -900,7 +978,10 @@ function TestView({ id, sample = false }) {
         )}
       </main>
     );
-  const activePrediction = !sample && view === "prediction" && !test.closedAt;
+  const activePrediction =
+    !sample &&
+    !test.closedAt &&
+    (view === "prediction" || (test.isPairedComparison && !test.pollOpenedAt));
   return (
     <main className="container">
       <Steps active={activePrediction ? 1 : 2} />
@@ -926,7 +1007,11 @@ function TestView({ id, sample = false }) {
           <div className="test-meta">
             <span className={`status-tag ${test.closedAt ? "" : "live"}`}>
               {test.closedAt ? <CheckCircle2 size={12} /> : <Radio size={12} />}
-              {test.closedAt ? "Completed" : "Live test"}
+              {test.closedAt
+                ? "Completed"
+                : test.isPairedComparison && !test.pollOpenedAt
+                  ? "Predictions locked"
+                  : "Live test"}
             </span>
             <span>
               {sample
@@ -983,14 +1068,23 @@ function TestView({ id, sample = false }) {
         </div>
       )}
       <ErrorMessage>{error}</ErrorMessage>
-      <Prediction test={test} />
+      {test.isPairedComparison ? (
+        <AiComparison test={test} />
+      ) : (
+        <Prediction test={test} />
+      )}
       {activePrediction ? (
         <div className="next-panel">
           <div>
             <h2>A prediction is a starting point.</h2>
             <p>Invite your audience to vote and see if the signal holds up.</p>
           </div>
-          <Button className="primary" onClick={() => setView("verdict")}>
+          <Button
+            className="primary"
+            busy={busy}
+            disabled={test.isPairedComparison && !owner}
+            onClick={openPoll}
+          >
             <Radio size={16} />
             Open live poll
           </Button>
@@ -1104,9 +1198,11 @@ function TestView({ id, sample = false }) {
       <footer className="report-footer">
         <span>TasteTest A/B</span>
         <p>
-          {test.mode === "real"
-            ? "Real Qloo API affinities · local heuristic fit"
-            : "Synthetic Qloo-style signals"}{" "}
+          {test.isPairedComparison
+            ? "Two locked AI predictions · same model · real Qloo context"
+            : test.mode === "real"
+              ? "Real Qloo API affinities · local heuristic fit"
+              : "Synthetic Qloo-style signals"}{" "}
           · {sample ? "Illustrative sample votes" : "Anonymous audience votes"}{" "}
           ·
           {test.mode === "real"
@@ -1199,6 +1295,12 @@ function PollPage({ id }) {
             : "Pick the idea you’d be more likely to try. No signup needed."}
       </p>
       <ErrorMessage>{error}</ErrorMessage>
+      {test.isPairedComparison && !test.pollOpenedAt && !test.closedAt && (
+        <p className="panel">
+          Predictions are locked. The creating browser has not opened voting
+          yet.
+        </p>
+      )}
       {voted !== null && !test.closedAt && (
         <div className="voted-message">
           <CheckCircle2 size={18} />
@@ -1209,7 +1311,12 @@ function PollPage({ id }) {
         {test.options.map((option, i) => (
           <button
             key={i}
-            disabled={voted !== null || !!test.closedAt || voting !== null}
+            disabled={
+              voted !== null ||
+              !!test.closedAt ||
+              voting !== null ||
+              (test.isPairedComparison && !test.pollOpenedAt)
+            }
             className={`panel poll-choice ${voted === String(i) ? "your-vote" : ""}`}
             onClick={() => vote(i)}
           >
@@ -1279,7 +1386,11 @@ function App() {
       ].includes(route) ? (
         <CaseStudy />
       ) : route === "/create" ? (
-        <CreateTest mode={config.mode} />
+        <CreateTest
+          mode={config.mode}
+          aiConfig={config.ai}
+          configured={config.configured}
+        />
       ) : match ? (
         match[1] === "poll" ? (
           <PollPage key={route} id={match[2]} />

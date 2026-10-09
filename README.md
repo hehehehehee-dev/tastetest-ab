@@ -2,7 +2,7 @@
 
 Compare two concepts for an audience defined by cultural tastes, make an explainable prediction, then test it with a shareable anonymous poll.
 
-**Mock demo + optional real Qloo integration.** The completed cafe example and its live twin use synthetic taste signals. Fresh tests use real entity search, metadata and Insights when server-only real mode is configured. Scores remain our heuristic mapping of concept text to cultural tags, not direct Qloo scores for custom posters or calibrated voting probabilities. No LLM is called.
+**Mock demo, real Qloo integration, and optional paired AI comparison.** The completed cafe example and its live twin use synthetic taste signals. Fresh heuristic tests use real entity search, metadata and Insights when server-only real mode is configured. Their scores remain our local tag mapping, not direct Qloo scores for custom posters or calibrated voting probabilities. The separate **AI only vs. AI + Qloo** mode calls the same configured OpenAI model twice and locks both choices before voting.
 
 ## Run locally
 
@@ -19,14 +19,28 @@ Optional: copy `.env.example` to `.env` for server-only configuration. Keep `USE
 
 ## Try the whole flow
 
-1. Explore the sample and switch **Without Qloo** to compare keyword-only scoring.
+1. Explore the sample and switch **Keyword baseline** to compare keyword-only scoring. This toggle is not an AI model.
 2. Select **New test**, describe A and B, and select 3–5 taste seeds across the searchable categories.
 3. Choose the recommendation context most relevant to the concepts, then generate a prediction. In real mode, type real entity names to search; mock IDs are rejected. Expand **How this score adds up** and **Real Qloo signals used** to inspect components and provenance.
 4. Open the live poll and copy the audience link.
 5. Open it in a private window, select an option, and watch the owner page update within two seconds.
 6. Back in the creating browser, close the test and read or print the final verdict.
 
-The public poll does not reveal agent predictions before voting, avoiding that source of bias. Voters need no account. Only the creating browser has the owner capability needed to close a test. Store that browser's local data if you need to keep owner access.
+The public poll UI does not show predictions before voting. Paired AI mode also hides them from unauthenticated API readers until closure. Voters need no account. Only the creating browser has the owner capability needed to close a test. Store that browser's local data if you need to keep owner access.
+
+## AI only vs. AI + Qloo
+
+Add `OPENAI_API_KEY` and `OPENAI_MODEL` to the private server environment, alongside real Qloo configuration. Choose one Responses-compatible model supporting structured outputs; pin an exact snapshot when available. There is no default or silent model substitution. Restart local dev, or redeploy Netlify after setting these variables with Functions scope. This feature remains disabled until both provider configurations are present; credentials are never accepted from the browser or returned in receipts.
+
+In **New test**, select **AI only vs. AI + Qloo**, then **Lock both AI predictions**. Each attempt makes two paid, stateless Responses API calls with the same instructions, model, text concepts, audience names/categories/note, recommendation context and output schema. AI only gets no Qloo tags or affinities; AI + Qloo gets resolved seed tags and real recommendation tags, affinities and explainability. Neither receives poll results or the other branch's answer. Images are not evaluated. Returned model identifiers must match. Refusals, incomplete responses, invalid outputs and provider errors create no poll; if the second call fails, the first call may still have incurred cost. No automatic retries or mock AI fallback are used.
+
+The creating browser can inspect and download the receipt, then explicitly **Open live poll**. Until opening, the server rejects votes. Before closure, paired predictions and evidence are withheld from unauthenticated API readers, including the vote response. Opening is idempotent; predictions cannot be edited or rerun on that case. All new attempts must be accounted for rather than selecting only favorable results.
+
+After closure, the report shows **AI only / AI + Qloo / audience choice**, with MATCH, MISS, ABSTAIN, TIED or INSUFFICIENT. The declared per-case threshold is 10 votes and a non-tied poll. This is a workflow threshold, not a power calculation. Confidence is self-reported, not calibrated. Collect 20–30 new cases and report paired results with exclusions; even 20 evaluable cases does not automatically establish superiority. The existing research CLI is a separate protocol; these web receipts do not automatically enter its study ledger.
+
+The receipt stores exact prompts, response IDs, requested/returned model, start/finish/commit timestamps, the 10-vote rule, and SHA-256 of `JSON.stringify(receipt.payload)`; opening/closing times and grades are separate fields. The hash detects changes relative to a retained receipt, but is not a signed external timestamp or proof against a server administrator rewriting history. Preserve the receipt before circulating the poll. Model sampling randomness remains a limitation of one paired call per branch.
+
+Transport follows [official OpenAI Structured Outputs documentation](https://developers.openai.com/api/docs/guides/structured-outputs?api-mode=responses). `server/aiComparison.mjs` owns the two calls and receipt; `src/AiComparison.jsx` renders the comparison. Tests use clearly synthetic transport/browser fixtures and spend no provider quota. No real paired model predictions or prospective audience outcomes have been collected yet.
 
 ## Validation
 
@@ -85,7 +99,7 @@ The prospective study has 25 unpublished taste-based cases planned. Local Git-ig
 - No login means owner controls are lost if browser storage is cleared. A poll link alone cannot recover ownership.
 - For a high-volume public launch, add rate limits, retention limits, and a transactional database. Blobs enumeration is appropriate for small hackathon polls, not large datasets.
 - Real Qloo entity search, metadata and Insights have been verified locally. Production real mode requires private server environment configuration. Hackathon eligibility and prospective model accuracy remain separate checks.
-- Recommendation context selects one Insights entity type. Qloo grounds a fixed local concept/tag heuristic; this is not direct entity ranking for the two custom concepts and is not an LLM prediction.
+- Recommendation context selects one Insights entity type. In quick heuristic mode, Qloo grounds a fixed local concept/tag score, not direct entity ranking or an LLM prediction. Paired mode supplies this same recommendation category's real data to the AI + Qloo branch.
 - Requests are serialized at least 650ms apart per server instance, identical requests coalesce, and responses cache for five minutes (at most 200 entries). Rate limits honor Retry-After or use a 30-second cooldown. Errors never silently fall back to mock.
 
 End-to-end tests start an isolated mock server on port 5174 with a separate HMR port; they never load the private key or spend real API quota. `server/qlooClient.mjs` contains the real HTTP transport; `server/qlooAdapter.mjs` selects the mode and applies the local fit heuristic. Private verification captures remain under ignored `.local/`.

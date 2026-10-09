@@ -13,6 +13,11 @@ import {
 import { sampleInput, typeUrns } from "./fixtures.mjs";
 import { predictionConfidence } from "../shared/confidence.mjs";
 import { cookieCats, makeCookieCommit } from "./cookieCats.mjs";
+import {
+  comparisonConfig,
+  createComparison,
+  scoreComparison,
+} from "./aiComparison.mjs";
 const fail = (message, status = 400) => {
   throw Object.assign(new Error(message), { status });
 };
@@ -26,7 +31,7 @@ const json = (data, status = 200) =>
   });
 const hash = (value) => createHash("sha256").update(value).digest("hex");
 
-async function predict(input, adapter = qlooAdapter) {
+async function predict(input, adapter = qlooAdapter, aiPredictor) {
   const seeds = await adapter.resolveEntities(input.seedEntityIds);
   const insights = await adapter.getInsights(input.seedEntityIds, [
     input.insightType || typeUrns.Dining,
@@ -34,6 +39,16 @@ async function predict(input, adapter = qlooAdapter) {
   const profile = { seeds, insights, note: input.audienceNote };
   return {
     seeds,
+    ...(input.compareAi
+      ? {
+          comparison: await createComparison(
+            input,
+            seeds,
+            insights,
+            aiPredictor,
+          ),
+        }
+      : {}),
     prediction: await Promise.all(
       input.options.map((o) => adapter.scoreOption(o, profile)),
     ),
@@ -110,17 +125,20 @@ function validateInput(body) {
     insightType:
       typeUrns[body.insightCategory || "Dining"] ||
       fail("Select a supported recommendation context."),
+    compareAi: body.compareAi === true,
   };
 }
 function verdict(test, counts) {
   const total = counts[0] + counts[1];
   const actual =
     !total || counts[0] === counts[1] ? null : counts[0] > counts[1] ? 0 : 1;
-  const predicted = predictionConfidence(test.prediction).tooClose
-    ? null
-    : test.prediction[0].score > test.prediction[1].score
-      ? 0
-      : 1;
+  const predicted = test.comparison
+    ? ({ A: 0, B: 1 }[test.comparison.payload.aiQloo.choice] ?? null)
+    : predictionConfidence(test.prediction).tooClose
+      ? null
+      : test.prediction[0].score > test.prediction[1].score
+        ? 0
+        : 1;
   const share =
     actual === null ? null : Math.round((counts[actual] / total) * 100);
   const recommendation = !total
@@ -132,8 +150,12 @@ function verdict(test, counts) {
     actual,
     predicted,
     share,
-    recommendation:
-      test.mode === "real"
+    ...(test.comparison
+      ? { paired: scoreComparison(test.comparison, counts, true) }
+      : {}),
+    recommendation: test.comparison
+      ? `${total} anonymous browser votes were collected. ${scoreComparison(test.comparison, counts, true).status === "EVALUABLE" ? "Compare both locked AI choices with the audience result below. One case cannot establish that Qloo improves accuracy." : "This case cannot be scored as a winner comparison: collect at least 10 votes in a fresh poll and require a non-tied result."} This convenience poll is not a representative study.`
+      : test.mode === "real"
         ? recommendation
             .replaceAll(
               "mock cultural prediction",
@@ -143,8 +165,14 @@ function verdict(test, counts) {
         : recommendation,
   };
 }
-export function createApi(store) {
-  async function snapshot(test) {
+export function createApi(store, { adapter = qlooAdapter, aiPredictor } = {}) {
+  const owns = (test, request) =>
+    !!test.ownerHash &&
+    timingSafeEqual(
+      Buffer.from(hash(request.headers.get("x-owner-token") || "")),
+      Buffer.from(test.ownerHash),
+    );
+  async function snapshot(test, allowPredictions = false) {
     if (!test.isSample)
       test = {
         ...test,
@@ -160,13 +188,37 @@ export function createApi(store) {
           counts[vote.option]++;
     }
     const { ownerHash, ...publicTest } = test;
+    if (test.comparison && !test.closedAt && !allowPredictions) {
+      delete publicTest.comparison;
+      delete publicTest.prediction;
+      delete publicTest.baseline;
+      delete publicTest.insights;
+      delete publicTest.provenance;
+      publicTest.seeds = test.seeds.map(({ entity_id, name, category }) => ({
+        entity_id,
+        name,
+        category,
+      }));
+    }
     return {
       ...publicTest,
       votes: counts,
       totalVotes: counts[0] + counts[1],
       verdict: test.closedAt ? verdict(test, counts) : null,
       mode: test.mode || "mock",
-      confidence: predictionConfidence(test.prediction),
+      confidence: test.comparison
+        ? null
+        : predictionConfidence(test.prediction),
+      ...(test.comparison
+        ? {
+            isPairedComparison: true,
+            commitment: {
+              sha256: test.comparison.sha256,
+              committedAt: test.comparison.payload.committedAt,
+            },
+            pollOpenedAt: (await store.get(`opened/${test.id}`))?.at || null,
+          }
+        : {}),
     };
   }
   async function readBody(request) {
@@ -186,6 +238,7 @@ export function createApi(store) {
         return json({
           mode: isMockMode() ? "mock" : "real",
           configured: isMockMode() || !!process.env.QLOO_API_KEY,
+          ai: comparisonConfig(),
         });
       if (
         pathname === "/api/historical-case/commit" &&
@@ -277,20 +330,25 @@ export function createApi(store) {
       }
       if (pathname === "/api/tests" && request.method === "POST") {
         const input = validateInput(await readBody(request));
+        if (input.compareAi && !aiPredictor && !comparisonConfig().configured)
+          fail(
+            "AI comparison needs server-side OPENAI_API_KEY and OPENAI_MODEL. No AI prediction was fabricated.",
+            503,
+          );
         const ownerToken = randomBytes(32).toString("hex");
         const test = {
           ...input,
-          ...(await predict(input)),
+          ...(await predict(input, adapter, aiPredictor)),
           id: randomUUID(),
           ownerHash: hash(ownerToken),
           createdAt: new Date().toISOString(),
           closedAt: null,
         };
         await store.set(`tests/${test.id}`, test);
-        return json({ test: await snapshot(test), ownerToken }, 201);
+        return json({ test: await snapshot(test, true), ownerToken }, 201);
       }
       const match = pathname.match(
-        /^\/api\/tests\/([a-f0-9-]{36})(?:\/(vote|close))?$/,
+        /^\/api\/tests\/([a-f0-9-]{36})(?:\/(vote|close|open))?$/,
       );
       if (!match) return json({ error: "This page could not be found." }, 404);
       const [, id, action] = match;
@@ -299,13 +357,27 @@ export function createApi(store) {
         fail("This test could not be found. Check the shared link.", 404);
       test.closedAt = (await store.get(`closed/${id}`))?.at || null;
       if (!action && request.method === "GET")
-        return json(await snapshot(test));
+        return json(await snapshot(test, owns(test, request)));
+      if (action === "open" && request.method === "POST") {
+        if (!owns(test, request))
+          fail("Only the creating browser can open this poll.", 403);
+        if (!test.comparison) fail("This legacy poll is already open.", 409);
+        if (test.closedAt) fail("This poll has closed.", 409);
+        await store.set(
+          `opened/${id}`,
+          { at: new Date().toISOString() },
+          { onlyIfNew: true },
+        );
+        return json(await snapshot(test, true));
+      }
       if (action === "close" && request.method === "POST") {
         if (test.isLiveSample)
           fail(
             "The live demo remains open. Create your own test to close it.",
             403,
           );
+        if (test.comparison && !(await store.get(`opened/${id}`)))
+          fail("Open the paired poll before closing it.", 409);
         const token = request.headers.get("x-owner-token") || "";
         const tokenHash = hash(token);
         if (
@@ -324,6 +396,11 @@ export function createApi(store) {
       if (action === "vote" && request.method === "POST") {
         if (test.closedAt)
           fail("This poll has closed. You can still read the verdict.", 409);
+        if (test.comparison && !(await store.get(`opened/${id}`)))
+          fail(
+            "Predictions are locked, but the owner has not opened this poll yet.",
+            409,
+          );
         const body = await readBody(request);
         if (
           ![0, 1].includes(body.option) ||

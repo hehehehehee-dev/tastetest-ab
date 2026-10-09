@@ -15,13 +15,13 @@ test("sample, creation, independent voter, live update, closure and print", asyn
   await expect(scores.first()).toContainText("100");
   await page.waitForTimeout(700);
   const before = await scores.allTextContents();
-  await page.getByRole("checkbox", { name: "Without Qloo" }).check();
+  await page.getByRole("checkbox", { name: "Keyword baseline" }).check();
   await page.waitForTimeout(700);
   expect(await scores.allTextContents()).not.toEqual(before);
   await expect(page.locator(".comparison-note")).toContainText(
     "Keyword baseline",
   );
-  await page.getByRole("checkbox", { name: "Without Qloo" }).uncheck();
+  await page.getByRole("checkbox", { name: "Keyword baseline" }).uncheck();
   await expect(scores.first()).toHaveText("100/ 100");
   await mkdir("artifacts", { recursive: true });
   await page.screenshot({

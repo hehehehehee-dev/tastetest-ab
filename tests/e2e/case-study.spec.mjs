@@ -79,7 +79,7 @@ test("home stays a completed cafe example with a separate always-open live twin"
   await expect(page.getByText("52 votes", { exact: true })).toBeVisible();
   await expect(page.getByText("Mock mode — Qloo not connected")).toBeVisible();
   await expect(page.getByText("High heuristic confidence")).toBeVisible();
-  await page.getByRole("checkbox", { name: "Without Qloo" }).check();
+  await page.getByRole("checkbox", { name: "Keyword baseline" }).check();
   await expect(
     page.getByText("Too close to call", { exact: true }),
   ).toBeVisible();
