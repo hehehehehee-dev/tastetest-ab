@@ -26,6 +26,8 @@ import {
 } from "lucide-react";
 import "./styles.css";
 import "./lab.css";
+import "./finish.css";
+import { toPng } from "html-to-image";
 import { TasteMap } from "./interactions.jsx";
 import CaseStudy from "./CaseStudy.jsx";
 import AiComparison from "./AiComparison.jsx";
@@ -526,8 +528,7 @@ function CreateTest({ mode }) {
     </main>
   );
 }
-function Prediction({ test, compact = false }) {
-  const [without, setWithout] = useState(false);
+function Prediction({ test, compact = false, without, setWithout }) {
   const scores = without ? test.baseline : test.prediction;
   const winner = winnerFor(scores);
   const confidence = predictionConfidence(scores);
@@ -600,16 +601,19 @@ function Prediction({ test, compact = false }) {
               />
             </div>
             <h3>{option.title}</h3>
-            <p className="option-description">{option.description}</p>
             <OptionImage option={option} />
-            <ul className="reason-list">
-              {scores[i].reasons.map((reason) => (
-                <li key={reason}>
-                  <Check size={13} />
-                  {reason}
-                </li>
-              ))}
-            </ul>
+            <p className="option-description">{option.description}</p>
+            <details className="reason-details">
+              <summary>Why this direction</summary>
+              <ul className="reason-list">
+                {scores[i].reasons.map((reason) => (
+                  <li key={reason}>
+                    <Check size={13} />
+                    {reason}
+                  </li>
+                ))}
+              </ul>
+            </details>
             <details className="score-details">
               <summary>
                 How this score adds up<span>{scores[i].score} points</span>
@@ -709,7 +713,12 @@ function VoteBars({ test }) {
               </strong>
             </div>
             <div className="vote-track">
-              <div style={{ width: `${percentage}%` }} />
+              <div
+                className={
+                  test.votes[i] > test.votes[1 - i] ? "winning-bar" : ""
+                }
+                style={{ width: `${percentage}%` }}
+              />
             </div>
           </div>
         );
@@ -717,120 +726,216 @@ function VoteBars({ test }) {
     </div>
   );
 }
-function Verdict({ test }) {
+function Verdict({ test, without, setWithout }) {
+  const card = useRef(null);
+  const [exporting, setExporting] = useState(false);
+  const [notice, setNotice] = useState("");
   const { verdict } = test;
   const winner = verdict.actual;
-  const predicted = verdict.predicted;
+  const scores = without ? test.baseline : test.prediction;
+  const predicted = without
+    ? scores
+      ? winnerFor(scores)
+      : null
+    : verdict.predicted;
+  const fitWinner = scores ? winnerFor(scores) : null;
+  async function exportImage() {
+    setExporting(true);
+    setNotice("");
+    try {
+      await document.fonts.ready;
+      const data = await toPng(card.current, {
+        pixelRatio: 2,
+        backgroundColor: "#131313",
+      });
+      const link = document.createElement("a");
+      link.download = `tastetest-verdict-${test.id}${without ? "-baseline" : ""}.png`;
+      link.href = data;
+      link.click();
+      setNotice("Verdict image downloaded.");
+    } catch {
+      setNotice(
+        "Image export failed. Try Print report to save this verdict as a PDF.",
+      );
+    } finally {
+      setExporting(false);
+    }
+  }
   return (
-    <section className="verdict-section">
+    <section className="verdict-section focused-verdict">
       <div className="section-heading">
         <div>
           <div className="eyebrow">03 / THE DECISION</div>
           <h2>The audience has spoken.</h2>
         </div>
-        <Button className="subtle print-button" onClick={() => window.print()}>
-          <Printer size={15} />
-          Print report
-        </Button>
+        <div className="verdict-actions">
+          <Button
+            className="subtle print-button"
+            onClick={() => window.print()}
+          >
+            <Printer size={15} />
+            Print report
+          </Button>
+          <Button className="subtle" busy={exporting} onClick={exportImage}>
+            <ExternalLink size={15} />
+            Share verdict image
+          </Button>
+          {!test.isPairedComparison && (
+            <label className="toggle-label verdict-toggle">
+              <span>Keyword baseline</span>
+              <input
+                type="checkbox"
+                checked={without}
+                onChange={(e) => setWithout(e.target.checked)}
+              />
+              <span className="toggle-track" aria-hidden="true" />
+            </label>
+          )}
+        </div>
       </div>
-      <div className="panel verdict-panel">
-        <div className="verdict-main">
-          <span className="eyebrow">
-            {test.isPairedComparison
-              ? `Paired case: ${verdict.paired.status}`
-              : winner === null
-                ? test.totalVotes
-                  ? "NO CLEAR WINNER"
-                  : "NO VOTES COLLECTED"
-                : "AUDIENCE PICK"}
-          </span>
-          <h3>
-            {winner === null
-              ? test.totalVotes
-                ? "An even split."
-                : "No verdict yet."
-              : test.options[winner].title}
-          </h3>
-          <div className="verdict-number">
-            {verdict.share !== null ? (
-              <AnimatedNumber value={verdict.share} suffix="%" />
-            ) : (
-              "—"
-            )}
-          </div>
-          <p>
-            {winner === null
-              ? "A new poll can help clarify the decision."
-              : `of voters chose Option ${winner ? "B" : "A"}`}
-          </p>
-          <span className="agreement-label">
-            <CheckCircle2 size={15} />
-            {test.isPairedComparison
-              ? verdict.paired.status === "EVALUABLE"
-                ? "See both branch results above"
-                : "More evidence needed"
-              : winner === null
-                ? "More evidence needed"
-                : predicted === null
-                  ? "Prediction was too close to call"
-                  : winner === predicted
-                    ? "Prediction matched the poll"
-                    : "Poll challenged the prediction"}
+      <div
+        ref={card}
+        className={`panel verdict-artefact ${without ? "baseline-view" : ""}`}
+      >
+        <div className="verdict-kicker">
+          <span>TASTETEST / DECISION RECORD</span>
+          <span>
+            {without
+              ? "KEYWORD BASELINE VIEW"
+              : test.isPairedComparison
+                ? "PAIRED COMPARISON"
+                : test.mode === "real"
+                  ? "QLOO DATA + LOCAL FIT"
+                  : test.isSample
+                    ? "SYNTHETIC CAFE EXAMPLE"
+                    : "SYNTHETIC SIGNALS"}
           </span>
         </div>
-        {!test.isPairedComparison && (
-          <div className="verdict-comparison">
-            <div className="comparison-heading">
-              <span>PREDICTED FIT</span>
-              <span>ACTUAL VOTE</span>
+        <div className="verdict-hero">
+          <div className="verdict-main">
+            <span className="eyebrow">
+              {winner === null ? "NO CLEAR WINNER" : "AUDIENCE PICK"}
+            </span>
+            <div className="verdict-number">
+              {verdict.share !== null ? (
+                <AnimatedNumber value={verdict.share} suffix="%" />
+              ) : (
+                "—"
+              )}
             </div>
-            {test.options.map((o, i) => (
-              <div className="comparison-row" key={i}>
-                <span>
-                  <span className="tiny-letter">{i ? "B" : "A"}</span>
-                  {o.title}
-                </span>
+            <h3>
+              {winner === null
+                ? test.totalVotes
+                  ? "An even split."
+                  : "No verdict yet."
+                : test.options[winner].title}
+            </h3>
+            <p>
+              {winner === null
+                ? "More audience evidence needed."
+                : `of voters chose Option ${winner ? "B" : "A"}`}{" "}
+              · {test.totalVotes} votes
+            </p>
+          </div>
+          {winner !== null && (
+            <div className="verdict-poster">
+              <OptionImage option={test.options[winner]} />
+            </div>
+          )}
+        </div>
+        {!test.isPairedComparison && scores && (
+          <div className="verdict-bars">
+            <div className="verdict-bar">
+              <div className="verdict-bar-label">
+                <span>{without ? "Keyword baseline" : "Predicted fit"}</span>
                 <strong>
-                  {test.prediction[i].score}
-                  <small>/100</small>
-                </strong>
-                <strong>
-                  {test.totalVotes
-                    ? Math.round((test.votes[i] / test.totalVotes) * 100)
-                    : 0}
-                  <small>%</small>
+                  {scores
+                    .map((p, i) => `${i ? "B" : "A"} ${p.score}/100`)
+                    .join(" · ")}
                 </strong>
               </div>
-            ))}
-            <div className="verdict-meta">
-              <span>{test.totalVotes} total votes</span>
-              <span>Poll closed</span>
+              <div className="paired-fit-bars">
+                {scores.map((p, i) => (
+                  <div className="score-track" key={i}>
+                    <div
+                      className={`score-fill ${fitWinner === i ? "accent" : ""}`}
+                      style={{ width: `${p.score}%` }}
+                    />
+                  </div>
+                ))}
+              </div>
+              <small>Independent fit scores; not expected vote shares.</small>
+            </div>
+            <div className="verdict-bar">
+              <div className="verdict-bar-label">
+                <span>Actual vote</span>
+                <strong>
+                  {test.options
+                    .map(
+                      (_, i) =>
+                        `${i ? "B" : "A"} ${test.totalVotes ? Math.round((test.votes[i] / test.totalVotes) * 100) : 0}%`,
+                    )
+                    .join(" · ")}
+                </strong>
+              </div>
+              <div className="actual-split">
+                {test.votes.map((v, i) => (
+                  <div
+                    key={i}
+                    className={winner === i ? "winning-bar" : ""}
+                    style={{
+                      width: `${test.totalVotes ? (v / test.totalVotes) * 100 : 0}%`,
+                    }}
+                  />
+                ))}
+              </div>
             </div>
           </div>
         )}
-      </div>
-      <div className="recommendation">
-        <span className="recommendation-icon">
-          <Sparkles size={18} />
-        </span>
-        <div>
+        <div className="recommendation">
           <h3>Your next move</h3>
-          <p>{verdict.recommendation}</p>
+          <p>
+            {without && !test.isPairedComparison
+              ? winner === null
+                ? "The poll has no clear winner. Refine the concepts and collect more responses before deciding."
+                : `${test.options[winner].title} received ${verdict.share}% of ${test.totalVotes} votes. Use the observed preference for a small trial, then measure real outcomes. The keyword baseline is a separate comparison; this convenience poll is not a representative study.`
+              : verdict.recommendation}
+          </p>
+        </div>
+        <p className="calibration-line">
+          {test.isPairedComparison
+            ? `Paired case: ${verdict.paired.status}. See the locked branch record in Prediction.`
+            : `${without ? "Baseline comparison" : "Prediction comparison"}: ${winner === null ? "more evidence needed" : predicted === null ? "too close to call" : winner === predicted ? "matched the poll" : "poll challenged the prediction"}. Fit scores are not calibrated probabilities.`}
+        </p>
+        <div className="verdict-meta">
+          <span>{test.title}</span>
+          <span>
+            {test.isSample
+              ? "52 illustrative votes · synthetic example"
+              : `Closed ${new Date(test.closedAt).toLocaleDateString()}`}
+          </span>
         </div>
       </div>
+      {notice && (
+        <p role="status" className="export-notice">
+          {notice}
+        </p>
+      )}
     </section>
   );
 }
 function TestView({ id, sample = false }) {
   const [test, setTest] = useState(null);
   usePageSignal(test);
+  const [without, setWithout] = useState(false);
   const [liveSample, setLiveSample] = useState(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
   const [confirmClose, setConfirmClose] = useState(false);
   const [view, setView] = useState(
-    new URLSearchParams(location.search).get("view") || "verdict",
+    new URLSearchParams(location.search).get("view") ||
+      (sample ? "prediction" : "verdict"),
   );
   const owner = !sample && !!getLocal(ownerKey(id));
   const refresh = () =>
@@ -961,7 +1066,9 @@ function TestView({ id, sample = false }) {
       : view === "prediction" ||
         (test.isPairedComparison && !test.pollOpenedAt));
   return (
-    <main className={`container ${activePrediction ? "prediction-view" : ""}`}>
+    <main
+      className={`container experiment-page ${activePrediction || view === "prediction" ? "prediction-view" : ""} ${test.closedAt && view === "verdict" ? "verdict-view" : ""}`}
+    >
       <Steps active={activePrediction ? 1 : 2} />
       {sample && (
         <div className="sample-banner">
@@ -1002,8 +1109,7 @@ function TestView({ id, sample = false }) {
           <h1>
             {sample ? (
               <>
-                Which poster
-                <br />
+                Which poster{" "}
                 <span className="heading-muted">gets them in?</span>
               </>
             ) : (
@@ -1017,6 +1123,40 @@ function TestView({ id, sample = false }) {
                 ? "Your hypothesis is ready. Now put it in front of real people."
                 : "See what your audience chooses, then make the call."}
           </p>
+        </div>
+        <Audience test={test} />
+      </div>
+      {test.closedAt && (
+        <nav className="report-tabs" aria-label="Report view">
+          <button
+            className={view === "prediction" ? "selected" : ""}
+            onClick={() => setView("prediction")}
+          >
+            Prediction
+          </button>
+          <button
+            className={view === "verdict" ? "selected" : ""}
+            onClick={() => setView("verdict")}
+          >
+            Verdict
+          </button>
+        </nav>
+      )}
+      {test.closedAt && view === "verdict" && (
+        <Verdict test={test} without={without} setWithout={setWithout} />
+      )}
+      {(!test.closedAt || view !== "verdict") && (
+        <>
+          <ErrorMessage>{error}</ErrorMessage>
+          {test.isPairedComparison ? (
+            <AiComparison test={test} />
+          ) : test.prediction ? (
+            <Prediction test={test} without={without} setWithout={setWithout} />
+          ) : (
+            <p className="panel">
+              Predictions remain private until the poll closes.
+            </p>
+          )}
           {sample && (
             <div className="hero-actions">
               <Button
@@ -1032,154 +1172,159 @@ function TestView({ id, sample = false }) {
               </Button>
             </div>
           )}
-        </div>
-        <TasteMap seeds={test.seeds} />
-      </div>
-      <Audience test={test} />
-      {sample && (
-        <div className="live-sample-note">
-          <strong>
-            Live twin · {liveSample?.totalVotes ?? "…"} visitor votes
-          </strong>
-          <span>
-            Try the same A/B poll. It stays open; its visitor votes are separate
-            from the completed 52-vote synthetic example below.
-          </span>
-        </div>
-      )}
-      <ErrorMessage>{error}</ErrorMessage>
-      {test.isPairedComparison ? (
-        <AiComparison test={test} />
-      ) : test.prediction ? (
-        <Prediction test={test} />
-      ) : (
-        <p className="panel">
-          Predictions remain private until the poll closes.
-        </p>
-      )}
-      <FreezePanel test={test} owner={owner} onFrozen={setTest} />
-      {activePrediction ? (
-        <div className="next-panel">
-          <div>
-            <h2>A prediction is a starting point.</h2>
-            <p>Invite your audience to vote and see if the signal holds up.</p>
-          </div>
-          <Button
-            className="primary"
-            busy={busy}
-            disabled={
-              (test.isPairedComparison && !owner) ||
-              (test.freezeRequired && (!owner || !test.frozenAt))
-            }
-            onClick={openPoll}
-          >
-            <Radio size={16} />
-            Open live poll
-          </Button>
-        </div>
-      ) : (
-        <>
-          <section className="poll-section">
-            <div className="section-heading">
-              <div>
-                <div className="eyebrow">02 / THE REALITY CHECK</div>
-                <h2>
-                  {test.closedAt
-                    ? "What people actually picked"
-                    : "Let your audience make the call"}
-                </h2>
-              </div>
-              <span className="vote-count">
-                {test.totalVotes} {test.totalVotes === 1 ? "vote" : "votes"}
-                {!test.closedAt && <span className="live-dot" />}
+          {sample && (
+            <div className="live-sample-note">
+              <strong>
+                Live twin · {liveSample?.totalVotes ?? "…"} visitor votes
+              </strong>
+              <span>
+                Try the same A/B poll. It stays open; its visitor votes are
+                separate from the completed 52-vote synthetic example below.
               </span>
             </div>
-            <div className="panel poll-results">
-              {test.totalVotes ? (
-                <VoteBars test={test} />
-              ) : (
-                <div className="poll-empty">
-                  <span className="empty-icon">
-                    <Radio size={22} />
-                  </span>
-                  <h3>Your first vote starts the story.</h3>
-                  <p>
-                    Send the poll to your audience. Results will appear here as
-                    they vote.
-                  </p>
-                </div>
-              )}
-              {!test.closedAt && (
-                <div className="share-panel">
-                  <label htmlFor="poll-link">
-                    <Link2 size={14} />
-                    Your audience link
-                  </label>
-                  <div className="share-input">
-                    <input id="poll-link" value={shareUrl} readOnly />
-                    <Button className="subtle" onClick={copyLink}>
-                      {copied ? <Check size={15} /> : <Copy size={15} />}
-                      {copied ? "Copied" : "Copy link"}
-                    </Button>
-                    <a
-                      className="icon-link"
-                      aria-label="Open poll"
-                      href={shareUrl}
-                    >
-                      <ExternalLink size={17} />
-                    </a>
-                  </div>
-                  <p>
-                    {test.isLiveSample
-                      ? "This live demo stays open. Visitor votes are separate from the completed synthetic example."
-                      : "Anyone with the link can vote. Only the creating browser can close this test."}
-                  </p>
-                </div>
-              )}
+          )}
+          <section className="supporting-evidence">
+            <div>
+              <div className="eyebrow">SUPPORTING EVIDENCE</div>
+              <h2>The taste behind the pick</h2>
+              <p>
+                {test.audienceNote ||
+                  "Defined by the selected cultural tastes."}
+              </p>
             </div>
-            {owner && !test.closedAt && (
-              <div className="close-panel">
-                {confirmClose ? (
-                  <>
-                    <p>
-                      Close this poll? Voting will stop and the final report
-                      will be revealed.
-                    </p>
-                    <div>
-                      <Button
-                        className="subtle"
-                        onClick={() => setConfirmClose(false)}
-                      >
-                        Keep it open
-                      </Button>
-                      <Button
-                        className="primary"
-                        busy={busy}
-                        onClick={closeTest}
-                      >
-                        Close & reveal verdict
-                      </Button>
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <p>
-                      Ready to decide? Close the poll when you have enough
-                      responses.
-                    </p>
-                    <Button
-                      className="subtle"
-                      onClick={() => setConfirmClose(true)}
-                    >
-                      Close test
-                    </Button>
-                  </>
-                )}
-              </div>
-            )}
+            <TasteMap seeds={test.seeds} />
           </section>
-          {test.closedAt && <Verdict test={test} />}
+          <FreezePanel test={test} owner={owner} onFrozen={setTest} />
+          {activePrediction ? (
+            <div className="next-panel">
+              <div>
+                <h2>A prediction is a starting point.</h2>
+                <p>
+                  Invite your audience to vote and see if the signal holds up.
+                </p>
+              </div>
+              <Button
+                className="primary"
+                busy={busy}
+                disabled={
+                  (test.isPairedComparison && !owner) ||
+                  (test.freezeRequired && (!owner || !test.frozenAt))
+                }
+                onClick={openPoll}
+              >
+                <Radio size={16} />
+                Open live poll
+              </Button>
+            </div>
+          ) : (
+            <>
+              <section className="poll-section">
+                <div className="section-heading">
+                  <div>
+                    <div className="eyebrow">02 / THE REALITY CHECK</div>
+                    <h2>
+                      {test.closedAt
+                        ? "What people actually picked"
+                        : "Let your audience make the call"}
+                    </h2>
+                  </div>
+                  <span className="vote-count">
+                    {test.totalVotes} {test.totalVotes === 1 ? "vote" : "votes"}
+                    {!test.closedAt && <span className="live-dot" />}
+                  </span>
+                </div>
+                <div className="panel poll-results">
+                  {test.totalVotes ? (
+                    <VoteBars test={test} />
+                  ) : (
+                    <div className="poll-empty">
+                      <span className="empty-icon">
+                        <Radio size={22} />
+                      </span>
+                      <h3>Your first vote starts the story.</h3>
+                      <p>
+                        Send the poll to your audience. Results will appear here
+                        as they vote.
+                      </p>
+                    </div>
+                  )}
+                  {!test.closedAt && (
+                    <div className="share-panel">
+                      <label htmlFor="poll-link">
+                        <Link2 size={14} />
+                        Your audience link
+                      </label>
+                      <div className="share-input">
+                        <input id="poll-link" value={shareUrl} readOnly />
+                        <Button className="subtle" onClick={copyLink}>
+                          {copied ? <Check size={15} /> : <Copy size={15} />}
+                          {copied ? "Copied" : "Copy link"}
+                        </Button>
+                        <a
+                          className="icon-link"
+                          aria-label="Open poll"
+                          href={shareUrl}
+                        >
+                          <ExternalLink size={17} />
+                        </a>
+                      </div>
+                      <p>
+                        {test.isLiveSample
+                          ? "This live demo stays open. Visitor votes are separate from the completed synthetic example."
+                          : "Anyone with the link can vote. Only the creating browser can close this test."}
+                      </p>
+                    </div>
+                  )}
+                </div>
+                {owner && !test.closedAt && (
+                  <div className="close-panel">
+                    {confirmClose ? (
+                      <>
+                        <p>
+                          Close this poll? Voting will stop and the final report
+                          will be revealed.
+                        </p>
+                        <div>
+                          <Button
+                            className="subtle"
+                            onClick={() => setConfirmClose(false)}
+                          >
+                            Keep it open
+                          </Button>
+                          <Button
+                            className="primary"
+                            busy={busy}
+                            onClick={closeTest}
+                          >
+                            Close & reveal verdict
+                          </Button>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <p>
+                          Ready to decide? Close the poll when you have enough
+                          responses.
+                        </p>
+                        <Button
+                          className="subtle"
+                          onClick={() => setConfirmClose(true)}
+                        >
+                          Close test
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                )}
+              </section>
+            </>
+          )}
         </>
+      )}
+      {copied && (
+        <div className="copy-toast" role="status">
+          Copied · poll link ready to share
+        </div>
       )}
       <footer className="report-footer">
         <span>TasteTest A/B</span>
@@ -1307,7 +1452,7 @@ function PollPage({ id }) {
               ((test.isPairedComparison || test.freezeRequired) &&
                 !test.pollOpenedAt)
             }
-            className={`panel poll-choice ${voted === String(i) ? "your-vote" : ""}`}
+            className={`panel poll-choice ${voted === String(i) ? "your-vote" : ""} ${voting === i ? "vote-pending" : ""}`}
             onClick={() => vote(i)}
           >
             <div className="panel-heading">

@@ -76,6 +76,12 @@ The project is deployable; a live deployment requires a Netlify account/site. Pr
 
 The interface uses neutral graphite surfaces, white controls, compact headings, and monospace data labels. The Raycast gradient is reserved for winning score bars, Agent Pick badges and verdicts. Global cursor-follow lighting is disabled. Moving the mouse over the taste network gently moves its wireframe and nodes; keyboard/touch exploration and reduced-motion support remain. Interactive controls have at least 44px tap targets. Decorative elements are excluded from print reports.
 
+App screens start with the two options, Agent Pick and heuristic confidence; the taste network follows as supporting evidence. The cafe sample includes two original SVG poster designs. Images use the same 8:5 geometry in creation previews, predictions, polls and verdicts. Display assets added to an older live demo do not rewrite its stored predictions or votes.
+
+Closed reports have separate **Prediction** and **Verdict** views. The keyword baseline switches the scores, labels and comparison together; actual votes never change. **Share verdict image** downloads a PNG of the verdict card, including its data-source label and calibration caveat. **Print report** produces the same card on one white A4 page. Remote image hosts must permit browser image export; an explicit error offers the print/PDF fallback if export fails.
+
+The benchmark opens with three summary tiles. Open the case register, closed ledger, proxy or workflow-rehearsal drawers for detail; methodology is last. Decision accuracy excludes abstentions, which remain visible in the detailed tally. Synthetic and historical results remain separate from eligible Track B cases.
+
 ```text
 src/                         React UI; no mock fixtures or server secrets
 server/fixtures.mjs          Synthetic seeds, affinities, sample input

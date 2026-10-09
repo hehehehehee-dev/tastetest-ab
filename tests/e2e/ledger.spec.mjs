@@ -4,6 +4,10 @@ test("Track B pending registry and CSV preserve unknown TB-001 timing without sc
   request,
 }, testInfo) => {
   await page.goto("/benchmark");
+  await page
+    .locator(".benchmark-drawer > summary")
+    .filter({ hasText: "Track B case register" })
+    .click();
   await expect(
     page.getByRole("heading", { name: "Track B case register", exact: true }),
   ).toBeVisible();

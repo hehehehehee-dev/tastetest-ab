@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="600" viewBox="0 0 960 600">
+  <rect width="960" height="600" fill="#1d1d1d"/>
+  <g fill="#e8e8e8">
+    <text x="48" y="72" font-family="monospace" font-size="16" letter-spacing="3">THE LOCAL / WEEKEND EDITION</text>
+    <text x="42" y="182" font-family="Arial,sans-serif" font-size="100" font-weight="900" letter-spacing="-7">WEEKEND,</text>
+    <text x="42" y="280" font-family="Arial,sans-serif" font-size="100" font-weight="900" letter-spacing="-7">TURNED UP.</text>
+    <path d="M729 318l23 42 47-16-14 48 43 23-43 23 14 48-47-16-23 42-23-42-47 16 14-48-43-23 43-23-14-48 47 16z"/>
+    <text x="48" y="391" font-family="Arial,sans-serif" font-size="48" font-weight="700">BIG ICE.</text>
+    <text x="48" y="446" font-family="Arial,sans-serif" font-size="48" font-weight="700">GOOD ENERGY.</text>
+    <text x="48" y="521" font-family="monospace" font-size="18" letter-spacing="2">ICED COFFEE + PASTRY / $8</text>
+    <text x="48" y="553" font-family="monospace" font-size="14">SAT &amp; SUN · BRING YOUR PEOPLE.</text>
+  </g>
+  <path d="M48 307h864M48 478h864" stroke="#777"/>
+  <text x="857" y="434" font-family="Arial,sans-serif" font-size="42" font-weight="700" fill="#e8e8e8" transform="rotate(-90 857 434)">LET’S GO ↗</text>
+</svg>

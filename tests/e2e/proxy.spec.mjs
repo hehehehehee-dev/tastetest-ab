@@ -110,9 +110,13 @@ test("proxy UI hides ratings until an immutable freeze then reveals separate moc
     await route.fulfill({ json: run });
   });
   await page.goto("/benchmark");
-  await expect(page.locator(".track-b-counts")).toHaveText(
-    "LLM-only 0/0 · Qloo 0/0 · Agent 0/0",
-  );
+  await page
+    .locator(".benchmark-drawer > summary")
+    .filter({ hasText: "Proxy benchmark" })
+    .click();
+  await expect(
+    page.locator(".benchmark-overview article").first().locator("strong"),
+  ).toHaveText("LLM 0/0 · Qloo 0/0 · Agent 0/0");
   await expect(
     page.getByRole("heading", {
       name: "Proxy benchmark — real preference data",
@@ -164,15 +168,19 @@ test("proxy UI hides ratings until an immutable freeze then reveals separate moc
     fullPage: true,
   });
   await page.getByRole("link", { name: "View separate proxy tally" }).click();
+  await page
+    .locator(".benchmark-drawer > summary")
+    .filter({ hasText: "Proxy benchmark" })
+    .click();
   await expect(
     page.getByRole("heading", {
       name: "Mock proxy workflow · 1 completed cases",
     }),
   ).toBeVisible();
   await expect(page.locator(".proxy-section")).toContainText("LLM-only 0/1");
-  await expect(page.locator(".track-b-counts")).toHaveText(
-    "LLM-only 0/0 · Qloo 0/0 · Agent 0/0",
-  );
+  await expect(
+    page.locator(".benchmark-overview article").first().locator("strong"),
+  ).toHaveText("LLM 0/0 · Qloo 0/0 · Agent 0/0");
   expect(
     (await (await request.get("/api/benchmark")).json()).tally.evaluableCases,
   ).toBe(0);

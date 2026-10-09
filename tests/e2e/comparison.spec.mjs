@@ -144,12 +144,14 @@ test("paired UI locks, persists, downloads a safe receipt, then shows both branc
   await page
     .getByRole("button", { name: "Close & reveal verdict", exact: true })
     .click();
+  await page.getByRole("button", { name: "Prediction", exact: true }).click();
   await expect(
     page.getByRole("cell", { name: "MISS", exact: true }),
   ).toBeVisible();
   await expect(
     page.getByRole("cell", { name: "MATCH", exact: true }),
   ).toBeVisible();
+  await page.getByRole("button", { name: "Verdict", exact: true }).click();
   await expect(page.locator(".verdict-number")).toHaveText("70%");
   expect(
     await page.evaluate(

@@ -8,9 +8,9 @@ test("Track B freeze, same-tab poll, three-branch grading and excluded mock ledg
   await context.grantPermissions(["clipboard-read", "clipboard-write"]);
   const caseLabel = `UI-${testInfo.project.name}-${crypto.randomUUID().slice(0, 8)}`;
   await page.goto("/benchmark");
-  await expect(page.locator(".benchmark-tally")).toHaveText(
-    "not enough cases yet",
-  );
+  await expect(
+    page.locator(".benchmark-overview article").first().locator("small"),
+  ).toHaveText("not enough cases yet");
   await page.getByRole("link", { name: "Create a new case" }).click();
   await page.getByLabel("Give it a name").nth(0).fill("Quiet vinyl cafe");
   await page
@@ -88,6 +88,7 @@ test("Track B freeze, same-tab poll, three-branch grading and excluded mock ledg
   await expect(page.locator(".vote-count")).toContainText("20 votes");
   await page.getByRole("button", { name: "Close test", exact: true }).click();
   await page.getByRole("button", { name: "Close & reveal verdict" }).click();
+  await page.getByRole("button", { name: "Prediction", exact: true }).click();
   await expect(page.locator(".freeze-panel")).toContainText(
     "Excluded from the tally",
   );
@@ -99,9 +100,13 @@ test("Track B freeze, same-tab poll, three-branch grading and excluded mock ledg
     .filter({ hasText: "LLM-only (manual paste)" });
   await expect(row).toContainText("✗");
   await page.getByRole("link", { name: "View benchmark ledger" }).click();
-  await expect(page.locator(".benchmark-tally")).toHaveText(
-    "not enough cases yet",
-  );
+  await expect(
+    page.locator(".benchmark-overview article").first().locator("small"),
+  ).toHaveText("not enough cases yet");
+  await page
+    .locator(".benchmark-drawer > summary")
+    .filter({ hasText: "Closed case ledger" })
+    .click();
   await expect(page.locator("tr").filter({ hasText: caseLabel })).toContainText(
     "mock signals, workflow only",
   );

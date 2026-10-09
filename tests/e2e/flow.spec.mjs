@@ -7,10 +7,12 @@ test("sample, creation, independent voter, live update, closure and print", asyn
   const errors = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await page.goto("/");
+  await page.getByRole("button", { name: "Verdict", exact: true }).click();
   await expect(
     page.getByRole("heading", { name: "The audience has spoken." }),
   ).toBeVisible();
-  await expect(page.getByText("52 votes", { exact: true })).toBeVisible();
+  await expect(page.locator(".verdict-main")).toContainText("52 votes");
+  await page.getByRole("button", { name: "Prediction", exact: true }).click();
   const scores = page.locator(".score-number");
   await expect(scores.first()).toContainText("100");
   await page.waitForTimeout(700);

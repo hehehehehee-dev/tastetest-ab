@@ -73,10 +73,12 @@ test("home stays a completed cafe example with a separate always-open live twin"
   page,
 }) => {
   await page.goto("/");
+  await page.getByRole("button", { name: "Verdict", exact: true }).click();
   await expect(
     page.getByRole("heading", { name: "The audience has spoken." }),
   ).toBeVisible();
-  await expect(page.getByText("52 votes", { exact: true })).toBeVisible();
+  await expect(page.locator(".verdict-main")).toContainText("52 votes");
+  await page.getByRole("button", { name: "Prediction", exact: true }).click();
   await expect(page.locator(".mock-pill")).toHaveText(
     "Cafe demo · synthetic signals",
   );

@@ -91,7 +91,10 @@ function validateInput(body) {
     )
       fail(`Describe option ${index ? "B" : "A"} in 10–1,200 characters.`);
     const imageUrl = typeof o.imageUrl === "string" ? o.imageUrl.trim() : "";
-    if (imageUrl) {
+    if (
+      imageUrl &&
+      !["/posters/slow-mornings.svg", "/posters/weekend.svg"].includes(imageUrl)
+    ) {
       try {
         const url = new URL(imageUrl);
         if (
@@ -206,6 +209,16 @@ export function createApi(
       : null;
     if (recordedResult) counts.splice(0, 2, ...recordedResult.result.votes);
     const { ownerHash, ...publicTest } = test;
+    // Add display assets to an existing live demo without changing its frozen data.
+    if (test.isLiveSample)
+      publicTest.options = test.options.map((o, i) => ({
+        ...o,
+        imageUrl:
+          o.imageUrl ||
+          (o.title === sampleInput.options[i].title
+            ? sampleInput.options[i].imageUrl
+            : ""),
+      }));
     const freeze = await store.get(`freezes/${test.id}`);
     const opened = await store.get(`opened/${test.id}`);
     if (

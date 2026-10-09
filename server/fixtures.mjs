@@ -194,13 +194,13 @@ export const sampleInput = {
       title: "Slow mornings club",
       description:
         "A nostalgic, artful poster for a small-batch coffee and maple pastry special. Warm, intimate, handmade lettering. Vinyl on the turntable, a cozy local weekend ritual.",
-      imageUrl: "",
+      imageUrl: "/posters/slow-mornings.svg",
     },
     {
       title: "Weekend, turned up",
       description:
         "A bold, colorful poster for an iced coffee and pastry combo. Bright pop typography, playful energy, and a big weekend offer for the whole community.",
-      imageUrl: "",
+      imageUrl: "/posters/weekend.svg",
     },
   ],
   seedEntityIds: ["mock-phoebe", "mock-a24", "mock-cafe", "mock-murakami"],

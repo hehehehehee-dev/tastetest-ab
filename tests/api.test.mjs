@@ -488,3 +488,35 @@ test("live sample twin is stable, contains only visitor votes and cannot be clos
   );
   assert.equal((await call("/sample")).data.totalVotes, 52);
 });
+
+test("legacy live-demo poster backfill changes display only and rejects unapproved local image paths", async (t) => {
+  const { call, directory } = await harness(t);
+  const demo = (await call("/sample-live")).data;
+  const store = fileStore(directory);
+  const saved = await store.get(`tests/${demo.id}`);
+  const legacy = {
+    ...saved,
+    options: saved.options.map((o) => ({ ...o, imageUrl: "" })),
+  };
+  await store.set(`tests/${demo.id}`, legacy);
+  await call(`/tests/${demo.id}/vote`, "POST", {
+    option: 1,
+    voterId: randomUUID(),
+  });
+  const display = (await call(`/tests/${demo.id}`)).data;
+  assert.deepEqual(
+    display.options.map((o) => o.imageUrl),
+    sampleInput.options.map((o) => o.imageUrl),
+  );
+  assert.deepEqual(display.votes, [0, 1]);
+  assert.deepEqual(display.prediction, legacy.prediction);
+  assert.deepEqual(await store.get(`tests/${demo.id}`), legacy);
+  const invalid = await call("/tests", "POST", {
+    ...sampleInput,
+    options: [
+      { ...sampleInput.options[0], imageUrl: "/private/secret.svg" },
+      sampleInput.options[1],
+    ],
+  });
+  assert.equal(invalid.status, 400);
+});

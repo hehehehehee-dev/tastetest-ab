@@ -118,12 +118,12 @@ export function TasteMap({ seeds }) {
     const repel = Math.max(0, 1 - distance / 48) * 13 * motion.power;
     return [
       Math.max(
-        13,
-        Math.min(87, x + (dx / distance) * repel + motion.x * 3 * motion.power),
+        20,
+        Math.min(80, x + (dx / distance) * repel + motion.x * 3 * motion.power),
       ),
       Math.max(
-        16,
-        Math.min(84, y + (dy / distance) * repel + motion.y * 4 * motion.power),
+        24,
+        Math.min(76, y + (dy / distance) * repel + motion.y * 4 * motion.power),
       ),
     ];
   };
@@ -271,16 +271,16 @@ export function TasteMap({ seeds }) {
                   ...old,
                   [seed.entity_id]: [
                     Math.min(
-                      85,
+                      80,
                       Math.max(
-                        15,
+                        20,
                         ((event.clientX - rect.left) / rect.width) * 100,
                       ),
                     ),
                     Math.min(
-                      82,
+                      76,
                       Math.max(
-                        18,
+                        24,
                         ((event.clientY - rect.top) / rect.height) * 100,
                       ),
                     ),
