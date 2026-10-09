@@ -4,13 +4,14 @@ export default defineConfig({
   timeout: 60000,
   workers: 2,
   use: {
-    baseURL: "http://localhost:5173",
+    baseURL: "http://localhost:5174",
     channel: "msedge",
     trace: "retain-on-failure",
   },
   webServer: {
-    command: "npm run dev",
-    url: "http://localhost:5173/api/sample",
+    command: "npm run dev:mock",
+    env: { PORT: "5174", HMR_PORT: "24679", USE_QLOO_MOCK: "true" },
+    url: "http://localhost:5174/api/sample",
     reuseExistingServer: !process.env.CI,
   },
   projects: [

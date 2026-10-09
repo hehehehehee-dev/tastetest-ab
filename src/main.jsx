@@ -168,7 +168,7 @@ function OptionImage({ option }) {
     </p>
   ) : null;
 }
-function Header() {
+function Header({ mode, configured }) {
   return (
     <header className="topbar">
       <div className="topbar-inner">
@@ -186,7 +186,17 @@ function Header() {
           TasteTest<span className="brand-ab">A/B</span>
         </a>
         <div className="header-right">
-          <span className="mock-pill">Mock mode — Qloo not connected</span>
+          <span className="mock-pill">
+            {mode === "loading"
+              ? "Checking Qloo configuration…"
+              : mode === "unavailable"
+                ? "Qloo status unavailable"
+                : mode === "real"
+                  ? configured
+                    ? "Qloo API enabled"
+                    : "Qloo key not configured"
+                  : "Mock mode — Qloo not connected"}
+          </span>
           <a
             href="/create"
             onClick={(e) => {
@@ -226,7 +236,8 @@ function Steps({ active }) {
   );
 }
 
-function CreateTest() {
+function CreateTest({ mode }) {
+  const [insightCategory, setInsightCategory] = useState("Dining");
   const [options, setOptions] = useState([
     { title: "", description: "", imageUrl: "" },
     { title: "", description: "", imageUrl: "" },
@@ -287,6 +298,7 @@ function CreateTest() {
           options,
           seedEntityIds: selected.map((e) => e.entity_id),
           audienceNote: note,
+          insightCategory,
         }),
       });
       if (!saveLocal(ownerKey(data.test.id), data.ownerToken))
@@ -424,7 +436,11 @@ function CreateTest() {
               })
             ) : (
               <span className="muted">
-                No matches in the mock catalog. Try another search or category.
+                {mode === "real"
+                  ? query.trim()
+                    ? "No matching Qloo entities. Try another name or category."
+                    : "Type an artist, movie, venue, brand or book name to search Qloo."
+                  : "No matches in the mock catalog. Try another search or category."}
               </span>
             )}
           </div>
@@ -441,6 +457,23 @@ function CreateTest() {
               />
             ))}
           </div>
+          <label htmlFor="insight-category">Recommendation context</label>
+          <select
+            id="insight-category"
+            aria-label="Recommendation context"
+            value={insightCategory}
+            onChange={(event) => setInsightCategory(event.target.value)}
+          >
+            {Object.keys(categoryIcons).map((category) => (
+              <option key={category} value={category}>
+                {category}
+              </option>
+            ))}
+          </select>
+          <p className="muted">
+            Choose the category most relevant to your concepts. Qloo affinity
+            comes from recommendations in this category.
+          </p>
           <label htmlFor="audience-note">
             Anything else about your audience?{" "}
             <span className="optional">optional</span>
@@ -457,7 +490,9 @@ function CreateTest() {
         <div className="form-footer">
           <p>
             <CircleHelp size={15} />
-            Mock taste signals help test the flow, not predict real demand.
+            {mode === "real"
+              ? "Real Qloo affinities ground a local concept-fit heuristic; they do not predict demand or voting probabilities."
+              : "Mock taste signals help test the flow, not predict real demand."}
           </p>
           <Button className="primary" busy={busy} type="submit">
             <Sparkles size={16} />
@@ -493,7 +528,9 @@ function Prediction({ test, compact = false }) {
       <p className="comparison-note">
         {without
           ? "Keyword baseline · exact word overlap only"
-          : "Mock cultural model · synthetic affinity + shared taste tags"}
+          : test.mode === "real"
+            ? "Real Qloo affinities · local concept/tag-fit heuristic"
+            : "Mock cultural model · synthetic affinity + shared taste tags"}
         <span>Scores indicate fit, not vote probability.</span>
       </p>
       <div className="confidence-note" role="status">
@@ -505,7 +542,11 @@ function Prediction({ test, compact = false }) {
         <span>
           Fit gap: {confidence.gap} points · affinity contribution gap:{" "}
           {confidence.affinityGap} points.{" "}
-          {without ? "Keyword baseline separation." : "Synthetic signals only."}{" "}
+          {without
+            ? "Keyword baseline separation."
+            : test.mode === "real"
+              ? "Real API signals; locally scored."
+              : "Synthetic signals only."}{" "}
           Not a calibrated likelihood of being correct.
         </span>
       </div>
@@ -575,6 +616,22 @@ function Prediction({ test, compact = false }) {
           </article>
         ))}
       </div>
+      {test.mode === "real" && !without && (
+        <details className="qloo-provenance panel">
+          <summary>Real Qloo signals used</summary>
+          <p>
+            Retrieved {test.provenance?.fetchedAt}. TasteTest maps concept text
+            to Qloo tags; Qloo does not directly score these custom posters.
+          </p>
+          <ul>
+            {test.insights.map((entity) => (
+              <li key={entity.name}>
+                {entity.name} · affinity {entity.affinity.toFixed(3)}
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
       {!without && test.prediction.some((p) => p.warning) && (
         <div className="segment-note">
           <AlertTriangle size={16} />
@@ -1047,9 +1104,14 @@ function TestView({ id, sample = false }) {
       <footer className="report-footer">
         <span>TasteTest A/B</span>
         <p>
-          Synthetic Qloo-style signals ·{" "}
-          {sample ? "Illustrative sample votes" : "Anonymous audience votes"} ·
-          No real Qloo API calls
+          {test.mode === "real"
+            ? "Real Qloo API affinities · local heuristic fit"
+            : "Synthetic Qloo-style signals"}{" "}
+          · {sample ? "Illustrative sample votes" : "Anonymous audience votes"}{" "}
+          ·
+          {test.mode === "real"
+            ? "Not a calibrated vote prediction"
+            : "No real Qloo API calls for this example"}
         </p>
       </footer>
     </main>
@@ -1200,18 +1262,24 @@ function PollPage({ id }) {
   );
 }
 function App() {
+  const [config, setConfig] = useState({ mode: "loading", configured: false });
+  useEffect(() => {
+    api("/config")
+      .then(setConfig)
+      .catch(() => setConfig({ mode: "unavailable", configured: false }));
+  }, []);
   const route = useRoute();
   const match = route.match(/^\/(test|poll)\/([a-f0-9-]{36})$/);
   return (
     <>
-      <Header />
+      <Header mode={config.mode} configured={config.configured} />
       {[
         "/benchmark-lab/historical-case-01",
         "/case-study/cookie-cats",
       ].includes(route) ? (
         <CaseStudy />
       ) : route === "/create" ? (
-        <CreateTest />
+        <CreateTest mode={config.mode} />
       ) : match ? (
         match[1] === "poll" ? (
           <PollPage key={route} id={match[2]} />

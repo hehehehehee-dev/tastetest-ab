@@ -1638,3 +1638,23 @@ body::before,
 #nl-badge-frame {
   display: none !important;
 }
+.qloo-provenance {
+  margin-top: 18px;
+  padding: 16px;
+  font-size: 12px;
+  color: #aaa;
+}
+.qloo-provenance summary {
+  cursor: pointer;
+  min-height: 44px;
+  color: #ddd;
+}
+#insight-category {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  background: #141418;
+  border: 1px solid #444;
+  color: #ddd;
+  border-radius: 6px;
+}

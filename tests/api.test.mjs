@@ -175,12 +175,19 @@ test("invalid seeds, duplicate seeds and unsafe image protocols are rejected", a
 });
 test("real mode fails explicitly without making a real API request", async () => {
   const before = process.env.USE_QLOO_MOCK;
+  const keyBefore = process.env.QLOO_API_KEY;
   try {
     process.env.USE_QLOO_MOCK = "false";
-    await assert.rejects(() => qlooAdapter.searchEntities(), /not implemented/);
+    delete process.env.QLOO_API_KEY;
+    await assert.rejects(
+      () => qlooAdapter.searchEntities("Phoebe"),
+      /QLOO_API_KEY/,
+    );
   } finally {
     if (before === undefined) delete process.env.USE_QLOO_MOCK;
     else process.env.USE_QLOO_MOCK = before;
+    if (keyBefore === undefined) delete process.env.QLOO_API_KEY;
+    else process.env.QLOO_API_KEY = keyBefore;
   }
 });
 test("historical commit omits outcomes; authenticated reveal never edits the locked answer", async (t) => {

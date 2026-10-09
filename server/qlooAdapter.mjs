@@ -1,14 +1,6 @@
 import { entities, affinityFixtures, typeUrns } from "./fixtures.mjs";
+import { createQlooClient } from "./qlooClient.mjs";
 
-function ensureMock() {
-  if (process.env.USE_QLOO_MOCK === "false")
-    throw Object.assign(
-      new Error(
-        "Real Qloo mode is not implemented yet. Set USE_QLOO_MOCK=true.",
-      ),
-      { status: 503 },
-    );
-}
 export function tokenize(value) {
   return new Set(
     String(value)
@@ -37,9 +29,8 @@ function tagsFor(option) {
     if (words.has(word)) words.add(tag);
   return words;
 }
-export const qlooAdapter = {
+export const mockQlooAdapter = {
   async searchEntities(query = "", type = "") {
-    ensureMock();
     return {
       results: {
         entities: entities.filter(
@@ -52,7 +43,6 @@ export const qlooAdapter = {
     };
   },
   async getInsights(seedEntityIds, targetTypes = Object.values(typeUrns)) {
-    ensureMock();
     const seeds = entities.filter((e) => seedEntityIds.includes(e.entity_id));
     const tags = seeds.flatMap((e) => e.tags.map((t) => t.name));
     const related = affinityFixtures
@@ -82,7 +72,6 @@ export const qlooAdapter = {
     };
   },
   async scoreOption(option, audienceProfile) {
-    ensureMock();
     const words = tagsFor(option);
     const insights = audienceProfile.insights.results.entities;
     const audienceTags = [
@@ -90,11 +79,17 @@ export const qlooAdapter = {
         audienceProfile.seeds.flatMap((e) => e.tags.map((t) => t.name)),
       ),
     ];
-    const matchedTags = audienceTags.filter((tag) => words.has(tag));
+    const matchesTag = (tag) => {
+      const tokens = [...tokenize(tag)];
+      return tokens.length > 0 && tokens.every((word) => words.has(word));
+    };
+    const matchedTags = audienceTags.filter(matchesTag);
     const affinityMatches = insights.map((e) => ({
       name: e.name,
       affinity: e.query.affinity,
-      matches: e.tags.filter((t) => words.has(t.name)).length / e.tags.length,
+      matches: e.tags.length
+        ? e.tags.filter((t) => matchesTag(t.name)).length / e.tags.length
+        : 0,
     }));
     const affinitySum = affinityMatches.reduce(
       (sum, e) => sum + e.affinity * e.matches,
@@ -113,7 +108,7 @@ export const qlooAdapter = {
         ),
     );
     const coveredSeeds = audienceProfile.seeds.filter((seed) =>
-      seed.tags.some((t) => words.has(t.name)),
+      seed.tags.some((t) => matchesTag(t.name)),
     );
     const missingSeeds = audienceProfile.seeds.filter(
       (seed) => !coveredSeeds.includes(seed),
@@ -141,7 +136,9 @@ export const qlooAdapter = {
       matchedTags,
       reasons: [
         top
-          ? `The concept connects with ${top.name.toLowerCase()}, a strong taste signal in this audience.`
+          ? audienceProfile.insights.mode === "real"
+            ? `Some description words match tags on ${top.name}, a Qloo recommendation. This is lexical overlap, not evidence of concept preference.`
+            : `The concept connects with ${top.name.toLowerCase()}, a strong taste signal in this audience.`
           : "There is little cultural affinity between this concept and the selected tastes.",
         matchedTags.length
           ? `Shared cues: ${matchedTags.slice(0, 5).join(", ")}.`
@@ -153,6 +150,38 @@ export const qlooAdapter = {
         : null,
     };
   },
+  async resolveEntities(ids) {
+    const resolved = entities.filter((e) => ids.includes(e.entity_id));
+    if (resolved.length !== ids.length)
+      throw Object.assign(
+        Error(
+          "One of the selected taste seeds is unavailable. Please select it again.",
+        ),
+        { status: 400 },
+      );
+    return resolved;
+  },
+};
+let realClient, clientKey;
+export const isMockMode = () => process.env.USE_QLOO_MOCK !== "false";
+function client() {
+  const key = process.env.QLOO_API_KEY;
+  const identity = `${key}|${process.env.QLOO_BASE_URL || ""}`;
+  if (!realClient || clientKey !== identity) {
+    realClient = createQlooClient({ key, baseUrl: process.env.QLOO_BASE_URL });
+    clientKey = identity;
+  }
+  return realClient;
+}
+export const qlooAdapter = {
+  searchEntities: (...args) =>
+    (isMockMode() ? mockQlooAdapter : client()).searchEntities(...args),
+  resolveEntities: (...args) =>
+    (isMockMode() ? mockQlooAdapter : client()).resolveEntities(...args),
+  getInsights: (...args) =>
+    (isMockMode() ? mockQlooAdapter : client()).getInsights(...args),
+  // Qloo supplies real entities/affinities; concept-to-tag mapping remains our declared heuristic.
+  scoreOption: (...args) => mockQlooAdapter.scoreOption(...args),
 };
 export function scoreWithoutQloo(option, seeds, note) {
   const words = tokenize(`${option.title} ${option.description}`);

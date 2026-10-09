@@ -3,8 +3,12 @@ import { createServer } from "vite";
 import { createApi } from "./api.mjs";
 import { fileStore } from "./storage.mjs";
 const port = Number(process.env.PORT || 5173);
+if (process.argv.includes("--mock")) process.env.USE_QLOO_MOCK = "true";
 const vite = await createServer({
-  server: { middlewareMode: true },
+  server: {
+    middlewareMode: true,
+    hmr: { port: Number(process.env.HMR_PORT || 24678) },
+  },
   appType: "spa",
 });
 const api = createApi(fileStore());

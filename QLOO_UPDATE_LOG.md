@@ -10,7 +10,7 @@
 
 This log records implementation dates. It does not by itself establish hackathon eligibility or a completed real Qloo integration.
 
-## Future real-mode work (not implemented)
+## Original real-mode checklist (recorded before integration)
 
 - Confirm the hackathon API's current search and Insights response schemas, access scope, and terms when the key arrives.
 - Replace the adapter internals and normalize real responses into the existing interface. Keep the UI and poll flow unchanged.
@@ -20,3 +20,14 @@ This log records implementation dates. It does not by itself establish hackathon
 - Revisit normalization/scoring against actual affinity distributions and validate results. Synthetic demo scores are not calibrated probabilities.
 
 References: [Qloo Insights documentation](https://github.com/qloo/docs-public/blob/main/reference/insights-api-deep-dive.md), [Netlify Blobs](https://docs.netlify.com/build/data-and-storage/netlify-blobs/).
+
+## 2026-10-09 — Real Qloo integration verified locally
+
+- Verified HTTP 200 from the hackathon server for GET /search, GET /entities and GET /v2/insights using the event credential stored only in the ignored server environment file. No credential or captured response is committed.
+- Normalized search/metadata result arrays and Insights results.entities, including entity_id versus id and tag_id versus id. Preserved real affinity values and explainability metadata.
+- Added one Insights context per prediction, fixed concept-to-tag mapping version concept-tag-fit-v2, and per-test mode/provenance. Completed examples and their live twin retain explicit mock labels, even when fresh tests use real data.
+- A burst verification received HTTP 429. Implemented serialized paced requests, cache/coalescing, Retry-After cooldown and explicit errors without mock fallback. A subsequent bounded verification succeeded with 3 real seeds, 5 place insights and heuristic scores 11/9: too close to call, not accuracy evidence. Its private artifact remains under .local/.
+- Offline contract/error/quota tests use hand-authored transport fixtures; browser regressions use a separate mock server on port 5174. Real responses are not test fixtures.
+- Netlify needs private Functions environment variables before production fresh tests can use real mode. Browser assets and the public repository contain no credential.
+
+Primary references: [Entity Search](https://github.com/qloo/docs-public/blob/main/reference/get-search.md), [Entity lookup](https://github.com/qloo/docs-public/blob/main/reference/get-entities.md), [Insights parameters](https://github.com/qloo/docs-public/blob/main/reference/insights-api-deep-dive.md).

@@ -4,8 +4,13 @@ import {
   randomUUID,
   timingSafeEqual,
 } from "node:crypto";
-import { qlooAdapter, scoreWithoutQloo } from "./qlooAdapter.mjs";
-import { sampleInput } from "./fixtures.mjs";
+import {
+  qlooAdapter,
+  mockQlooAdapter,
+  isMockMode,
+  scoreWithoutQloo,
+} from "./qlooAdapter.mjs";
+import { sampleInput, typeUrns } from "./fixtures.mjs";
 import { predictionConfidence } from "../shared/confidence.mjs";
 import { cookieCats, makeCookieCommit } from "./cookieCats.mjs";
 const fail = (message, status = 400) => {
@@ -21,17 +26,16 @@ const json = (data, status = 200) =>
   });
 const hash = (value) => createHash("sha256").update(value).digest("hex");
 
-async function predict(input) {
-  const search = await qlooAdapter.searchEntities();
-  const seeds = search.results.entities.filter((e) =>
-    input.seedEntityIds.includes(e.entity_id),
-  );
-  const insights = await qlooAdapter.getInsights(input.seedEntityIds);
+async function predict(input, adapter = qlooAdapter) {
+  const seeds = await adapter.resolveEntities(input.seedEntityIds);
+  const insights = await adapter.getInsights(input.seedEntityIds, [
+    input.insightType || typeUrns.Dining,
+  ]);
   const profile = { seeds, insights, note: input.audienceNote };
   return {
     seeds,
     prediction: await Promise.all(
-      input.options.map((o) => qlooAdapter.scoreOption(o, profile)),
+      input.options.map((o) => adapter.scoreOption(o, profile)),
     ),
     baseline: input.options.map((o) =>
       scoreWithoutQloo(o, seeds, input.audienceNote),
@@ -39,6 +43,15 @@ async function predict(input) {
     insights: insights.results.entities
       .slice(0, 3)
       .map((e) => ({ name: e.name, affinity: e.query.affinity })),
+    mode: insights.mode,
+    scoringVersion: "concept-tag-fit-v2",
+    provenance: {
+      source: insights.mode === "real" ? "Qloo API" : "Synthetic fixtures",
+      fetchedAt: insights.fetchedAt || null,
+      targetTypes: insights.targetTypes || [],
+      mapping:
+        "Local concept/tag overlap heuristic; Qloo affinity is not a prediction of votes.",
+    },
   };
 }
 function validateInput(body) {
@@ -94,6 +107,9 @@ function validateInput(body) {
     seedEntityIds: body.seedEntityIds,
     audienceNote: (body.audienceNote || "").trim(),
     title: `${options[0].title} vs. ${options[1].title}`,
+    insightType:
+      typeUrns[body.insightCategory || "Dining"] ||
+      fail("Select a supported recommendation context."),
   };
 }
 function verdict(test, counts) {
@@ -112,7 +128,20 @@ function verdict(test, counts) {
     : actual === null
       ? `The poll is tied at ${counts[0]} votes per option. Neither concept has a clear audience lead. Ask voters what influenced their choice, refine the two concepts, and run another test.`
       : `${test.options[actual].title} received ${share}% of ${total} votes. ${predicted === null ? "The mock prediction was too close to call, so the poll provides the first clear direction." : actual === predicted ? "The audience result supports the mock cultural prediction." : "The audience chose differently from the mock cultural prediction; favor the observed preference."} Use this option for a small trial, then measure real outcomes. This is a convenience poll, not a representative study.`;
-  return { actual, predicted, share, recommendation };
+  return {
+    actual,
+    predicted,
+    share,
+    recommendation:
+      test.mode === "real"
+        ? recommendation
+            .replaceAll(
+              "mock cultural prediction",
+              "Qloo-grounded concept-fit hypothesis",
+            )
+            .replaceAll("mock prediction", "Qloo-grounded hypothesis")
+        : recommendation,
+  };
 }
 export function createApi(store) {
   async function snapshot(test) {
@@ -136,7 +165,7 @@ export function createApi(store) {
       votes: counts,
       totalVotes: counts[0] + counts[1],
       verdict: test.closedAt ? verdict(test, counts) : null,
-      mode: "mock",
+      mode: test.mode || "mock",
       confidence: predictionConfidence(test.prediction),
     };
   }
@@ -153,6 +182,11 @@ export function createApi(store) {
     try {
       const url = new URL(request.url);
       const pathname = url.pathname.replace(/\/$/, "");
+      if (pathname === "/api/config" && request.method === "GET")
+        return json({
+          mode: isMockMode() ? "mock" : "real",
+          configured: isMockMode() || !!process.env.QLOO_API_KEY,
+        });
       if (
         pathname === "/api/historical-case/commit" &&
         request.method === "POST"
@@ -209,7 +243,7 @@ export function createApi(store) {
             `tests/${id}`,
             {
               ...sampleInput,
-              ...(await predict(sampleInput)),
+              ...(await predict(sampleInput, mockQlooAdapter)),
               id,
               ownerHash: hash(randomBytes(32)),
               createdAt: new Date().toISOString(),
@@ -228,7 +262,7 @@ export function createApi(store) {
           ),
         );
       if (pathname === "/api/sample" && request.method === "GET") {
-        const data = await predict(sampleInput);
+        const data = await predict(sampleInput, mockQlooAdapter);
         return json(
           await snapshot({
             ...sampleInput,
@@ -243,13 +277,6 @@ export function createApi(store) {
       }
       if (pathname === "/api/tests" && request.method === "POST") {
         const input = validateInput(await readBody(request));
-        const validIds = (
-          await qlooAdapter.searchEntities()
-        ).results.entities.map((e) => e.entity_id);
-        if (input.seedEntityIds.some((id) => !validIds.includes(id)))
-          fail(
-            "One of the selected taste seeds is unavailable. Please select it again.",
-          );
         const ownerToken = randomBytes(32).toString("hex");
         const test = {
           ...input,
