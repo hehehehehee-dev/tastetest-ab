@@ -21,7 +21,11 @@ import {
 } from "./benchmark.mjs";
 import { createComparison, scoreComparison } from "./aiComparison.mjs";
 import { createProxyApi } from "./proxy.mjs";
-import { pendingTrackB, ledgerCsv } from "./benchmarkLedger.mjs";
+import {
+  pendingTrackB,
+  excludedTrackBNotes,
+  ledgerCsv,
+} from "./benchmarkLedger.mjs";
 const fail = (message, status = 400) => {
   throw Object.assign(new Error(message), { status });
 };
@@ -364,6 +368,7 @@ export function createApi(
           rows: enriched,
           openCases,
           pending,
+          excludedNotes: excludedTrackBNotes,
           tally: benchmarkTally(rows),
         };
         if (pathname.endsWith(".csv"))

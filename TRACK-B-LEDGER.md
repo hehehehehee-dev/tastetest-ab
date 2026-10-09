@@ -6,9 +6,12 @@ Cases with <20 votes are "indicative only" and don't count toward the headline r
 
 | Case   | Date frozen                                                      | Context (1 line)                                                                                                                                                                                 | LLM pick (conf) | Qloo pick (conf) | Agent pick (conf) | Votes A/B | Actual winner | LLM ✓/✗ | Qloo ✓/✗ | Agent ✓/✗ |
 | ------ | ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------- | ---------------- | ----------------- | --------- | ------------- | ------- | -------- | --------- |
-| TB-001 | entered 2026-10-09; exact original time not recorded; NOT frozen | Owner confirms the original record cannot be recovered. Situation, audience, seeds, A/B, branch answers/confidences/sources, timing and outcome remain unconfirmed. Partial record — pending; not evidence; no rerun or backdating. | ?               | ?                | ?                 | ?         | pending       | —       | —        | —         |
 
-TB-001 remains pending and excluded. Any fresh Track B case must have a separate record, with predictions frozen before opening its poll.
+## Excluded administrative notes — not evidence
+
+**TB-001: closed — unverifiable / excluded from evidence.** Entered into the registry on 2026-10-09; original prediction time and outcome status are unconfirmed. The original record cannot be recovered: situation, audience, taste seeds, Option A/B, LLM-only/Qloo/Agent picks, confidences and source/model are all unconfirmed. No freeze or poll closure timestamp is claimed. Do not rerun any branch, present a rerun as an original prediction, or backdate anything.
+
+TB-001 is closed as unverifiable and retained only as an excluded note. This is not a poll closure or completed experiment and it does not count in any Track B tally. Any fresh Track B case must have a separate record, with predictions frozen before opening its poll.
 
 ## Running tally (update as cases close)
 

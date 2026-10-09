@@ -131,6 +131,8 @@ test("benchmark opens with three tiles and hides audit details until requested",
     .filter({ hasText: "Track B case register" })
     .click();
   await expect(
-    page.getByRole("heading", { name: "TB-001 · partial record — pending" }),
+    page.getByRole("heading", {
+      name: "TB-001 · closed — unverifiable / excluded from evidence",
+    }),
   ).toBeVisible();
 });

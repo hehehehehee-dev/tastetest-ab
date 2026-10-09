@@ -191,6 +191,25 @@ export default function Benchmark() {
               <p>{row.missing}</p>
             </article>
           ))}
+          {data?.excludedNotes?.length > 0 && (
+            <aside className="excluded-record-notes">
+              <h3>Excluded notes — not evidence</h3>
+              <p>
+                These are administrative notes, not completed experiments. They
+                are excluded from the record count and every Track B tally.
+              </p>
+              {data.excludedNotes.map((row) => (
+                <article key={row.caseLabel}>
+                  <h3>
+                    {row.caseLabel} · {row.status}
+                  </h3>
+                  <p>{row.context}</p>
+                  <p>{row.timing}</p>
+                  <p>{row.missing}</p>
+                </article>
+              ))}
+            </aside>
+          )}
           {data?.openCases?.map((row) => (
             <article key={row.id}>
               <h3>
