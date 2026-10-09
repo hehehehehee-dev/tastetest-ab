@@ -59,6 +59,22 @@ test("sample, creation, independent voter, live update, closure and print", asyn
   });
   await page.getByRole("button", { name: "Get agent prediction" }).click();
   await expect(page).toHaveURL(/\/test\//);
+  await expect(
+    page.getByRole("button", { name: "Open live poll" }),
+  ).toBeDisabled();
+  await page.getByLabel("Source (exact model/version or human)").fill("human");
+  await page
+    .getByLabel("Paste the original answer")
+    .fill("Synthetic workflow fixture: option A seems more suitable.");
+  await page
+    .getByLabel(
+      "All predictions were recorded before collecting any outcome or vote.",
+    )
+    .check();
+  await page.getByRole("button", { name: "Freeze predictions" }).click();
+  await expect(
+    page.getByRole("heading", { name: /^Frozen at / }),
+  ).toBeVisible();
   await page.getByRole("button", { name: "Open live poll" }).click();
   await expect(
     page.getByText("Your first vote starts the story."),

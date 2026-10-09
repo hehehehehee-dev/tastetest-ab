@@ -1,20 +1,15 @@
 import { test, expect } from "@playwright/test";
 import { mkdir, readFile } from "node:fs/promises";
 
-test("AI comparison is visibly unavailable without credentials and never masquerades as keyword baseline", async ({
+test("new cases use manual LLM-only answers without paid API controls", async ({
   page,
 }) => {
   await page.goto("/create");
-  await page
-    .getByRole("radio", { name: "AI only vs. AI + Qloo", exact: true })
-    .check();
-  await expect(page.getByRole("status")).toContainText("not configured yet");
   await expect(
-    page.getByRole("button", { name: "Lock both AI predictions", exact: true }),
-  ).toBeDisabled();
-  await page
-    .getByRole("radio", { name: "Quick concept-fit heuristic", exact: true })
-    .check();
+    page.getByText(/LLM-only \(manual paste\), Qloo and Agent/),
+  ).toBeVisible();
+  await expect(page.getByText(/No paid LLM API calls/)).toBeVisible();
+  await expect(page.getByRole("radio")).toHaveCount(0);
   await expect(
     page.getByRole("button", { name: "Get agent prediction", exact: true }),
   ).toBeEnabled();
@@ -120,10 +115,7 @@ test("paired UI locks, persists, downloads a safe receipt, then shows both branc
   await page.getByRole("button", { name: "Tame Impala", exact: true }).click();
   await page.getByRole("button", { name: "Taylor Swift", exact: true }).click();
   await page
-    .getByRole("radio", { name: "AI only vs. AI + Qloo", exact: true })
-    .check();
-  await page
-    .getByRole("button", { name: "Lock both AI predictions", exact: true })
+    .getByRole("button", { name: "Get agent prediction", exact: true })
     .click();
   await expect(
     page.getByRole("heading", { name: "AI only vs. AI + Qloo", exact: true }),

@@ -302,7 +302,10 @@ export function TasteMap({ seeds }) {
         {activeSeed ? (
           <>
             <span>{activeSeed.category}</span>
-            <strong>{activeSeed.tags.map((t) => t.name).join(" · ")}</strong>
+            <strong>
+              {activeSeed.tags?.map((t) => t.name).join(" · ") ||
+                "Taste evidence stays private until the poll closes."}
+            </strong>
           </>
         ) : (
           <>

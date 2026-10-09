@@ -11,7 +11,7 @@ const vite = await createServer({
   },
   appType: "spa",
 });
-const api = createApi(fileStore());
+const api = createApi(fileStore(process.env.TASTETEST_DATA_DIR || undefined));
 const server = http.createServer(async (req, res) => {
   if (!req.url.startsWith("/api/")) return vite.middlewares(req, res);
   try {
@@ -19,7 +19,7 @@ const server = http.createServer(async (req, res) => {
     let length = 0;
     for await (const chunk of req) {
       length += chunk.length;
-      if (length > 16000) {
+      if (length > 120000) {
         res.writeHead(413, { "Content-Type": "application/json" });
         return res.end(JSON.stringify({ error: "This request is too large." }));
       }

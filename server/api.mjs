@@ -14,11 +14,12 @@ import { sampleInput, typeUrns } from "./fixtures.mjs";
 import { predictionConfidence } from "../shared/confidence.mjs";
 import { cookieCats, makeCookieCommit } from "./cookieCats.mjs";
 import {
-  comparisonConfig,
-  createComparison,
-  scoreComparison,
-  configurationMessage,
-} from "./aiComparison.mjs";
+  validateMetadata,
+  makeFreeze,
+  scoreFreeze,
+  benchmarkTally,
+} from "./benchmark.mjs";
+import { createComparison, scoreComparison } from "./aiComparison.mjs";
 const fail = (message, status = 400) => {
   throw Object.assign(new Error(message), { status });
 };
@@ -127,6 +128,7 @@ function validateInput(body) {
       typeUrns[body.insightCategory || "Dining"] ||
       fail("Select a supported recommendation context."),
     compareAi: body.compareAi === true,
+    benchmarkMetadata: validateMetadata(body.benchmarkMetadata),
   };
 }
 function verdict(test, counts) {
@@ -135,11 +137,13 @@ function verdict(test, counts) {
     !total || counts[0] === counts[1] ? null : counts[0] > counts[1] ? 0 : 1;
   const predicted = test.comparison
     ? ({ A: 0, B: 1 }[test.comparison.payload.aiQloo.choice] ?? null)
-    : predictionConfidence(test.prediction).tooClose
-      ? null
-      : test.prediction[0].score > test.prediction[1].score
-        ? 0
-        : 1;
+    : test.freeze
+      ? ({ A: 0, B: 1 }[test.freeze.payload.branches.agent.pick] ?? null)
+      : predictionConfidence(test.prediction).tooClose
+        ? null
+        : test.prediction[0].score > test.prediction[1].score
+          ? 0
+          : 1;
   const share =
     actual === null ? null : Math.round((counts[actual] / total) * 100);
   const recommendation = !total
@@ -154,16 +158,18 @@ function verdict(test, counts) {
     ...(test.comparison
       ? { paired: scoreComparison(test.comparison, counts, true) }
       : {}),
-    recommendation: test.comparison
-      ? `${total} anonymous browser votes were collected. ${scoreComparison(test.comparison, counts, true).status === "EVALUABLE" ? "Compare both locked AI choices with the audience result below. One case cannot establish that Qloo improves accuracy." : "This case cannot be scored as a winner comparison: collect at least 10 votes in a fresh poll and require a non-tied result."} This convenience poll is not a representative study.`
-      : test.mode === "real"
-        ? recommendation
-            .replaceAll(
-              "mock cultural prediction",
-              "Qloo-grounded concept-fit hypothesis",
-            )
-            .replaceAll("mock prediction", "Qloo-grounded hypothesis")
-        : recommendation,
+    recommendation: test.freeze
+      ? `${total ? `${total} anonymous browser votes.` : "No votes were collected."} ${total < 20 ? "Indicative only: fewer than 20 votes; excluded from the benchmark tally." : "Compare the three frozen choices with the observed winner in the receipt."} ${actual === null ? "No winner can be scored from a tied or empty poll." : "One case does not establish predictor superiority."} Convenience poll; confidence is not calibrated.`
+      : test.comparison
+        ? `${total} anonymous browser votes were collected. ${scoreComparison(test.comparison, counts, true).status === "EVALUABLE" ? "Compare both locked AI choices with the audience result below. One case cannot establish that Qloo improves accuracy." : "This case cannot be scored as a winner comparison: collect at least 10 votes in a fresh poll and require a non-tied result."} This convenience poll is not a representative study.`
+        : test.mode === "real"
+          ? recommendation
+              .replaceAll(
+                "mock cultural prediction",
+                "Qloo-grounded concept-fit hypothesis",
+              )
+              .replaceAll("mock prediction", "Qloo-grounded hypothesis")
+          : recommendation,
   };
 }
 export function createApi(store, { adapter = qlooAdapter, aiPredictor } = {}) {
@@ -188,8 +194,19 @@ export function createApi(store, { adapter = qlooAdapter, aiPredictor } = {}) {
         if (vote && (!test.closedAt || vote.at <= test.closedAt))
           counts[vote.option]++;
     }
+    // Once appended, the benchmark outcome is as immutable as its freeze.
+    const recordedResult = test.closedAt
+      ? await store.get(`benchmark-results/${test.id}`)
+      : null;
+    if (recordedResult) counts.splice(0, 2, ...recordedResult.result.votes);
     const { ownerHash, ...publicTest } = test;
-    if (test.comparison && !test.closedAt && !allowPredictions) {
+    const freeze = await store.get(`freezes/${test.id}`);
+    const opened = await store.get(`opened/${test.id}`);
+    if (
+      (test.comparison || test.freezeRequired) &&
+      !test.closedAt &&
+      !allowPredictions
+    ) {
       delete publicTest.comparison;
       delete publicTest.prediction;
       delete publicTest.baseline;
@@ -203,9 +220,22 @@ export function createApi(store, { adapter = qlooAdapter, aiPredictor } = {}) {
     }
     return {
       ...publicTest,
+      pollOpenedAt: opened?.at || null,
+      lifecycle: test.closedAt
+        ? "closed"
+        : opened
+          ? "collecting"
+          : freeze
+            ? "predictions frozen"
+            : "draft",
+      frozenAt: freeze?.payload.frozenAt || null,
+      ...((allowPredictions || test.closedAt) && freeze ? { freeze } : {}),
+      benchmarkResult:
+        recordedResult?.result ||
+        (test.closedAt && freeze ? scoreFreeze(freeze, counts) : null),
       votes: counts,
       totalVotes: counts[0] + counts[1],
-      verdict: test.closedAt ? verdict(test, counts) : null,
+      verdict: test.closedAt ? verdict({ ...test, freeze }, counts) : null,
       mode: test.mode || "mock",
       confidence: test.comparison
         ? null
@@ -224,7 +254,7 @@ export function createApi(store, { adapter = qlooAdapter, aiPredictor } = {}) {
   }
   async function readBody(request) {
     const raw = await request.text();
-    if (raw.length > 12000) fail("This request is too large.", 413);
+    if (raw.length > 30000) fail("This request is too large.", 413);
     try {
       return JSON.parse(raw);
     } catch {
@@ -239,8 +269,22 @@ export function createApi(store, { adapter = qlooAdapter, aiPredictor } = {}) {
         return json({
           mode: isMockMode() ? "mock" : "real",
           configured: isMockMode() || !!process.env.QLOO_API_KEY,
-          ai: comparisonConfig(),
+          ai: {
+            configured: false,
+            provider: "manual",
+            label: "LLM-only (manual paste)",
+          },
         });
+      if (pathname === "/api/benchmark" && request.method === "GET") {
+        const rows = (
+          await Promise.all(
+            (await store.list("benchmark-results/")).map((key) =>
+              store.get(key),
+            ),
+          )
+        ).filter(Boolean);
+        return json({ rows, tally: benchmarkTally(rows) });
+      }
       if (
         pathname === "/api/historical-case/commit" &&
         request.method === "POST"
@@ -331,8 +375,11 @@ export function createApi(store, { adapter = qlooAdapter, aiPredictor } = {}) {
       }
       if (pathname === "/api/tests" && request.method === "POST") {
         const input = validateInput(await readBody(request));
-        if (input.compareAi && !aiPredictor && !comparisonConfig().configured)
-          fail(configurationMessage, 503);
+        if (input.compareAi && !aiPredictor)
+          fail(
+            "Paid LLM calls are disabled. Use LLM-only (manual paste).",
+            503,
+          );
         const ownerToken = randomBytes(32).toString("hex");
         const test = {
           ...input,
@@ -341,12 +388,13 @@ export function createApi(store, { adapter = qlooAdapter, aiPredictor } = {}) {
           ownerHash: hash(ownerToken),
           createdAt: new Date().toISOString(),
           closedAt: null,
+          freezeRequired: !input.compareAi,
         };
         await store.set(`tests/${test.id}`, test);
         return json({ test: await snapshot(test, true), ownerToken }, 201);
       }
       const match = pathname.match(
-        /^\/api\/tests\/([a-f0-9-]{36})(?:\/(vote|close|open))?$/,
+        /^\/api\/tests\/([a-f0-9-]{36})(?:\/(vote|close|open|freeze))?$/,
       );
       if (!match) return json({ error: "This page could not be found." }, 404);
       const [, id, action] = match;
@@ -356,10 +404,29 @@ export function createApi(store, { adapter = qlooAdapter, aiPredictor } = {}) {
       test.closedAt = (await store.get(`closed/${id}`))?.at || null;
       if (!action && request.method === "GET")
         return json(await snapshot(test, owns(test, request)));
+      if (action === "freeze") {
+        if (!owns(test, request))
+          fail("Only the creating browser can freeze predictions.", 403);
+        if (await store.get(`freezes/${id}`))
+          fail("Frozen predictions cannot be edited.", 409);
+        if (request.method !== "POST")
+          fail("This action is not supported.", 405);
+        if (
+          test.closedAt ||
+          (await store.get(`opened/${id}`)) ||
+          (await store.list(`votes/${id}/`)).length
+        )
+          fail("Freeze must precede poll opening and every vote.", 409);
+        const freeze = makeFreeze(test, await readBody(request));
+        if (!(await store.set(`freezes/${id}`, freeze, { onlyIfNew: true })))
+          fail("Frozen predictions cannot be edited.", 409);
+        return json(await snapshot(test, true), 201);
+      }
       if (action === "open" && request.method === "POST") {
         if (!owns(test, request))
           fail("Only the creating browser can open this poll.", 403);
-        if (!test.comparison) fail("This legacy poll is already open.", 409);
+        if (!test.comparison && !(await store.get(`freezes/${id}`)))
+          fail("Freeze predictions before opening the poll.", 409);
         if (test.closedAt) fail("This poll has closed.", 409);
         await store.set(
           `opened/${id}`,
@@ -374,14 +441,17 @@ export function createApi(store, { adapter = qlooAdapter, aiPredictor } = {}) {
             "The live demo remains open. Create your own test to close it.",
             403,
           );
-        if (test.comparison && !(await store.get(`opened/${id}`)))
-          fail("Open the paired poll before closing it.", 409);
         const token = request.headers.get("x-owner-token") || "";
         const tokenHash = hash(token);
         if (
           !timingSafeEqual(Buffer.from(tokenHash), Buffer.from(test.ownerHash))
         )
           fail("Only the browser that created this test can close it.", 403);
+        if (
+          (test.comparison || test.freezeRequired) &&
+          !(await store.get(`opened/${id}`))
+        )
+          fail("Open the poll before closing it.", 409);
         // An immutable close marker makes repeated/concurrent close requests idempotent.
         if (!test.closedAt)
           await store.set(
@@ -389,12 +459,39 @@ export function createApi(store, { adapter = qlooAdapter, aiPredictor } = {}) {
             { at: new Date().toISOString() },
             { onlyIfNew: true },
           );
-        return json(await snapshot(test));
+        const result = await snapshot(test, true);
+        if (result.freeze) {
+          const payload = result.freeze.payload;
+          await store.set(
+            `benchmark-results/${id}`,
+            {
+              id,
+              caseLabel: payload.caseLabel,
+              mode: payload.mode,
+              track: payload.metadata.track,
+              frozenAt: payload.frozenAt,
+              closedAt: result.closedAt,
+              branches: Object.fromEntries(
+                Object.entries(payload.branches).map(([key, branch]) => [
+                  key,
+                  {
+                    pick: branch.pick,
+                    confidence: branch.confidence,
+                    source: branch.source,
+                  },
+                ]),
+              ),
+              result: result.benchmarkResult,
+            },
+            { onlyIfNew: true },
+          );
+        }
+        return json(result);
       }
       if (action === "vote" && request.method === "POST") {
         if (test.closedAt)
           fail("This poll has closed. You can still read the verdict.", 409);
-        if (test.comparison && !(await store.get(`opened/${id}`)))
+        if (!test.isLiveSample && !(await store.get(`opened/${id}`)))
           fail(
             "Predictions are locked, but the owner has not opened this poll yet.",
             409,

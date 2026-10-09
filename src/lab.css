@@ -1551,6 +1551,120 @@ body::before,
   width: 44px;
   height: 44px;
 }
+.benchmark-page .panel,
+.freeze-panel {
+  margin-top: 24px;
+  padding: 24px;
+}
+.benchmark-page .panel h2,
+.freeze-panel h2 {
+  font-size: 20px;
+  line-height: 1.4;
+  margin-bottom: 12px;
+}
+.benchmark-page .panel p,
+.freeze-panel p {
+  margin: 12px 0;
+  line-height: 1.6;
+  color: #b7b7c0;
+}
+.benchmark-page .benchmark-tally {
+  color: white;
+}
+.benchmark-scroll {
+  overflow-x: auto;
+}
+.benchmark-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 13px;
+}
+.benchmark-table th,
+.benchmark-table td {
+  padding: 14px 12px;
+  border-bottom: 1px solid #29292d;
+  vertical-align: top;
+}
+.benchmark-table th {
+  color: #b7b7bf;
+  font-weight: 500;
+}
+.benchmark-tally {
+  font-size: 24px;
+  color: white;
+}
+.freeze-panel h2 {
+  overflow-wrap: anywhere;
+}
+.freeze-context {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+.manual-branch {
+  border: 1px solid #303036;
+  border-radius: 12px;
+  padding: 18px;
+  margin: 20px 0;
+  min-width: 0;
+}
+.manual-branch legend {
+  padding: 0 8px;
+}
+.check-label {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+}
+.check-label input {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+.pasted-answer {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.receipt-hash {
+  overflow-wrap: anywhere;
+  font-family: monospace;
+  font-size: 12px;
+  color: #aaa;
+}
+.prediction-view .experiment-heading {
+  min-height: 0;
+  margin: 22px 0;
+}
+.prediction-view .experiment-title h1 {
+  font-size: clamp(28px, 3vw, 42px);
+  line-height: 1.12;
+}
+.prediction-view .taste-map {
+  height: auto;
+  min-height: 0;
+}
+.prediction-view .map-board {
+  height: 190px;
+}
+.prediction-view .audience-strip {
+  margin-bottom: 20px;
+}
+.chip {
+  min-height: 44px;
+}
+@media (max-width: 600px) {
+  .freeze-context {
+    grid-template-columns: 1fr;
+  }
+  .benchmark-table {
+    min-width: 620px;
+  }
+  .prediction-view .taste-map {
+    display: none;
+  }
+}
 .map-node {
   min-width: 44px;
   min-height: 44px;

@@ -36,8 +36,12 @@ test("real transport normalizes search arrays, resolves IDs, and coalesces concu
 test("Insights supplies supported GET params and preserves actual affinities and explainability", async () => {
   const client = createQlooClient({
     key: "fixture",
-    fetchImpl: async (url) => {
+    fetchImpl: async (url, options) => {
       assert.equal(url.pathname, "/v2/insights");
+      assert.equal(options.method || "GET", "GET");
+      assert.equal(options.body, undefined);
+      assert.equal(options.headers["X-Api-Key"], "fixture");
+      assert.equal(url.searchParams.has("X-Api-Key"), false);
       assert.equal(url.searchParams.get("signal.interests.entities"), id);
       assert.equal(url.searchParams.get("filter.type"), "urn:entity:artist");
       return json({

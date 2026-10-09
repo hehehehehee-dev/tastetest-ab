@@ -8,6 +8,38 @@ import { createApi } from "../server/api.mjs";
 import { fileStore } from "../server/storage.mjs";
 import { sampleInput } from "../server/fixtures.mjs";
 import { qlooAdapter } from "../server/qlooAdapter.mjs";
+import {
+  freezeHash,
+  scoreFreeze,
+  benchmarkTally,
+} from "../server/benchmark.mjs";
+const freezeInput = {
+  beforeOutcome: true,
+  llm: {
+    pick: "B",
+    confidence: 60,
+    source: "human",
+    answer: "Synthetic fixture: B will win.",
+  },
+};
+async function preparePoll(call, data) {
+  assert.equal(
+    (
+      await call(
+        `/tests/${data.test.id}/freeze`,
+        "POST",
+        freezeInput,
+        data.ownerToken,
+      )
+    ).status,
+    201,
+  );
+  assert.equal(
+    (await call(`/tests/${data.test.id}/open`, "POST", {}, data.ownerToken))
+      .status,
+    200,
+  );
+}
 
 async function harness(t) {
   const directory = await mkdtemp(path.join(os.tmpdir(), "tastetest-unit-"));
@@ -54,6 +86,7 @@ test("full lifecycle, owner authorization, repeated vote and immutable closure",
   const created = await call("/tests", "POST", sampleInput);
   assert.equal(created.status, 201);
   const { test: project, ownerToken } = created.data;
+  await preparePoll(call, created.data);
   assert.equal(project.ownerHash, undefined);
   assert.equal(project.totalVotes, 0);
   const voter = randomUUID();
@@ -120,6 +153,7 @@ test("concurrent unique voters are counted without overwriting each other", asyn
   const { call } = await harness(t);
   const { data } = await call("/tests", "POST", sampleInput);
   const id = data.test.id;
+  await preparePoll(call, data);
   const requests = await Promise.all(
     Array.from({ length: 24 }, (_, i) =>
       call(`/tests/${id}/vote`, "POST", {
@@ -138,6 +172,7 @@ test("concurrent unique voters are counted without overwriting each other", asyn
 test("empty poll closure reports no evidence, not a fabricated winner", async (t) => {
   const { call } = await harness(t);
   const { data } = await call("/tests", "POST", sampleInput);
+  await preparePoll(call, data);
   const closed = await call(
     `/tests/${data.test.id}/close`,
     "POST",
@@ -146,6 +181,183 @@ test("empty poll closure reports no evidence, not a fabricated winner", async (t
   );
   assert.equal(closed.data.verdict.actual, null);
   assert.match(closed.data.verdict.recommendation, /No votes/);
+});
+test("freeze persists immutable answers; opening and voting require freeze, public readers cannot see answers", async (t) => {
+  const { call, directory } = await harness(t);
+  const { data } = await call("/tests", "POST", sampleInput);
+  const base = `/tests/${data.test.id}`;
+  assert.equal(
+    (await call(`${base}/open`, "POST", {}, data.ownerToken)).status,
+    409,
+  );
+  assert.equal(
+    (await call(`${base}/vote`, "POST", { option: 0, voterId: randomUUID() }))
+      .status,
+    409,
+  );
+  assert.equal((await call(`${base}/freeze`, "POST", freezeInput)).status, 403);
+  const frozen = await call(
+    `${base}/freeze`,
+    "POST",
+    freezeInput,
+    data.ownerToken,
+  );
+  assert.equal(frozen.status, 201);
+  const receipt = frozen.data.freeze;
+  assert.equal(receipt.sha256, freezeHash(receipt.payload));
+  assert.equal(frozen.data.lifecycle, "predictions frozen");
+  for (const method of ["POST", "PUT", "PATCH", "DELETE"])
+    assert.equal(
+      (
+        await call(
+          `${base}/freeze`,
+          method,
+          { ...freezeInput, llm: { ...freezeInput.llm, pick: "A" } },
+          data.ownerToken,
+        )
+      ).status,
+      409,
+    );
+  const resumed = createApi(fileStore(directory));
+  const saved = await (
+    await resumed(
+      new Request(`http://localhost/api${base}`, {
+        headers: { "x-owner-token": data.ownerToken },
+      }),
+    )
+  ).json();
+  assert.deepEqual(saved.freeze, receipt);
+  const publicRead = (await call(base)).data;
+  assert.equal(publicRead.freeze, undefined);
+  assert.equal(publicRead.prediction, undefined);
+  assert.equal(
+    (await call(`${base}/open`, "POST", {}, data.ownerToken)).status,
+    200,
+  );
+  assert.equal(
+    (await call(`${base}/vote`, "POST", { option: 0, voterId: randomUUID() }))
+      .status,
+    200,
+  );
+  const closed = (await call(`${base}/close`, "POST", {}, data.ownerToken))
+    .data;
+  assert.equal(closed.benchmarkResult.grades.llm, "✗");
+  assert.equal(closed.benchmarkResult.eligible, false);
+  const benchmark = (await call("/benchmark")).data;
+  assert.equal(benchmark.rows.length, 1);
+  assert.equal(benchmark.tally.counts, null);
+  assert.equal(
+    JSON.stringify(benchmark).includes(freezeInput.llm.answer),
+    false,
+  );
+  await call(`${base}/close`, "POST", {}, data.ownerToken);
+  assert.equal((await call("/benchmark")).data.rows.length, 1);
+});
+test("manual three-branch freeze requires all original answers and before-outcome timestamp", async (t) => {
+  const { call } = await harness(t);
+  const { data } = await call("/tests", "POST", sampleInput);
+  const base = `/tests/${data.test.id}/freeze`;
+  const manual = {
+    ...freezeInput,
+    mode: "manual",
+    originalRecordedAt: "2026-01-01T00:00:00Z",
+    qloo: { ...freezeInput.llm, pick: "A" },
+    agent: { ...freezeInput.llm, pick: "TIE" },
+  };
+  assert.equal(
+    (await call(base, "POST", { ...manual, qloo: undefined }, data.ownerToken))
+      .status,
+    400,
+  );
+  assert.equal(
+    (
+      await call(
+        base,
+        "POST",
+        { ...manual, beforeOutcome: false },
+        data.ownerToken,
+      )
+    ).status,
+    400,
+  );
+  assert.equal(
+    (
+      await call(
+        base,
+        "POST",
+        { ...manual, originalRecordedAt: "2099-01-01" },
+        data.ownerToken,
+      )
+    ).status,
+    400,
+  );
+  const result = await call(base, "POST", manual, data.ownerToken);
+  assert.equal(result.status, 201);
+  assert.equal(result.data.freeze.payload.mode, "manual");
+  assert.deepEqual(scoreFreeze(result.data.freeze, [15, 5]).grades, {
+    llm: "✗",
+    qloo: "✓",
+    agent: "ABSTAIN",
+  });
+});
+test("three-branch grades, 20 votes and 20 eligible cases govern counts; rehearsals never enter", () => {
+  const freeze = {
+    payload: {
+      mode: "real-qloo",
+      metadata: { track: "track-b", unpublished: true, audienceVerified: true },
+      branches: {
+        llm: { pick: "B", confidence: 60 },
+        qloo: { pick: "A", confidence: 65 },
+        agent: { pick: "A", confidence: 80 },
+      },
+    },
+  };
+  const result = scoreFreeze(freeze, [14, 6]);
+  assert.equal(result.eligible, true);
+  assert.deepEqual(result.grades, { llm: "✗", qloo: "✓", agent: "✓" });
+  assert.equal(scoreFreeze(freeze, [13, 6]).eligible, false);
+  assert.equal(scoreFreeze(freeze, [10, 10]).eligible, false);
+  const rows = Array.from({ length: 19 }, () => ({
+    closedAt: "2026-01-01",
+    result,
+  }));
+  assert.equal(benchmarkTally(rows).counts, null);
+  const excluded = [
+    scoreFreeze(freeze, [13, 6]),
+    scoreFreeze({ payload: { ...freeze.payload, mode: "mock" } }, [14, 6]),
+    scoreFreeze(
+      {
+        payload: {
+          ...freeze.payload,
+          metadata: { ...freeze.payload.metadata, unpublished: false },
+        },
+      },
+      [14, 6],
+    ),
+  ];
+  assert.equal(
+    benchmarkTally([
+      ...rows,
+      ...excluded.map((result) => ({ closedAt: "2026-01-01", result })),
+    ]).ready,
+    false,
+  );
+  assert.deepEqual(
+    benchmarkTally([...rows, { closedAt: "2026-01-01", result }]).counts,
+    {
+      llm: { correct: 0, total: 20 },
+      qloo: { correct: 20, total: 20 },
+      agent: { correct: 20, total: 20 },
+    },
+  );
+});
+test("production rejects paid LLM comparison requests regardless of credentials", async (t) => {
+  const { call } = await harness(t);
+  assert.equal(
+    (await call("/tests", "POST", { ...sampleInput, compareAi: true })).status,
+    503,
+  );
+  assert.equal((await call("/config")).data.ai.provider, "manual");
 });
 test("invalid seeds, duplicate seeds and unsafe image protocols are rejected", async (t) => {
   const { call } = await harness(t);
