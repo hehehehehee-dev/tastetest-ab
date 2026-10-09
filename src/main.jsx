@@ -48,6 +48,31 @@ const categoryIcons = {
   Brands: Tag,
   Books: BookOpen,
 };
+const seedGuidance = {
+  Music: "Search for an artist your audience actually likes.",
+  "Film/TV":
+    "Search for a specific movie title. Studios such as A24 belong in Brands, not movie-title search.",
+  Dining:
+    "Search for a named cafe or restaurant your audience actually likes. Results are individual venues, not general tastes such as independent coffee shops.",
+  Brands:
+    "Search for a named brand or studio, such as A24. Select the entity returned by Qloo; a brand is not interchangeable with one of its films.",
+  Books: "Search for a specific book title your audience actually likes.",
+};
+function seedCaption(entity) {
+  const kind =
+    entity.category === "Dining"
+      ? "Venue"
+      : entity.category === "Brands"
+        ? "Brand / studio"
+        : entity.category === "Music"
+          ? "Artist"
+          : entity.category === "Books"
+            ? "Book"
+            : "Movie";
+  return [kind, entity.releaseYear, entity.locationLabel]
+    .filter(Boolean)
+    .join(" · ");
+}
 async function api(path, options = {}) {
   const response = await fetch(`/api${path}`, {
     ...options,
@@ -119,14 +144,22 @@ function ErrorMessage({ children }) {
 function Chip({ entity, onRemove }) {
   const Icon = categoryIcons[entity.category] || Tag;
   return (
-    <span className="chip">
+    <span
+      className="chip"
+      title={[entity.name, entity.locationLabel].filter(Boolean).join(" · ")}
+    >
       <Icon size={13} />
-      {entity.name}
+      <span className="chip-text">
+        {entity.name}
+        {onRemove && entity.locationLabel && (
+          <small>{entity.locationLabel}</small>
+        )}
+      </span>
       {onRemove && (
         <button
           type="button"
           onClick={onRemove}
-          aria-label={`Remove ${entity.name}`}
+          aria-label={`Remove ${[entity.name, entity.locationLabel].filter(Boolean).join(" · ")}`}
         >
           <X size={12} />
         </button>
@@ -252,6 +285,16 @@ function CreateTest({ mode }) {
   const [searchError, setSearchError] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const studioQuery =
+    mode === "real" &&
+    category === "Film/TV" &&
+    /^a\s*24(?:\s+films)?$/i.test(query.trim());
+  const broadDiningQuery =
+    mode === "real" &&
+    category === "Dining" &&
+    /^(?:independent|local|specialty|artisan(?:al)?|indie)\s+(?:coffee(?:\s+shops?)?|caf[eé]s?)$/i.test(
+      query.trim(),
+    );
   useEffect(() => {
     let current = true;
     setSearching(true);
@@ -417,8 +460,62 @@ function CreateTest({ mode }) {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder={`Search ${category.toLowerCase()} tastes…`}
+              aria-describedby={
+                mode === "real" ? "seed-search-guidance" : undefined
+              }
             />
           </div>
+          {mode === "real" && (
+            <div className="seed-guidance" id="seed-search-guidance">
+              <p>{seedGuidance[category]}</p>
+              {studioQuery && (
+                <div className="seed-query-help">
+                  <p>
+                    A24 is a studio. Switch to Brands to look it up; no film
+                    will be substituted automatically.
+                  </p>
+                  <Button
+                    type="button"
+                    className="subtle"
+                    onClick={() => {
+                      setCategory("Brands");
+                      setQuery("A24");
+                    }}
+                  >
+                    Search A24 in Brands
+                  </Button>
+                </div>
+              )}
+              {broadDiningQuery && (
+                <div className="seed-query-help">
+                  <p>
+                    These matches are specific businesses, not the concept “
+                    {query.trim()}”. Choose a venue only if the audience likes
+                    that exact venue.
+                  </p>
+                  <Button
+                    type="button"
+                    className="subtle"
+                    disabled={
+                      note.includes(query.trim()) ||
+                      (note + "\n" + query.trim()).length > 300
+                    }
+                    onClick={() =>
+                      setNote((old) =>
+                        [old.trim(), query.trim()].filter(Boolean).join("\n"),
+                      )
+                    }
+                  >
+                    Add concept to audience note
+                  </Button>
+                  <p>
+                    Audience notes provide context; they do not count as
+                    resolved Qloo seeds.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
           <ErrorMessage>{searchError}</ErrorMessage>
           <div className="seed-results" aria-live="polite">
             {searching ? (
@@ -434,6 +531,9 @@ function CreateTest({ mode }) {
                     key={entity.entity_id}
                     disabled={!picked && selected.length >= 5}
                     className={`seed-button ${picked ? "picked" : ""}`}
+                    aria-label={[entity.name, entity.locationLabel]
+                      .filter(Boolean)
+                      .join(" · ")}
                     onClick={() =>
                       setSelected((old) =>
                         picked
@@ -443,7 +543,17 @@ function CreateTest({ mode }) {
                     }
                   >
                     {picked ? <Check size={13} /> : <Plus size={13} />}
-                    {entity.name}
+                    <span className="seed-result-text">
+                      <span>{entity.name}</span>
+                      {mode === "real" && (
+                        <small>
+                          {seedCaption(entity)}
+                          {entity.category === "Dining" && !entity.locationLabel
+                            ? " · location unavailable; verify this venue"
+                            : ""}
+                        </small>
+                      )}
+                    </span>
                   </button>
                 );
               })
@@ -1106,7 +1216,7 @@ function TestView({ id, sample = false }) {
                 : `${test.seeds.length} taste seeds · Created ${new Date(test.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`}
             </span>
           </div>
-          <h1>
+          <h1 title={test.title}>
             {sample ? (
               <>
                 Which poster{" "}

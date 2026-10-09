@@ -21,6 +21,10 @@ export function normalizeEntity(entity, type = "") {
     entity.properties?.release_year ||
       String(entity.properties?.release_date || "").match(/^(\d{4})-/)?.[1],
   );
+  const geo = entity.properties?.geocode || {};
+  const location = [entity.properties?.address, geo.city, geo.country]
+    .filter((value) => typeof value === "string" && value.trim())
+    .map((value) => value.trim().slice(0, 250));
   return {
     entity_id: id,
     name: entity.name,
@@ -29,6 +33,9 @@ export function normalizeEntity(entity, type = "") {
       Object.keys(typeUrns).find((k) => types.includes(typeUrns[k])) ||
       "Film/TV",
     tags,
+    ...(types.includes(typeUrns.Dining) && location.length
+      ? { locationLabel: [...new Set(location)].join(" · ") }
+      : {}),
     ...(Number.isInteger(releaseYear) &&
     releaseYear >= 1870 &&
     releaseYear <= 2200

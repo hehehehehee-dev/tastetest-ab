@@ -26,6 +26,32 @@ test("entity normalization preserves release year so remakes can be resolved wit
     undefined,
   );
 });
+
+test("venue search preserves the actual address so same-name places can be distinguished", () => {
+  const venue = normalizeEntity({
+    ...entity,
+    types: ["urn:entity:place"],
+    name: "Fixture Cafe",
+    properties: {
+      address: "12 Main St",
+      geocode: { city: "Bloomington", country: "United States" },
+      phone: "not needed",
+      website: "not needed",
+    },
+  });
+  assert.equal(venue.locationLabel, "12 Main St · Bloomington · United States");
+  assert.equal(venue.category, "Dining");
+  assert.equal(venue.phone, undefined);
+  assert.equal(normalizeEntity(entity).locationLabel, undefined);
+  assert.equal(
+    normalizeEntity({
+      ...entity,
+      types: ["urn:entity:place"],
+      properties: { address: { unknown: true } },
+    }).locationLabel,
+    undefined,
+  );
+});
 test("real transport normalizes search arrays, resolves IDs, and coalesces concurrent calls", async () => {
   let calls = 0;
   const client = createQlooClient({

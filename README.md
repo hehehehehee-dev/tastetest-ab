@@ -82,6 +82,8 @@ Closed reports have separate **Prediction** and **Verdict** views. The keyword b
 
 The benchmark opens with three summary tiles. Open the case register, closed ledger, proxy or workflow-rehearsal drawers for detail; methodology is last. Decision accuracy excludes abstentions, which remain visible in the detailed tally. Synthetic and historical results remain separate from eligible Track B cases.
 
+Real-mode seed search selects exact Qloo entities. Movie search is for titles; a studio query such as A24 offers an explicit switch to Brands without choosing a film on the user's behalf. Dining search returns named venues with address/city metadata when available, so matching names do not imply the same location. A broad preference such as “independent coffee shops” can be added to the audience note, but never becomes an entity ID or counts toward the required 3–5 seeds. Choose a venue only when the audience likes that exact place.
+
 ```text
 src/                         React UI; no mock fixtures or server secrets
 server/fixtures.mjs          Synthetic seeds, affinities, sample input
