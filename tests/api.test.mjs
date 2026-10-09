@@ -245,7 +245,7 @@ test("freeze persists immutable answers; opening and voting require freeze, publ
   assert.equal(closed.benchmarkResult.eligible, false);
   const benchmark = (await call("/benchmark")).data;
   assert.equal(benchmark.rows.length, 1);
-  assert.equal(benchmark.tally.counts, null);
+  assert.deepEqual(benchmark.tally.counts.llm, { correct: 0, total: 0 });
   assert.equal(
     JSON.stringify(benchmark).includes(freezeInput.llm.answer),
     false,
@@ -321,7 +321,11 @@ test("three-branch grades, 20 votes and 20 eligible cases govern counts; rehears
     closedAt: "2026-01-01",
     result,
   }));
-  assert.equal(benchmarkTally(rows).counts, null);
+  assert.equal(benchmarkTally(rows).ready, false);
+  assert.deepEqual(benchmarkTally(rows).counts.qloo, {
+    correct: 19,
+    total: 19,
+  });
   const excluded = [
     scoreFreeze(freeze, [13, 6]),
     scoreFreeze({ payload: { ...freeze.payload, mode: "mock" } }, [14, 6]),

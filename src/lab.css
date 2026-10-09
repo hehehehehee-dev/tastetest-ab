@@ -1556,6 +1556,28 @@ body::before,
   margin-top: 24px;
   padding: 24px;
 }
+.proxy-section {
+  border-top: 2px solid #777;
+  margin-top: 48px !important;
+}
+.proxy-case-entry {
+  padding: 16px 0;
+  border-bottom: 1px solid #303038;
+}
+.proxy-case-list summary {
+  min-height: 44px;
+  padding-top: 12px;
+  cursor: pointer;
+}
+.proxy-credit {
+  border-top: 1px solid #303038;
+  padding-top: 16px;
+  margin-top: 24px;
+  font-size: 12px;
+}
+.proxy-case-page > .button {
+  margin-top: 24px;
+}
 .benchmark-page .panel h2,
 .freeze-panel h2 {
   font-size: 20px;

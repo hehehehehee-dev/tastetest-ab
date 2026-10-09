@@ -1,0 +1,2302 @@
+{
+  "manifest": {
+    "schemaVersion": 1,
+    "dataset": "ml-1m",
+    "seed": "tastetest-proxy-v1",
+    "rules": {
+      "count": 40,
+      "minUsers": 30,
+      "minSegmentRatings": 20,
+      "minOverallRatings": 500,
+      "minGap": 0.3,
+      "maxPopularityRatio": 1.5,
+      "seedRating": 4
+    },
+    "source": "https://grouplens.org/datasets/movielens/",
+    "selection": "Distinct seed triples, common genre and pairwise genre Jaccard >=0.25; similarly popular candidate pairs share a genre. Outcomes select cases with >=0.3 mean-rating gap, so this is a filtered retrospective proxy, not a prospective accuracy study.",
+    "sourceHashes": {
+      "movies": "12d56985213881321ac5e64c82d7c926a1333f9b10003974144763f073aeeb4e",
+      "ratings": "506d64ca44484487c11dc2d9a28de5c54948213e6b96285e298afe28d6ea4e0f"
+    }
+  },
+  "caseSetHash": "62d4ca4e0961b25b47f5d0ae269246673a29d35f07c12dd769eaba9fbb9c3755",
+  "cases": [
+    {
+      "id": "PX-001",
+      "dataset": "ml-1m",
+      "seeds": [
+        {
+          "movieId": "316",
+          "title": "Stargate",
+          "year": 1994,
+          "genres": [
+            "Action",
+            "Adventure",
+            "Sci-Fi"
+          ]
+        },
+        {
+          "movieId": "1215",
+          "title": "Army of Darkness",
+          "year": 1993,
+          "genres": [
+            "Action",
+            "Adventure",
+            "Comedy",
+            "Horror",
+            "Sci-Fi"
+          ]
+        },
+        {
+          "movieId": "1320",
+          "title": "Alien³",
+          "year": 1992,
+          "genres": [
+            "Action",
+            "Horror",
+            "Sci-Fi",
+            "Thriller"
+          ]
+        }
+      ],
+      "options": [
+        {
+          "movieId": "3354",
+          "title": "Mission to Mars",
+          "year": 2000,
+          "genres": [
+            "Sci-Fi"
+          ]
+        },
+        {
+          "movieId": "1371",
+          "title": "Star Trek: The Motion Picture",
+          "year": 1979,
+          "genres": [
+            "Action",
+            "Adventure",
+            "Sci-Fi"
+          ]
+        }
+      ],
+      "audienceDefinition": "Users who rated all three Sci-Fi seeds at least 4.0 stars."
+    },
+    {
+      "id": "PX-002",
+      "dataset": "ml-1m",
+      "seeds": [
+        {
+          "movieId": "780",
+          "title": "Independence Day (ID4)",
+          "year": 1996,
+          "genres": [
+            "Action",
+            "Sci-Fi",
+            "War"
+          ]
+        },
+        {
+          "movieId": "1233",
+          "title": "Boat, The (Das Boot)",
+          "year": 1981,
+          "genres": [
+            "Action",
+            "Drama",
+            "War"
+          ]
+        },
+        {
+          "movieId": "1391",
+          "title": "Mars Attacks!",
+          "year": 1996,
+          "genres": [
+            "Action",
+            "Comedy",
+            "Sci-Fi",
+            "War"
+          ]
+        }
+      ],
+      "options": [
+        {
+          "movieId": "736",
+          "title": "Twister",
+          "year": 1996,
+          "genres": [
+            "Action",
+            "Adventure",
+            "Romance",
+            "Thriller"
+          ]
+        },
+        {
+          "movieId": "1917",
+          "title": "Armageddon",
+          "year": 1998,
+          "genres": [
+            "Action",
+            "Adventure",
+            "Sci-Fi",
+            "Thriller"
+          ]
+        }
+      ],
+      "audienceDefinition": "Users who rated all three War seeds at least 4.0 stars."
+    },
+    {
+      "id": "PX-003",
+      "dataset": "ml-1m",
+      "seeds": [
+        {
+          "movieId": "1569",
+          "title": "My Best Friend's Wedding",
+          "year": 1997,
+          "genres": [
+            "Comedy",
+            "Romance"
+          ]
+        },
+        {
+          "movieId": "1674",
+          "title": "Witness",
+          "year": 1985,
+          "genres": [
+            "Drama",
+            "Romance",
+            "Thriller"
+          ]
+        },
+        {
+          "movieId": "2020",
+          "title": "Dangerous Liaisons",
+          "year": 1988,
+          "genres": [
+            "Drama",
+            "Romance"
+          ]
+        }
+      ],
+      "options": [
+        {
+          "movieId": "1485",
+          "title": "Liar Liar",
+          "year": 1997,
+          "genres": [
+            "Comedy"
+          ]
+        },
+        {
+          "movieId": "3247",
+          "title": "Sister Act",
+          "year": 1992,
+          "genres": [
+            "Comedy",
+            "Crime"
+          ]
+        }
+      ],
+      "audienceDefinition": "Users who rated all three Romance seeds at least 4.0 stars."
+    },
+    {
+      "id": "PX-004",
+      "dataset": "ml-1m",
+      "seeds": [
+        {
+          "movieId": "377",
+          "title": "Speed",
+          "year": 1994,
+          "genres": [
+            "Action",
+            "Romance",
+            "Thriller"
+          ]
+        },
+        {
+          "movieId": "2916",
+          "title": "Total Recall",
+          "year": 1990,
+          "genres": [
+            "Action",
+            "Adventure",
+            "Sci-Fi",
+            "Thriller"
+          ]
+        },
+        {
+          "movieId": "3623",
+          "title": "Mission: Impossible 2",
+          "year": 2000,
+          "genres": [
+            "Action",
+            "Thriller"
+          ]
+        }
+      ],
+      "options": [
+        {
+          "movieId": "3591",
+          "title": "Mr. Mom",
+          "year": 1983,
+          "genres": [
+            "Comedy",
+            "Drama"
+          ]
+        },
+        {
+          "movieId": "1711",
+          "title": "Midnight in the Garden of Good and Evil",
+          "year": 1997,
+          "genres": [
+            "Comedy",
+            "Crime",
+            "Drama",
+            "Mystery"
+          ]
+        }
+      ],
+      "audienceDefinition": "Users who rated all three Thriller seeds at least 4.0 stars."
+    },
+    {
+      "id": "PX-005",
+      "dataset": "ml-1m",
+      "seeds": [
+        {
+          "movieId": "594",
+          "title": "Snow White and the Seven Dwarfs",
+          "year": 1937,
+          "genres": [
+            "Animation",
+            "Children's",
+            "Musical"
+          ]
+        },
+        {
+          "movieId": "1032",
+          "title": "Alice in Wonderland",
+          "year": 1951,
+          "genres": [
+            "Animation",
+            "Children's",
+            "Musical"
+          ]
+        },
+        {
+          "movieId": "1035",
+          "title": "Sound of Music, The",
+          "year": 1965,
+          "genres": [
+            "Musical"
+          ]
+        }
+      ],
+      "options": [
+        {
+          "movieId": "3257",
+          "title": "Bodyguard, The",
+          "year": 1992,
+          "genres": [
+            "Action",
+            "Drama",
+            "Romance",
+            "Thriller"
+          ]
+        },
+        {
+          "movieId": "1959",
+          "title": "Out of Africa",
+          "year": 1985,
+          "genres": [
+            "Drama",
+            "Romance"
+          ]
+        }
+      ],
+      "audienceDefinition": "Users who rated all three Musical seeds at least 4.0 stars."
+    },
+    {
+      "id": "PX-006",
+      "dataset": "ml-1m",
+      "seeds": [
+        {
+          "movieId": "329",
+          "title": "Star Trek: Generations",
+          "year": 1994,
+          "genres": [
+            "Action",
+            "Adventure",
+            "Sci-Fi"
+          ]
+        },
+        {
+          "movieId": "648",
+          "title": "Mission: Impossible",
+          "year": 1996,
+          "genres": [
+            "Action",
+            "Adventure",
+            "Mystery"
+          ]
+        },
+        {
+          "movieId": "2916",
+          "title": "Total Recall",
+          "year": 1990,
+          "genres": [
+            "Action",
+            "Adventure",
+            "Sci-Fi",
+            "Thriller"
+          ]
+        }
+      ],
+      "options": [
+        {
+          "movieId": "2019",
+          "title": "Seven Samurai (The Magnificent Seven) (Shichinin no samurai)",
+          "year": 1954,
+          "genres": [
+            "Action",
+            "Drama"
+          ]
+        },
+        {
+          "movieId": "3683",
+          "title": "Blood Simple",
+          "year": 1984,
+          "genres": [
+            "Drama",
+            "Film-Noir"
+          ]
+        }
+      ],
+      "audienceDefinition": "Users who rated all three Adventure seeds at least 4.0 stars."
+    },
+    {
+      "id": "PX-007",
+      "dataset": "ml-1m",
+      "seeds": [
+        {
+          "movieId": "1307",
+          "title": "When Harry Met Sally...",
+          "year": 1989,
+          "genres": [
+            "Comedy",
+            "Romance"
+          ]
+        },
+        {
+          "movieId": "2020",
+          "title": "Dangerous Liaisons",
+          "year": 1988,
+          "genres": [
+            "Drama",
+            "Romance"
+          ]
+        },
+        {
+          "movieId": "3108",
+          "title": "Fisher King, The",
+          "year": 1991,
+          "genres": [
+            "Comedy",
+            "Drama",
+            "Romance"
+          ]
+        }
+      ],
+      "options": [
+        {
+          "movieId": "3255",
+          "title": "League of Their Own, A",
+          "year": 1992,
+          "genres": [
+            "Comedy",
+            "Drama"
+          ]
+        },
+        {
+          "movieId": "1294",
+          "title": "M*A*S*H",
+          "year": 1970,
+          "genres": [
+            "Comedy",
+            "War"
+          ]
+        }
+      ],
+      "audienceDefinition": "Users who rated all three Romance seeds at least 4.0 stars."
+    },
+    {
+      "id": "PX-008",
+      "dataset": "ml-1m",
+      "seeds": [
+        {
+          "movieId": "480",
+          "title": "Jurassic Park",
+          "year": 1993,
+          "genres": [
+            "Action",
+            "Adventure",
+            "Sci-Fi"
+          ]
+        },
+        {
+          "movieId": "1210",
+          "title": "Star Wars: Episode VI - Return of the Jedi",
+          "year": 1983,
+          "genres": [
+            "Action",
+            "Adventure",
+            "Romance",
+            "Sci-Fi",
+            "War"
+          ]
+        },
+        {
+          "movieId": "3175",
+          "title": "Galaxy Quest",
+          "year": 1999,
+          "genres": [
+            "Adventure",
+            "Comedy",
+            "Sci-Fi"
+          ]
+        }
+      ],
+      "options": [
+        {
+          "movieId": "1253",
+          "title": "Day the Earth Stood Still, The",
+          "year": 1951,
+          "genres": [
+            "Drama",
+            "Sci-Fi"
+          ]
+        },
+        {
+          "movieId": "2541",
+          "title": "Cruel Intentions",
+          "year": 1999,
+          "genres": [
+            "Drama"
+          ]
+        }
+      ],
+      "audienceDefinition": "Users who rated all three Sci-Fi seeds at least 4.0 stars."
+    },
+    {
+      "id": "PX-009",
+      "dataset": "ml-1m",
+      "seeds": [
+        {
+          "movieId": "2087",
+          "title": "Peter Pan",
+          "year": 1953,
+          "genres": [
+            "Animation",
+            "Children's",
+            "Fantasy",
+            "Musical"
+          ]
+        },
+        {
+          "movieId": "2096",
+          "title": "Sleeping Beauty",
+          "year": 1959,
+          "genres": [
+            "Animation",
+            "Children's",
+            "Musical"
+          ]
+        },
+        {
+          "movieId": "3751",
+          "title": "Chicken Run",
+          "year": 2000,
+          "genres": [
+            "Animation",
+            "Children's",
+            "Comedy"
+          ]
+        }
+      ],
+      "options": [
+        {
+          "movieId": "1084",
+          "title": "Bonnie and Clyde",
+          "year": 1967,
+          "genres": [
+            "Crime",
+            "Drama"
+          ]
+        },
+        {
+          "movieId": "434",
+          "title": "Cliffhanger",
+          "year": 1993,
+          "genres": [
+            "Action",
+            "Adventure",
+            "Crime"
+          ]
+        }
+      ],
+      "audienceDefinition": "Users who rated all three Animation seeds at least 4.0 stars."
+    },
+    {
+      "id": "PX-010",
+      "dataset": "ml-1m",
+      "seeds": [
+        {
+          "movieId": "1252",
+          "title": "Chinatown",
+          "year": 1974,
+          "genres": [
+            "Film-Noir",
+            "Mystery",
+            "Thriller"
+          ]
+        },
+        {
+          "movieId": "1617",
+          "title": "L.A. Confidential",
+          "year": 1997,
+          "genres": [
+            "Crime",
+            "Film-Noir",
+            "Mystery",
+            "Thriller"
+          ]
+        },
+        {
+          "movieId": "3435",
+          "title": "Double Indemnity",
+          "year": 1944,
+          "genres": [
+            "Crime",
+            "Film-Noir"
+          ]
+        }
+      ],
+      "options": [
+        {
+          "movieId": "2662",
+          "title": "War of the Worlds, The",
+          "year": 1953,
+          "genres": [
+            "Action",
+            "Sci-Fi",
+            "War"
+          ]
+        },
+        {
+          "movieId": "160",
+          "title": "Congo",
+          "year": 1995,
+          "genres": [
+            "Action",
+            "Adventure",
+            "Mystery",
+            "Sci-Fi"
+          ]
+        }
+      ],
+      "audienceDefinition": "Users who rated all three Film-Noir seeds at least 4.0 stars."
+    },
+    {
+      "id": "PX-011",
+      "dataset": "ml-1m",
+      "seeds": [
+        {
+          "movieId": "586",
+          "title": "Home Alone",
+          "year": 1990,
+          "genres": [
+            "Children's",
+            "Comedy"
+          ]
+        },
+        {
+          "movieId": "1028",
+          "title": "Mary Poppins",
+          "year": 1964,
+          "genres": [
+            "Children's",
+            "Comedy",
+            "Musical"
+          ]
+        },
+        {
+          "movieId": "2018",
+          "title": "Bambi",
+          "year": 1942,
+          "genres": [
+            "Animation",
+            "Children's"
+          ]
+        }
+      ],
+      "options": [
+        {
+          "movieId": "357",
+          "title": "Four Weddings and a Funeral",
+          "year": 1994,
+          "genres": [
+            "Comedy",
+            "Romance"
+          ]
+        },
+        {
+          "movieId": "2657",
+          "title": "Rocky Horror Picture Show, The",
+          "year": 1975,
+          "genres": [
+            "Comedy",
+            "Horror",
+            "Musical",
+            "Sci-Fi"
+          ]
+        }
+      ],
+      "audienceDefinition": "Users who rated all three Children's seeds at least 4.0 stars."
+    },
+    {
+      "id": "PX-012",
+      "dataset": "ml-1m",
+      "seeds": [
+        {
+          "movieId": "364",
+          "title": "Lion King, The",
+          "year": 1994,
+          "genres": [
+            "Animation",
+            "Children's",
+            "Musical"
+          ]
+        },
+        {
+          "movieId": "2080",
+          "title": "Lady and the Tramp",
+          "year": 1955,
+          "genres": [
+            "Animation",
+            "Children's",
+            "Comedy",
+            "Musical",
+            "Romance"
+          ]
+        },
+        {
+          "movieId": "2096",
+          "title": "Sleeping Beauty",
+          "year": 1959,
+          "genres": [
+            "Animation",
+            "Children's",
+            "Musical"
+          ]
+        }
+      ],
+      "options": [
+        {
+          "movieId": "141",
+          "title": "Birdcage, The",
+          "year": 1996,
+          "genres": [
+            "Comedy"
+          ]
+        },
+        {
+          "movieId": "543",
+          "title": "So I Married an Axe Murderer",
+          "year": 1993,
+          "genres": [
+            "Comedy",
+            "Romance",
+            "Thriller"
+          ]
+        }
+      ],
+      "audienceDefinition": "Users who rated all three Children's seeds at least 4.0 stars."
+    },
+    {
+      "id": "PX-013",
+      "dataset": "ml-1m",
+      "seeds": [
+        {
+          "movieId": "111",
+          "title": "Taxi Driver",
+          "year": 1976,
+          "genres": [
+            "Drama",
+            "Thriller"
+          ]
+        },
+        {
+          "movieId": "2324",
+          "title": "Life Is Beautiful (La Vita è bella)",
+          "year": 1997,
+          "genres": [
+            "Comedy",
+            "Drama"
+          ]
+        },
+        {
+          "movieId": "3471",
+          "title": "Close Encounters of the Third Kind",
+          "year": 1977,
+          "genres": [
+            "Drama",
+            "Sci-Fi"
+          ]
+        }
+      ],
+      "options": [
+        {
+          "movieId": "2133",
+          "title": "Adventures in Babysitting",
+          "year": 1987,
+          "genres": [
+            "Adventure",
+            "Comedy"
+          ]
+        },
+        {
+          "movieId": "1779",
+          "title": "Sphere",
+          "year": 1998,
+          "genres": [
+            "Adventure",
+            "Sci-Fi",
+            "Thriller"
+          ]
+        }
+      ],
+      "audienceDefinition": "Users who rated all three Drama seeds at least 4.0 stars."
+    },
+    {
+      "id": "PX-014",
+      "dataset": "ml-1m",
+      "seeds": [
+        {
+          "movieId": "34",
+          "title": "Babe",
+          "year": 1995,
+          "genres": [
+            "Children's",
+            "Comedy",
+            "Drama"
+          ]
+        },
+        {
+          "movieId": "1270",
+          "title": "Back to the Future",
+          "year": 1985,
+          "genres": [
+            "Comedy",
+            "Sci-Fi"
+          ]
+        },
+        {
+          "movieId": "2599",
+          "title": "Election",
+          "year": 1999,
+          "genres": [
+            "Comedy"
+          ]
+        }
+      ],
+      "options": [
+        {
+          "movieId": "111",
+          "title": "Taxi Driver",
+          "year": 1976,
+          "genres": [
+            "Drama",
+            "Thriller"
+          ]
+        },
+        {
+          "movieId": "3753",
+          "title": "Patriot, The",
+          "year": 2000,
+          "genres": [
+            "Action",
+            "Drama",
+            "War"
+          ]
+        }
+      ],
+      "audienceDefinition": "Users who rated all three Comedy seeds at least 4.0 stars."
+    },
+    {
+      "id": "PX-015",
+      "dataset": "ml-1m",
+      "seeds": [
+        {
+          "movieId": "1266",
+          "title": "Unforgiven",
+          "year": 1992,
+          "genres": [
+            "Western"
+          ]
+        },
+        {
+          "movieId": "2012",
+          "title": "Back to the Future Part III",
+          "year": 1990,
+          "genres": [
+            "Comedy",
+            "Sci-Fi",
+            "Western"
+          ]
+        },
+        {
+          "movieId": "2951",
+          "title": "Fistful of Dollars, A",
+          "year": 1964,
+          "genres": [
+            "Action",
+            "Western"
+          ]
+        }
+      ],
+      "options": [
+        {
+          "movieId": "47",
+          "title": "Seven (Se7en)",
+          "year": 1995,
+          "genres": [
+            "Crime",
+            "Thriller"
+          ]
+        },
+        {
+          "movieId": "1370",
+          "title": "Die Hard 2",
+          "year": 1990,
+          "genres": [
+            "Action",
+            "Thriller"
+          ]
+        }
+      ],
+      "audienceDefinition": "Users who rated all three Western seeds at least 4.0 stars."
+    },
+    {
+      "id": "PX-016",
+      "dataset": "ml-1m",
+      "seeds": [
+        {
+          "movieId": "1213",
+          "title": "GoodFellas",
+          "year": 1990,
+          "genres": [
+            "Crime",
+            "Drama"
+          ]
+        },
+        {
+          "movieId": "1234",
+          "title": "Sting, The",
+          "year": 1973,
+          "genres": [
+            "Comedy",
+            "Crime"
+          ]
+        },
+        {
+          "movieId": "1248",
+          "title": "Touch of Evil",
+          "year": 1958,
+          "genres": [
+            "Crime",
+            "Film-Noir",
+            "Thriller"
+          ]
+        }
+      ],
+      "options": [
+        {
+          "movieId": "1711",
+          "title": "Midnight in the Garden of Good and Evil",
+          "year": 1997,
+          "genres": [
+            "Comedy",
+            "Crime",
+            "Drama",
+            "Mystery"
+          ]
+        },
+        {
+          "movieId": "2019",
+          "title": "Seven Samurai (The Magnificent Seven) (Shichinin no samurai)",
+          "year": 1954,
+          "genres": [
+            "Action",
+            "Drama"
+          ]
+        }
+      ],
+      "audienceDefinition": "Users who rated all three Crime seeds at least 4.0 stars."
+    },
+    {
+      "id": "PX-017",
+      "dataset": "ml-1m",
+      "seeds": [
+        {
+          "movieId": "597",
+          "title": "Pretty Woman",
+          "year": 1990,
+          "genres": [
+            "Comedy",
+            "Romance"
+          ]
+        },
+        {
+          "movieId": "920",
+          "title": "Gone with the Wind",
+          "year": 1939,
+          "genres": [
+            "Drama",
+            "Romance",
+            "War"
+          ]
+        },
+        {
+          "movieId": "1777",
+          "title": "Wedding Singer, The",
+          "year": 1998,
+          "genres": [
+            "Comedy",
+            "Romance"
+          ]
+        }
+      ],
+      "options": [
+        {
+          "movieId": "1380",
+          "title": "Grease",
+          "year": 1978,
+          "genres": [
+            "Comedy",
+            "Musical",
+            "Romance"
+          ]
+        },
+        {
+          "movieId": "3809",
+          "title": "What About Bob?",
+          "year": 1991,
+          "genres": [
+            "Comedy"
+          ]
+        }
+      ],
+      "audienceDefinition": "Users who rated all three Romance seeds at least 4.0 stars."
+    },
+    {
+      "id": "PX-018",
+      "dataset": "ml-1m",
+      "seeds": [
+        {
+          "movieId": "1375",
+          "title": "Star Trek III: The Search for Spock",
+          "year": 1984,
+          "genres": [
+            "Action",
+            "Adventure",
+            "Sci-Fi"
+          ]
+        },
+        {
+          "movieId": "2529",
+          "title": "Planet of the Apes",
+          "year": 1968,
+          "genres": [
+            "Action",
+            "Sci-Fi"
+          ]
+        },
+        {
+          "movieId": "2640",
+          "title": "Superman",
+          "year": 1978,
+          "genres": [
+            "Action",
+            "Adventure",
+            "Sci-Fi"
+          ]
+        }
+      ],
+      "options": [
+        {
+          "movieId": "3060",
+          "title": "Commitments, The",
+          "year": 1991,
+          "genres": [
+            "Comedy",
+            "Drama"
+          ]
+        },
+        {
+          "movieId": "2792",
+          "title": "Airplane II: The Sequel",
+          "year": 1982,
+          "genres": [
+            "Comedy"
+          ]
+        }
+      ],
+      "audienceDefinition": "Users who rated all three Sci-Fi seeds at least 4.0 stars."
+    },
+    {
+      "id": "PX-019",
+      "dataset": "ml-1m",
+      "seeds": [
+        {
+          "movieId": "357",
+          "title": "Four Weddings and a Funeral",
+          "year": 1994,
+          "genres": [
+            "Comedy",
+            "Romance"
+          ]
+        },
+        {
+          "movieId": "587",
+          "title": "Ghost",
+          "year": 1990,
+          "genres": [
+            "Comedy",
+            "Romance",
+            "Thriller"
+          ]
+        },
+        {
+          "movieId": "3481",
+          "title": "High Fidelity",
+          "year": 2000,
+          "genres": [
+            "Comedy"
+          ]
+        }
+      ],
+      "options": [
+        {
+          "movieId": "2011",
+          "title": "Back to the Future Part II",
+          "year": 1989,
+          "genres": [
+            "Comedy",
+            "Sci-Fi"
+          ]
+        },
+        {
+          "movieId": "2321",
+          "title": "Pleasantville",
+          "year": 1998,
+          "genres": [
+            "Comedy"
+          ]
+        }
+      ],
+      "audienceDefinition": "Users who rated all three Comedy seeds at least 4.0 stars."
+    },
+    {
+      "id": "PX-020",
+      "dataset": "ml-1m",
+      "seeds": [
+        {
+          "movieId": "47",
+          "title": "Seven (Se7en)",
+          "year": 1995,
+          "genres": [
+            "Crime",
+            "Thriller"
+          ]
+        },
+        {
+          "movieId": "293",
+          "title": "Professional, The (a.k.a. Leon: The Professional)",
+          "year": 1994,
+          "genres": [
+            "Crime",
+            "Drama",
+            "Romance",
+            "Thriller"
+          ]
+        },
+        {
+          "movieId": "1221",
+          "title": "Godfather: Part II, The",
+          "year": 1974,
+          "genres": [
+            "Action",
+            "Crime",
+            "Drama"
+          ]
+        }
+      ],
+      "options": [
+        {
+          "movieId": "2683",
+          "title": "Austin Powers: The Spy Who Shagged Me",
+          "year": 1999,
+          "genres": [
+            "Comedy"
+          ]
+        },
+        {
+          "movieId": "1394",
+          "title": "Raising Arizona",
+          "year": 1987,
+          "genres": [
+            "Comedy"
+          ]
+        }
+      ],
+      "audienceDefinition": "Users who rated all three Crime seeds at least 4.0 stars."
+    },
+    {
+      "id": "PX-021",
+      "dataset": "ml-1m",
+      "seeds": [
+        {
+          "movieId": "1",
+          "title": "Toy Story",
+          "year": 1995,
+          "genres": [
+            "Animation",
+            "Children's",
+            "Comedy"
+          ]
+        },
+        {
+          "movieId": "317",
+          "title": "Santa Clause, The",
+          "year": 1994,
+          "genres": [
+            "Children's",
+            "Comedy",
+            "Fantasy"
+          ]
+        },
+        {
+          "movieId": "2085",
+          "title": "101 Dalmatians",
+          "year": 1961,
+          "genres": [
+            "Animation",
+            "Children's"
+          ]
+        }
+      ],
+      "options": [
+        {
+          "movieId": "2193",
+          "title": "Willow",
+          "year": 1988,
+          "genres": [
+            "Action",
+            "Adventure",
+            "Fantasy"
+          ]
+        },
+        {
+          "movieId": "368",
+          "title": "Maverick",
+          "year": 1994,
+          "genres": [
+            "Action",
+            "Comedy",
+            "Western"
+          ]
+        }
+      ],
+      "audienceDefinition": "Users who rated all three Children's seeds at least 4.0 stars."
+    },
+    {
+      "id": "PX-022",
+      "dataset": "ml-1m",
+      "seeds": [
+        {
+          "movieId": "1230",
+          "title": "Annie Hall",
+          "year": 1977,
+          "genres": [
+            "Comedy",
+            "Romance"
+          ]
+        },
+        {
+          "movieId": "2011",
+          "title": "Back to the Future Part II",
+          "year": 1989,
+          "genres": [
+            "Comedy",
+            "Sci-Fi"
+          ]
+        },
+        {
+          "movieId": "2396",
+          "title": "Shakespeare in Love",
+          "year": 1998,
+          "genres": [
+            "Comedy",
+            "Romance"
+          ]
+        }
+      ],
+      "options": [
+        {
+          "movieId": "2985",
+          "title": "Robocop",
+          "year": 1987,
+          "genres": [
+            "Action",
+            "Crime",
+            "Sci-Fi"
+          ]
+        },
+        {
+          "movieId": "1206",
+          "title": "Clockwork Orange, A",
+          "year": 1971,
+          "genres": [
+            "Sci-Fi"
+          ]
+        }
+      ],
+      "audienceDefinition": "Users who rated all three Comedy seeds at least 4.0 stars."
+    },
+    {
+      "id": "PX-023",
+      "dataset": "ml-1m",
+      "seeds": [
+        {
+          "movieId": "1090",
+          "title": "Platoon",
+          "year": 1986,
+          "genres": [
+            "Drama",
+            "War"
+          ]
+        },
+        {
+          "movieId": "1233",
+          "title": "Boat, The (Das Boot)",
+          "year": 1981,
+          "genres": [
+            "Action",
+            "Drama",
+            "War"
+          ]
+        },
+        {
+          "movieId": "1250",
+          "title": "Bridge on the River Kwai, The",
+          "year": 1957,
+          "genres": [
+            "Drama",
+            "War"
+          ]
+        }
+      ],
+      "options": [
+        {
+          "movieId": "2019",
+          "title": "Seven Samurai (The Magnificent Seven) (Shichinin no samurai)",
+          "year": 1954,
+          "genres": [
+            "Action",
+            "Drama"
+          ]
+        },
+        {
+          "movieId": "3591",
+          "title": "Mr. Mom",
+          "year": 1983,
+          "genres": [
+            "Comedy",
+            "Drama"
+          ]
+        }
+      ],
+      "audienceDefinition": "Users who rated all three War seeds at least 4.0 stars."
+    },
+    {
+      "id": "PX-024",
+      "dataset": "ml-1m",
+      "seeds": [
+        {
+          "movieId": "527",
+          "title": "Schindler's List",
+          "year": 1993,
+          "genres": [
+            "Drama",
+            "War"
+          ]
+        },
+        {
+          "movieId": "1225",
+          "title": "Amadeus",
+          "year": 1984,
+          "genres": [
+            "Drama"
+          ]
+        },
+        {
+          "movieId": "3160",
+          "title": "Magnolia",
+          "year": 1999,
+          "genres": [
+            "Drama"
+          ]
+        }
+      ],
+      "options": [
+        {
+          "movieId": "153",
+          "title": "Batman Forever",
+          "year": 1995,
+          "genres": [
+            "Action",
+            "Adventure",
+            "Comedy",
+            "Crime"
+          ]
+        },
+        {
+          "movieId": "2605",
+          "title": "Entrapment",
+          "year": 1999,
+          "genres": [
+            "Crime",
+            "Thriller"
+          ]
+        }
+      ],
+      "audienceDefinition": "Users who rated all three Drama seeds at least 4.0 stars."
+    },
+    {
+      "id": "PX-025",
+      "dataset": "ml-1m",
+      "seeds": [
+        {
+          "movieId": "151",
+          "title": "Rob Roy",
+          "year": 1995,
+          "genres": [
+            "Drama",
+            "Romance",
+            "War"
+          ]
+        },
+        {
+          "movieId": "1262",
+          "title": "Great Escape, The",
+          "year": 1963,
+          "genres": [
+            "Adventure",
+            "War"
+          ]
+        },
+        {
+          "movieId": "3753",
+          "title": "Patriot, The",
+          "year": 2000,
+          "genres": [
+            "Action",
+            "Drama",
+            "War"
+          ]
+        }
+      ],
+      "options": [
+        {
+          "movieId": "1393",
+          "title": "Jerry Maguire",
+          "year": 1996,
+          "genres": [
+            "Drama",
+            "Romance"
+          ]
+        },
+        {
+          "movieId": "21",
+          "title": "Get Shorty",
+          "year": 1995,
+          "genres": [
+            "Action",
+            "Comedy",
+            "Drama"
+          ]
+        }
+      ],
+      "audienceDefinition": "Users who rated all three War seeds at least 4.0 stars."
+    },
+    {
+      "id": "PX-026",
+      "dataset": "ml-1m",
+      "seeds": [
+        {
+          "movieId": "1408",
+          "title": "Last of the Mohicans, The",
+          "year": 1992,
+          "genres": [
+            "Action",
+            "Romance",
+            "War"
+          ]
+        },
+        {
+          "movieId": "1569",
+          "title": "My Best Friend's Wedding",
+          "year": 1997,
+          "genres": [
+            "Comedy",
+            "Romance"
+          ]
+        },
+        {
+          "movieId": "1777",
+          "title": "Wedding Singer, The",
+          "year": 1998,
+          "genres": [
+            "Comedy",
+            "Romance"
+          ]
+        }
+      ],
+      "options": [
+        {
+          "movieId": "3175",
+          "title": "Galaxy Quest",
+          "year": 1999,
+          "genres": [
+            "Adventure",
+            "Comedy",
+            "Sci-Fi"
+          ]
+        },
+        {
+          "movieId": "2791",
+          "title": "Airplane!",
+          "year": 1980,
+          "genres": [
+            "Comedy"
+          ]
+        }
+      ],
+      "audienceDefinition": "Users who rated all three Romance seeds at least 4.0 stars."
+    },
+    {
+      "id": "PX-027",
+      "dataset": "ml-1m",
+      "seeds": [
+        {
+          "movieId": "1261",
+          "title": "Evil Dead II (Dead By Dawn)",
+          "year": 1987,
+          "genres": [
+            "Action",
+            "Adventure",
+            "Comedy",
+            "Horror"
+          ]
+        },
+        {
+          "movieId": "1278",
+          "title": "Young Frankenstein",
+          "year": 1974,
+          "genres": [
+            "Comedy",
+            "Horror"
+          ]
+        },
+        {
+          "movieId": "1321",
+          "title": "American Werewolf in London, An",
+          "year": 1981,
+          "genres": [
+            "Horror"
+          ]
+        }
+      ],
+      "options": [
+        {
+          "movieId": "2109",
+          "title": "Jerk, The",
+          "year": 1979,
+          "genres": [
+            "Comedy"
+          ]
+        },
+        {
+          "movieId": "466",
+          "title": "Hot Shots! Part Deux",
+          "year": 1993,
+          "genres": [
+            "Action",
+            "Comedy",
+            "War"
+          ]
+        }
+      ],
+      "audienceDefinition": "Users who rated all three Horror seeds at least 4.0 stars."
+    },
+    {
+      "id": "PX-028",
+      "dataset": "ml-1m",
+      "seeds": [
+        {
+          "movieId": "110",
+          "title": "Braveheart",
+          "year": 1995,
+          "genres": [
+            "Action",
+            "Drama",
+            "War"
+          ]
+        },
+        {
+          "movieId": "266",
+          "title": "Legends of the Fall",
+          "year": 1994,
+          "genres": [
+            "Drama",
+            "Romance",
+            "War",
+            "Western"
+          ]
+        },
+        {
+          "movieId": "969",
+          "title": "African Queen, The",
+          "year": 1951,
+          "genres": [
+            "Action",
+            "Adventure",
+            "Romance",
+            "War"
+          ]
+        }
+      ],
+      "options": [
+        {
+          "movieId": "1372",
+          "title": "Star Trek VI: The Undiscovered Country",
+          "year": 1991,
+          "genres": [
+            "Action",
+            "Adventure",
+            "Sci-Fi"
+          ]
+        },
+        {
+          "movieId": "1233",
+          "title": "Boat, The (Das Boot)",
+          "year": 1981,
+          "genres": [
+            "Action",
+            "Drama",
+            "War"
+          ]
+        }
+      ],
+      "audienceDefinition": "Users who rated all three War seeds at least 4.0 stars."
+    },
+    {
+      "id": "PX-029",
+      "dataset": "ml-1m",
+      "seeds": [
+        {
+          "movieId": "912",
+          "title": "Casablanca",
+          "year": 1942,
+          "genres": [
+            "Drama",
+            "Romance",
+            "War"
+          ]
+        },
+        {
+          "movieId": "1090",
+          "title": "Platoon",
+          "year": 1986,
+          "genres": [
+            "Drama",
+            "War"
+          ]
+        },
+        {
+          "movieId": "1196",
+          "title": "Star Wars: Episode V - The Empire Strikes Back",
+          "year": 1980,
+          "genres": [
+            "Action",
+            "Adventure",
+            "Drama",
+            "Sci-Fi",
+            "War"
+          ]
+        }
+      ],
+      "options": [
+        {
+          "movieId": "3257",
+          "title": "Bodyguard, The",
+          "year": 1992,
+          "genres": [
+            "Action",
+            "Drama",
+            "Romance",
+            "Thriller"
+          ]
+        },
+        {
+          "movieId": "1805",
+          "title": "Wild Things",
+          "year": 1998,
+          "genres": [
+            "Crime",
+            "Drama",
+            "Mystery",
+            "Thriller"
+          ]
+        }
+      ],
+      "audienceDefinition": "Users who rated all three Drama seeds at least 4.0 stars."
+    },
+    {
+      "id": "PX-030",
+      "dataset": "ml-1m",
+      "seeds": [
+        {
+          "movieId": "1917",
+          "title": "Armageddon",
+          "year": 1998,
+          "genres": [
+            "Action",
+            "Adventure",
+            "Sci-Fi",
+            "Thriller"
+          ]
+        },
+        {
+          "movieId": "2628",
+          "title": "Star Wars: Episode I - The Phantom Menace",
+          "year": 1999,
+          "genres": [
+            "Action",
+            "Adventure",
+            "Fantasy",
+            "Sci-Fi"
+          ]
+        },
+        {
+          "movieId": "2699",
+          "title": "Arachnophobia",
+          "year": 1990,
+          "genres": [
+            "Action",
+            "Comedy",
+            "Sci-Fi",
+            "Thriller"
+          ]
+        }
+      ],
+      "options": [
+        {
+          "movieId": "3499",
+          "title": "Misery",
+          "year": 1990,
+          "genres": [
+            "Horror"
+          ]
+        },
+        {
+          "movieId": "1997",
+          "title": "Exorcist, The",
+          "year": 1973,
+          "genres": [
+            "Horror"
+          ]
+        }
+      ],
+      "audienceDefinition": "Users who rated all three Sci-Fi seeds at least 4.0 stars."
+    },
+    {
+      "id": "PX-031",
+      "dataset": "ml-1m",
+      "seeds": [
+        {
+          "movieId": "541",
+          "title": "Blade Runner",
+          "year": 1982,
+          "genres": [
+            "Film-Noir",
+            "Sci-Fi"
+          ]
+        },
+        {
+          "movieId": "1248",
+          "title": "Touch of Evil",
+          "year": 1958,
+          "genres": [
+            "Crime",
+            "Film-Noir",
+            "Thriller"
+          ]
+        },
+        {
+          "movieId": "3435",
+          "title": "Double Indemnity",
+          "year": 1944,
+          "genres": [
+            "Crime",
+            "Film-Noir"
+          ]
+        }
+      ],
+      "options": [
+        {
+          "movieId": "3683",
+          "title": "Blood Simple",
+          "year": 1984,
+          "genres": [
+            "Drama",
+            "Film-Noir"
+          ]
+        },
+        {
+          "movieId": "1711",
+          "title": "Midnight in the Garden of Good and Evil",
+          "year": 1997,
+          "genres": [
+            "Comedy",
+            "Crime",
+            "Drama",
+            "Mystery"
+          ]
+        }
+      ],
+      "audienceDefinition": "Users who rated all three Film-Noir seeds at least 4.0 stars."
+    },
+    {
+      "id": "PX-032",
+      "dataset": "ml-1m",
+      "seeds": [
+        {
+          "movieId": "1035",
+          "title": "Sound of Music, The",
+          "year": 1965,
+          "genres": [
+            "Musical"
+          ]
+        },
+        {
+          "movieId": "1288",
+          "title": "This Is Spinal Tap",
+          "year": 1984,
+          "genres": [
+            "Comedy",
+            "Drama",
+            "Musical"
+          ]
+        },
+        {
+          "movieId": "2657",
+          "title": "Rocky Horror Picture Show, The",
+          "year": 1975,
+          "genres": [
+            "Comedy",
+            "Horror",
+            "Musical",
+            "Sci-Fi"
+          ]
+        }
+      ],
+      "options": [
+        {
+          "movieId": "440",
+          "title": "Dave",
+          "year": 1993,
+          "genres": [
+            "Comedy",
+            "Romance"
+          ]
+        },
+        {
+          "movieId": "788",
+          "title": "Nutty Professor, The",
+          "year": 1996,
+          "genres": [
+            "Comedy",
+            "Fantasy",
+            "Romance",
+            "Sci-Fi"
+          ]
+        }
+      ],
+      "audienceDefinition": "Users who rated all three Musical seeds at least 4.0 stars."
+    },
+    {
+      "id": "PX-033",
+      "dataset": "ml-1m",
+      "seeds": [
+        {
+          "movieId": "457",
+          "title": "Fugitive, The",
+          "year": 1993,
+          "genres": [
+            "Action",
+            "Thriller"
+          ]
+        },
+        {
+          "movieId": "1876",
+          "title": "Deep Impact",
+          "year": 1998,
+          "genres": [
+            "Action",
+            "Drama",
+            "Sci-Fi",
+            "Thriller"
+          ]
+        },
+        {
+          "movieId": "2617",
+          "title": "Mummy, The",
+          "year": 1999,
+          "genres": [
+            "Action",
+            "Adventure",
+            "Horror",
+            "Thriller"
+          ]
+        }
+      ],
+      "options": [
+        {
+          "movieId": "2001",
+          "title": "Lethal Weapon 2",
+          "year": 1989,
+          "genres": [
+            "Action",
+            "Comedy",
+            "Crime",
+            "Drama"
+          ]
+        },
+        {
+          "movieId": "1028",
+          "title": "Mary Poppins",
+          "year": 1964,
+          "genres": [
+            "Children's",
+            "Comedy",
+            "Musical"
+          ]
+        }
+      ],
+      "audienceDefinition": "Users who rated all three Thriller seeds at least 4.0 stars."
+    },
+    {
+      "id": "PX-034",
+      "dataset": "ml-1m",
+      "seeds": [
+        {
+          "movieId": "1179",
+          "title": "Grifters, The",
+          "year": 1990,
+          "genres": [
+            "Crime",
+            "Drama",
+            "Film-Noir"
+          ]
+        },
+        {
+          "movieId": "2000",
+          "title": "Lethal Weapon",
+          "year": 1987,
+          "genres": [
+            "Action",
+            "Comedy",
+            "Crime",
+            "Drama"
+          ]
+        },
+        {
+          "movieId": "2194",
+          "title": "Untouchables, The",
+          "year": 1987,
+          "genres": [
+            "Action",
+            "Crime",
+            "Drama"
+          ]
+        }
+      ],
+      "options": [
+        {
+          "movieId": "16",
+          "title": "Casino",
+          "year": 1995,
+          "genres": [
+            "Drama",
+            "Thriller"
+          ]
+        },
+        {
+          "movieId": "543",
+          "title": "So I Married an Axe Murderer",
+          "year": 1993,
+          "genres": [
+            "Comedy",
+            "Romance",
+            "Thriller"
+          ]
+        }
+      ],
+      "audienceDefinition": "Users who rated all three Crime seeds at least 4.0 stars."
+    },
+    {
+      "id": "PX-035",
+      "dataset": "ml-1m",
+      "seeds": [
+        {
+          "movieId": "594",
+          "title": "Snow White and the Seven Dwarfs",
+          "year": 1937,
+          "genres": [
+            "Animation",
+            "Children's",
+            "Musical"
+          ]
+        },
+        {
+          "movieId": "2096",
+          "title": "Sleeping Beauty",
+          "year": 1959,
+          "genres": [
+            "Animation",
+            "Children's",
+            "Musical"
+          ]
+        },
+        {
+          "movieId": "2394",
+          "title": "Prince of Egypt, The",
+          "year": 1998,
+          "genres": [
+            "Animation",
+            "Musical"
+          ]
+        }
+      ],
+      "options": [
+        {
+          "movieId": "597",
+          "title": "Pretty Woman",
+          "year": 1990,
+          "genres": [
+            "Comedy",
+            "Romance"
+          ]
+        },
+        {
+          "movieId": "1674",
+          "title": "Witness",
+          "year": 1985,
+          "genres": [
+            "Drama",
+            "Romance",
+            "Thriller"
+          ]
+        }
+      ],
+      "audienceDefinition": "Users who rated all three Musical seeds at least 4.0 stars."
+    },
+    {
+      "id": "PX-036",
+      "dataset": "ml-1m",
+      "seeds": [
+        {
+          "movieId": "551",
+          "title": "Nightmare Before Christmas, The",
+          "year": 1993,
+          "genres": [
+            "Children's",
+            "Comedy",
+            "Musical"
+          ]
+        },
+        {
+          "movieId": "899",
+          "title": "Singin' in the Rain",
+          "year": 1952,
+          "genres": [
+            "Musical",
+            "Romance"
+          ]
+        },
+        {
+          "movieId": "1220",
+          "title": "Blues Brothers, The",
+          "year": 1980,
+          "genres": [
+            "Action",
+            "Comedy",
+            "Musical"
+          ]
+        }
+      ],
+      "options": [
+        {
+          "movieId": "3701",
+          "title": "Alien Nation",
+          "year": 1988,
+          "genres": [
+            "Crime",
+            "Drama",
+            "Sci-Fi"
+          ]
+        },
+        {
+          "movieId": "2917",
+          "title": "Body Heat",
+          "year": 1981,
+          "genres": [
+            "Crime",
+            "Thriller"
+          ]
+        }
+      ],
+      "audienceDefinition": "Users who rated all three Musical seeds at least 4.0 stars."
+    },
+    {
+      "id": "PX-037",
+      "dataset": "ml-1m",
+      "seeds": [
+        {
+          "movieId": "150",
+          "title": "Apollo 13",
+          "year": 1995,
+          "genres": [
+            "Drama"
+          ]
+        },
+        {
+          "movieId": "1090",
+          "title": "Platoon",
+          "year": 1986,
+          "genres": [
+            "Drama",
+            "War"
+          ]
+        },
+        {
+          "movieId": "1584",
+          "title": "Contact",
+          "year": 1997,
+          "genres": [
+            "Drama",
+            "Sci-Fi"
+          ]
+        }
+      ],
+      "options": [
+        {
+          "movieId": "2078",
+          "title": "Jungle Book, The",
+          "year": 1967,
+          "genres": [
+            "Animation",
+            "Children's",
+            "Comedy",
+            "Musical"
+          ]
+        },
+        {
+          "movieId": "1883",
+          "title": "Bulworth",
+          "year": 1998,
+          "genres": [
+            "Comedy"
+          ]
+        }
+      ],
+      "audienceDefinition": "Users who rated all three Drama seeds at least 4.0 stars."
+    },
+    {
+      "id": "PX-038",
+      "dataset": "ml-1m",
+      "seeds": [
+        {
+          "movieId": "377",
+          "title": "Speed",
+          "year": 1994,
+          "genres": [
+            "Action",
+            "Romance",
+            "Thriller"
+          ]
+        },
+        {
+          "movieId": "1198",
+          "title": "Raiders of the Lost Ark",
+          "year": 1981,
+          "genres": [
+            "Action",
+            "Adventure"
+          ]
+        },
+        {
+          "movieId": "1210",
+          "title": "Star Wars: Episode VI - Return of the Jedi",
+          "year": 1983,
+          "genres": [
+            "Action",
+            "Adventure",
+            "Romance",
+            "Sci-Fi",
+            "War"
+          ]
+        }
+      ],
+      "options": [
+        {
+          "movieId": "1250",
+          "title": "Bridge on the River Kwai, The",
+          "year": 1957,
+          "genres": [
+            "Drama",
+            "War"
+          ]
+        },
+        {
+          "movieId": "2336",
+          "title": "Elizabeth",
+          "year": 1998,
+          "genres": [
+            "Drama"
+          ]
+        }
+      ],
+      "audienceDefinition": "Users who rated all three Action seeds at least 4.0 stars."
+    },
+    {
+      "id": "PX-039",
+      "dataset": "ml-1m",
+      "seeds": [
+        {
+          "movieId": "1183",
+          "title": "English Patient, The",
+          "year": 1996,
+          "genres": [
+            "Drama",
+            "Romance",
+            "War"
+          ]
+        },
+        {
+          "movieId": "1233",
+          "title": "Boat, The (Das Boot)",
+          "year": 1981,
+          "genres": [
+            "Action",
+            "Drama",
+            "War"
+          ]
+        },
+        {
+          "movieId": "1294",
+          "title": "M*A*S*H",
+          "year": 1970,
+          "genres": [
+            "Comedy",
+            "War"
+          ]
+        }
+      ],
+      "options": [
+        {
+          "movieId": "3108",
+          "title": "Fisher King, The",
+          "year": 1991,
+          "genres": [
+            "Comedy",
+            "Drama",
+            "Romance"
+          ]
+        },
+        {
+          "movieId": "1215",
+          "title": "Army of Darkness",
+          "year": 1993,
+          "genres": [
+            "Action",
+            "Adventure",
+            "Comedy",
+            "Horror",
+            "Sci-Fi"
+          ]
+        }
+      ],
+      "audienceDefinition": "Users who rated all three War seeds at least 4.0 stars."
+    },
+    {
+      "id": "PX-040",
+      "dataset": "ml-1m",
+      "seeds": [
+        {
+          "movieId": "1213",
+          "title": "GoodFellas",
+          "year": 1990,
+          "genres": [
+            "Crime",
+            "Drama"
+          ]
+        },
+        {
+          "movieId": "2391",
+          "title": "Simple Plan, A",
+          "year": 1998,
+          "genres": [
+            "Crime",
+            "Thriller"
+          ]
+        },
+        {
+          "movieId": "2580",
+          "title": "Go",
+          "year": 1999,
+          "genres": [
+            "Crime"
+          ]
+        }
+      ],
+      "options": [
+        {
+          "movieId": "36",
+          "title": "Dead Man Walking",
+          "year": 1995,
+          "genres": [
+            "Drama"
+          ]
+        },
+        {
+          "movieId": "1207",
+          "title": "To Kill a Mockingbird",
+          "year": 1962,
+          "genres": [
+            "Drama"
+          ]
+        }
+      ],
+      "audienceDefinition": "Users who rated all three Crime seeds at least 4.0 stars."
+    }
+  ]
+}

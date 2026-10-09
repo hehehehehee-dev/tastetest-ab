@@ -36,7 +36,7 @@ The receipt includes the options, audience seeds, three picks/confidences/source
 
 Qloo and Agent currently both use the existing `scoreOption` concept/tag heuristic, so their picks coincide; they are not independent predictors. Confidence is a declared heuristic separation level (40/65/80), not a calibrated correctness probability. Too-close scores record an abstention. LLM confidence is self-reported. This benchmark cannot establish a benefit from a distinct combined agent until such a predictor is separately defined.
 
-The tally shows **not enough cases yet** until 20 eligible closed cases exist. An eligible case needs at least 20 votes, a non-tied outcome, unpublished Track B context, verified audience tastes and non-mock signals. Low-vote cases are **indicative only**, and public/famous cases and mock runs remain excluded even with many votes. When ready, counts use denominators, such as `Agent 14/20`; this reporting floor alone does not prove superiority. Per-case confidence/correctness pairs are preserved for later calibration; no calibration claim is made now.
+The tally shows **not enough cases yet** until 20 eligible closed cases exist. An eligible case needs at least 20 votes, a non-tied outcome, unpublished Track B context, verified audience tastes and non-mock signals. Low-vote cases are **indicative only**, and public/famous cases and mock runs remain excluded even with many votes. Per-branch counts are always visible with denominators, such as `Agent 14/20`; below 20 eligible cases they carry the **not enough cases yet** label. This reporting floor alone does not prove superiority. Per-case confidence/correctness pairs are preserved for later calibration; no calibration claim is made now.
 
 For externally obtained predictions, enable **Record external predictions manually**, enter all three original answers and the original timestamp. The current server freeze timestamp remains distinct from this owner-declared timestamp. No independent verification of externally recorded timing is claimed. If a Qloo-only answer is missing, keep the case in draft; never substitute an AI + Qloo answer for it. TB-001 remains pending in `TRACK-B-LEDGER.md` for that reason. No real outcomes or missing predictions have been invented.
 
@@ -45,6 +45,10 @@ For externally obtained predictions, enable **Record external predictions manual
 Receipts use conditional writes in private server storage. Their hash is useful for checking a retained receipt; it is not a signed external timestamp or protection against a server administrator rewriting storage. Votes identify browsers, not verified people. Audience verification and unpublished status are owner declarations, not independently audited facts.
 
 Public datasets live under **workflow rehearsal**, separate from Track B. Cookie Cats commit → reveal behaviour is unchanged. See `BENCHMARK-PROTOCOL-V2.md`, `TRACK-B-CASE-TEMPLATE.md` and `TRACK-B-LEDGER.md` for the supplied protocol and case template.
+
+## MovieLens proxy benchmark
+
+A separate **Proxy benchmark — real preference data** section at /benchmark uses freeze → reveal for historical movie preferences. It never enters Track B totals. LLM-only remains manual; mock and real-Qloo counts are separate. See [the proxy protocol](PROXY-BENCHMARK.md) for deterministic generation, hidden server-only outcomes, admin-only seeding, dataset-choice constraints and interpretation limits.
 
 ## Validation
 

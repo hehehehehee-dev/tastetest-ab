@@ -31,6 +31,7 @@ import CaseStudy from "./CaseStudy.jsx";
 import AiComparison from "./AiComparison.jsx";
 import Benchmark from "./Benchmark.jsx";
 import FreezePanel from "./FreezePanel.jsx";
+import ProxyCase from "./ProxyBenchmark.jsx";
 import { predictionConfidence } from "../shared/confidence.mjs";
 
 const categoryIcons = {
@@ -1369,6 +1370,9 @@ function App() {
   }, []);
   const route = useRoute();
   const match = route.match(/^\/(test|poll)\/([a-f0-9-]{36})$/);
+  const proxyMatch = route.match(
+    /^\/benchmark\/proxy\/(?:run\/([a-f0-9-]{36})|(PX-\d{3}))$/,
+  );
   return (
     <>
       <Header mode={config.mode} configured={config.configured} />
@@ -1377,6 +1381,8 @@ function App() {
         "/case-study/cookie-cats",
       ].includes(route) ? (
         <CaseStudy />
+      ) : proxyMatch ? (
+        <ProxyCase key={route} runId={proxyMatch[1]} caseId={proxyMatch[2]} />
       ) : route === "/benchmark" ? (
         <Benchmark />
       ) : ["/create", "/benchmark/new"].includes(route) ? (

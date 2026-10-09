@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { ProxySection } from "./ProxyBenchmark.jsx";
 export async function benchmarkApi(path, options = {}) {
   const response = await fetch(`/api${path}`, {
     ...options,
@@ -88,14 +89,16 @@ export default function Benchmark() {
       <section className="panel benchmark-summary">
         <h2>Running tally</h2>
         <p className="benchmark-tally">
-          {data?.tally.ready
-            ? Object.entries(data.tally.counts)
-                .map(
-                  ([key, count]) =>
-                    `${labels[key]} ${count.correct}/${count.total}`,
-                )
-                .join(" · ")
-            : "not enough cases yet"}
+          {data?.tally.message || "not enough cases yet"}
+        </p>
+        <p className="track-b-counts">
+          {data &&
+            Object.entries(data.tally.counts)
+              .map(
+                ([key, count]) =>
+                  `${key === "llm" ? "LLM-only" : labels[key]} ${count.correct}/${count.total}`,
+              )
+              .join(" · ")}
         </p>
         <p>
           At least 20 eligible closed cases; at least 20 votes per case. Mock
@@ -182,6 +185,7 @@ export default function Benchmark() {
         </div>
         {data && !data.rows.length && <p>No cases have closed yet.</p>}
       </section>
+      <ProxySection />
       <section className="panel">
         <div className="eyebrow">WORKFLOW REHEARSAL</div>
         <h2>Public cases stay separate.</h2>

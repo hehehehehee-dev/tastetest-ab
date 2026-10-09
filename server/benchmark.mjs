@@ -79,8 +79,14 @@ export function makeFreeze(test, body, now = new Date().toISOString()) {
   const manual = body.mode === "manual";
   if (body.mode && !["manual", "mock", "real-qloo"].includes(body.mode))
     fail("Unsupported freeze mode.");
-  if (body.beforeOutcome !== true)
-    fail("Confirm that no outcome or vote has been collected yet.");
+  if (
+    test.proxyCaseId ? body.beforeReveal !== true : body.beforeOutcome !== true
+  )
+    fail(
+      test.proxyCaseId
+        ? "Confirm that this segment's outcome has not been viewed yet."
+        : "Confirm that no outcome or vote has been collected yet.",
+    );
   if (
     manual &&
     (!body.originalRecordedAt ||
@@ -117,7 +123,15 @@ export function makeFreeze(test, body, now = new Date().toISOString()) {
       })),
     },
     branches: { llm, qloo, agent },
-    beforeOutcomeConfirmed: true,
+    beforeOutcomeConfirmed: !test.proxyCaseId,
+    ...(test.proxyCaseId
+      ? {
+          proxyCaseId: test.proxyCaseId,
+          beforeRevealConfirmed: true,
+          timing:
+            "Retrospective proxy: ratings pre-exist this freeze. Only reveal occurs after predictions are sealed.",
+        }
+      : {}),
     originalRecordedAt: manual
       ? new Date(body.originalRecordedAt).toISOString()
       : null,
@@ -189,17 +203,14 @@ export function benchmarkTally(rows) {
     message: ready
       ? "Counts over evaluable unpublished cases"
       : "not enough cases yet",
-    counts: ready
-      ? Object.fromEntries(
-          ["llm", "qloo", "agent"].map((key) => [
-            key,
-            {
-              correct: eligible.filter((r) => r.result.grades[key] === "✓")
-                .length,
-              total: eligible.length,
-            },
-          ]),
-        )
-      : null,
+    counts: Object.fromEntries(
+      ["llm", "qloo", "agent"].map((key) => [
+        key,
+        {
+          correct: eligible.filter((r) => r.result.grades[key] === "✓").length,
+          total: eligible.length,
+        },
+      ]),
+    ),
   };
 }

@@ -20,6 +20,7 @@ import {
   benchmarkTally,
 } from "./benchmark.mjs";
 import { createComparison, scoreComparison } from "./aiComparison.mjs";
+import { createProxyApi } from "./proxy.mjs";
 const fail = (message, status = 400) => {
   throw Object.assign(new Error(message), { status });
 };
@@ -172,7 +173,11 @@ function verdict(test, counts) {
           : recommendation,
   };
 }
-export function createApi(store, { adapter = qlooAdapter, aiPredictor } = {}) {
+export function createApi(
+  store,
+  { adapter = qlooAdapter, aiPredictor, proxyOptions = {} } = {},
+) {
+  const proxyApi = createProxyApi(store, { adapter, ...proxyOptions });
   const owns = (test, request) =>
     !!test.ownerHash &&
     timingSafeEqual(
@@ -254,7 +259,7 @@ export function createApi(store, { adapter = qlooAdapter, aiPredictor } = {}) {
   }
   async function readBody(request) {
     const raw = await request.text();
-    if (raw.length > 30000) fail("This request is too large.", 413);
+    if (raw.length > 100000) fail("This request is too large.", 413);
     try {
       return JSON.parse(raw);
     } catch {
@@ -265,6 +270,9 @@ export function createApi(store, { adapter = qlooAdapter, aiPredictor } = {}) {
     try {
       const url = new URL(request.url);
       const pathname = url.pathname.replace(/\/$/, "");
+      const proxyResponse = await proxyApi(request, pathname, readBody);
+      if (proxyResponse)
+        return json(proxyResponse.data, proxyResponse.status || 200);
       if (pathname === "/api/config" && request.method === "GET")
         return json({
           mode: isMockMode() ? "mock" : "real",
