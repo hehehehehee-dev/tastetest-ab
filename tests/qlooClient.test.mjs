@@ -93,6 +93,35 @@ test("missing key, mock IDs and unapproved origin never send a credential", asyn
   );
   assert.equal(calls, 0);
 });
+
+test("candidate affinity sends exact result IDs with seed IDs and no rating outcomes", async () => {
+  const candidate = "00000000-0000-4000-8000-000000000002";
+  const client = createQlooClient({
+    key: "UNIT-TEST-NOT-A-CREDENTIAL",
+    fetchImpl: async (url) => {
+      assert.equal(url.searchParams.get("filter.results.entities"), candidate);
+      assert.equal(url.searchParams.get("signal.interests.entities"), id);
+      assert.equal(url.searchParams.get("take"), "1");
+      assert.equal(url.searchParams.get("feature.explainability"), "true");
+      assert.equal(
+        [...url.searchParams.keys()].some((k) => /rating|outcome/.test(k)),
+        false,
+      );
+      return json({
+        results: [
+          { ...entity, entity_id: candidate, query: { affinity: 0.73 } },
+        ],
+      });
+    },
+  });
+  const result = await client.getInsights(
+    [id],
+    ["urn:entity:movie"],
+    [candidate],
+  );
+  assert.equal(result.results.entities[0].query.affinity, 0.73);
+  assert.deepEqual(result.candidateIds, [candidate]);
+});
 test("authentication, quota and schema failures are explicit, sanitized, with no fallback/retry", async () => {
   for (const [status, pattern] of [
     [401, /credential/],

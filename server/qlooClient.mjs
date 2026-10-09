@@ -166,10 +166,15 @@ export function createQlooClient({
         );
       return entities;
     },
-    async getInsights(ids, targetTypes = [typeUrns.Dining]) {
+    async getInsights(ids, targetTypes = [typeUrns.Dining], candidateIds = []) {
       if (!ids.length || ids.some((id) => !uuid.test(id)))
         fail("Real Insights cannot use mock IDs.", 400);
       const types = [...new Set(targetTypes)];
+      if (
+        candidateIds.length &&
+        (candidateIds.length > 2 || candidateIds.some((id) => !uuid.test(id)))
+      )
+        fail("Candidate affinity needs one or two real Qloo entity IDs.", 400);
       if (types.some((t) => !Object.values(typeUrns).includes(t)))
         fail("Unsupported Insights target type.", 400);
       // One supported type per request. Small result sets, bounded cache, no blind retries.
@@ -178,8 +183,11 @@ export function createQlooClient({
           request("/v2/insights", {
             "filter.type": type,
             "signal.interests.entities": ids.join(","),
+            "filter.results.entities": candidateIds.length
+              ? candidateIds.join(",")
+              : undefined,
             "feature.explainability": true,
-            take: 5,
+            take: candidateIds.length || 5,
           }),
         ),
       );
@@ -202,6 +210,9 @@ export function createQlooClient({
         mode: "real",
         fetchedAt: responses.map((b) => b._fetchedAt).sort()[0],
         targetTypes: types,
+        ...(candidateIds.length
+          ? { candidateIds, endpoint: "/v2/insights" }
+          : {}),
       };
     },
   };

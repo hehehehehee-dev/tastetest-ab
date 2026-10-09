@@ -246,6 +246,12 @@ test("proxy tally separates mock/real runs and counts one first freeze per case/
     { ...row, id: "c", mode: "mock" },
   ]);
   assert.deepEqual(result.real.counts.llm, { correct: 0, total: 1 });
+  assert.deepEqual(result.real.decisionCounts.agent, {
+    correct: 0,
+    total: 0,
+    abstained: 1,
+    cases: 1,
+  });
   assert.equal(result.mock.cases, 1);
   assert.equal(result.attempts, 3);
 });
@@ -270,19 +276,48 @@ test("real-shaped movie resolution uses the existing adapter and never receives 
         },
       };
     },
-    getInsights: async (ids, types) => {
+    getInsights: async (ids, types, candidateIds) => {
       assert.equal(ids.length, 3);
       assert.deepEqual(types, ["urn:entity:movie"]);
-      return { mode: "real", results: { entities: [] } };
+      assert.equal(candidateIds.length, 2);
+      contexts.push({ ids, candidateIds });
+      return {
+        mode: "real",
+        fetchedAt: "2026-10-09T12:00:00Z",
+        results: {
+          entities: candidateIds.map((entity_id, i) => ({
+            entity_id,
+            name: `Candidate ${i}`,
+            query: {
+              affinity: i ? 0.2 : 0.8,
+              explainability: { fixture: true },
+            },
+          })),
+        },
+      };
     },
     scoreOption: async (option, profile) => {
-      contexts.push({ option, profile });
-      return { score: 20, components: { affinity: 10 } };
+      throw Error("Direct movie affinity must not call lexical scoring.");
     },
   };
   const result = await predictProxy(input, adapter, false);
   assert.equal(searches, 5);
   assert.equal(result.mode, "real");
-  assert.equal(contexts.length, 2);
+  assert.equal(contexts.length, 1);
+  assert.deepEqual(
+    result.prediction.map((p) => p.score),
+    [80, 20],
+  );
+  assert.equal(result.provenance.affinities[0].affinity, 0.8);
+  assert.equal(result.provenance.fetchedAt, "2026-10-09T12:00:00Z");
+  assert.equal(result.scoringVersion, "qloo-candidate-affinity-v1");
   assert.equal(JSON.stringify(contexts).includes('"mean"'), false);
+  adapter.getInsights = async () => ({
+    mode: "real",
+    results: { entities: [] },
+  });
+  await assert.rejects(
+    () => predictProxy(input, adapter, false),
+    /No substitute score/,
+  );
 });

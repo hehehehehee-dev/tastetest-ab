@@ -7,9 +7,18 @@ export const proxyHonesty =
 function Counts({ value }) {
   return (
     <p>
-      {Object.entries(value.counts)
+      {Object.entries(value.decisionCounts || value.counts)
         .map(([key, count]) => `${labels[key]} ${count.correct}/${count.total}`)
         .join(" · ")}
+      {value.decisionCounts && (
+        <>
+          <br />
+          Abstentions:{" "}
+          {Object.entries(value.decisionCounts)
+            .map(([key, c]) => `${labels[key]} ${c.abstained}/${c.cases}`)
+            .join(" · ")}
+        </>
+      )}
     </p>
   );
 }
@@ -65,6 +74,18 @@ export function ProxySection() {
       )}
       {data && (
         <>
+          <p>
+            Correct / declared A-or-B picks; abstentions shown separately over
+            all completed cases. Legacy locked runs retain their original
+            scoring method.
+          </p>
+          {data.tally.methods?.length > 0 && (
+            <p>
+              Scoring methods in these counts: {data.tally.methods.join(" · ")}.
+              Counts across different methods do not establish the accuracy of
+              one method.
+            </p>
+          )}
           <p>
             {data.cases.length} cases ·{" "}
             {data.manifest?.dataset || "dataset not generated"} ·{" "}
@@ -284,7 +305,9 @@ export default function ProxyCase({ caseId, runId }) {
             <p>
               {run.mode === "mock"
                 ? "Mock scoring — synthetic Qloo-style signals, workflow only."
-                : "Real Qloo signals · local concept/tag heuristic."}
+                : run.scoringVersion === "qloo-candidate-affinity-v1"
+                  ? "Real Qloo · direct candidate affinity."
+                  : "Legacy run · local concept/tag heuristic (unchanged)."}
             </p>
             <p>{run.scoringNote}</p>
             {run.freeze ? (
@@ -295,6 +318,38 @@ export default function ProxyCase({ caseId, runId }) {
                 />
                 <p className="receipt-hash">SHA-256 {run.freeze.sha256}</p>
                 <p>{run.freeze.payload.timing}</p>
+                {run.freeze.payload.provenance?.source === "Qloo API" && (
+                  <details className="qloo-proof">
+                    <summary>Qloo evidence & score calculation</summary>
+                    <p>
+                      Fetched: {run.freeze.payload.provenance.fetchedAt} · GET{" "}
+                      {run.freeze.payload.provenance.endpoint}
+                    </p>
+                    <p>{run.freeze.payload.provenance.mapping}</p>
+                    <p>
+                      signal.interests.entities:{" "}
+                      {run.freeze.payload.provenance.seedEntityIds.join(", ")}
+                    </p>
+                    <p>
+                      filter.results.entities:{" "}
+                      {run.freeze.payload.provenance.candidateEntityIds.join(
+                        ", ",
+                      )}
+                    </p>
+                    {run.freeze.payload.provenance.affinities.map((e, i) => (
+                      <p key={e.entityId}>
+                        Option {i ? "B" : "A"}: {e.name} · affinity{" "}
+                        {e.affinity.toFixed(6)} ×100 ={" "}
+                        {(e.affinity * 100).toFixed(3)} fit points · ID{" "}
+                        {e.entityId}
+                      </p>
+                    ))}
+                    <p>
+                      Evidence is included in the frozen receipt hash. No
+                      MovieLens ratings or winner were sent to Qloo.
+                    </p>
+                  </details>
+                )}
               </>
             ) : isOwner ? (
               <form

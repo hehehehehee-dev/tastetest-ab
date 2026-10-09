@@ -197,7 +197,7 @@ function Header({ mode, configured }) {
                 ? "Qloo status unavailable"
                 : mode === "real"
                   ? configured
-                    ? "Qloo API enabled"
+                    ? "Server: Qloo API ready"
                     : "Qloo key not configured"
                   : "Mock mode — Qloo not connected"}
           </span>

@@ -21,6 +21,7 @@ import {
 } from "./benchmark.mjs";
 import { createComparison, scoreComparison } from "./aiComparison.mjs";
 import { createProxyApi } from "./proxy.mjs";
+import { pendingTrackB, ledgerCsv } from "./benchmarkLedger.mjs";
 const fail = (message, status = 400) => {
   throw Object.assign(new Error(message), { status });
 };
@@ -283,7 +284,10 @@ export function createApi(
             label: "LLM-only (manual paste)",
           },
         });
-      if (pathname === "/api/benchmark" && request.method === "GET") {
+      if (
+        ["/api/benchmark", "/api/benchmark/export.csv"].includes(pathname) &&
+        request.method === "GET"
+      ) {
         const rows = (
           await Promise.all(
             (await store.list("benchmark-results/")).map((key) =>
@@ -291,7 +295,73 @@ export function createApi(
             ),
           )
         ).filter(Boolean);
-        return json({ rows, tally: benchmarkTally(rows) });
+        const enriched = await Promise.all(
+          rows.map(async (row) => {
+            const freeze = await store.get(`freezes/${row.id}`);
+            const p = freeze?.payload;
+            return {
+              ...row,
+              context: p
+                ? [p.metadata.business, p.metadata.decision]
+                    .filter(Boolean)
+                    .join(" · ")
+                : "",
+              seeds: p?.audience.seeds || [],
+              originalRecordedAt: p?.originalRecordedAt || null,
+            };
+          }),
+        );
+        const openCases = (
+          await Promise.all(
+            (await store.list("tests/")).map(async (key) => {
+              const test = await store.get(key);
+              if (
+                !test ||
+                test.benchmarkMetadata?.track !== "track-b" ||
+                (await store.get(`closed/${test.id}`))
+              )
+                return null;
+              const freeze = await store.get(`freezes/${test.id}`);
+              const metadata =
+                freeze?.payload.metadata || test.benchmarkMetadata;
+              return {
+                id: test.id,
+                caseLabel:
+                  freeze?.payload.caseLabel || metadata.caseLabel || test.title,
+                context: [metadata.business, metadata.decision]
+                  .filter(Boolean)
+                  .join(" · "),
+                seeds: test.seeds.map(({ name }) => ({ name })),
+                frozenAt: freeze?.payload.frozenAt || null,
+                originalRecordedAt: freeze?.payload.originalRecordedAt || null,
+                status: freeze
+                  ? "predictions frozen / awaiting outcome"
+                  : "draft — predictions not frozen",
+              };
+            }),
+          )
+        ).filter(Boolean);
+        const pending = pendingTrackB.filter(
+          (p) =>
+            ![...enriched, ...openCases].some(
+              (r) => r.caseLabel === p.caseLabel,
+            ),
+        );
+        const data = {
+          rows: enriched,
+          openCases,
+          pending,
+          tally: benchmarkTally(rows),
+        };
+        if (pathname.endsWith(".csv"))
+          return new Response(ledgerCsv(data), {
+            headers: {
+              "Content-Type": "text/csv; charset=utf-8",
+              "Content-Disposition": "attachment; filename=track-b-ledger.csv",
+              "Cache-Control": "no-store",
+            },
+          });
+        return json(data);
       }
       if (
         pathname === "/api/historical-case/commit" &&

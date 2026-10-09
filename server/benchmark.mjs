@@ -97,6 +97,11 @@ export function makeFreeze(test, body, now = new Date().toISOString()) {
       "Manual records need a valid original prediction timestamp before recording now.",
     );
   const automatic = heuristicBranch(test.prediction);
+  if (test.scoringVersion === "qloo-candidate-affinity-v1") {
+    automatic.source = "Qloo candidate affinity · v1";
+    automatic.method =
+      "Direct /v2/insights candidate affinity; gap rule <10 abstains";
+  }
   const qloo = manual
     ? validateManual(body.qloo, "Qloo", true)
     : { ...automatic };
@@ -123,6 +128,12 @@ export function makeFreeze(test, body, now = new Date().toISOString()) {
       })),
     },
     branches: { llm, qloo, agent },
+    ...(test.proxyCaseId
+      ? {
+          scoringVersion: test.scoringVersion || "concept-tag-fit-v2",
+          provenance: test.provenance || null,
+        }
+      : {}),
     beforeOutcomeConfirmed: !test.proxyCaseId,
     ...(test.proxyCaseId
       ? {
@@ -137,7 +148,9 @@ export function makeFreeze(test, body, now = new Date().toISOString()) {
       : null,
     note: manual
       ? "External predictions recorded before any outcome, as declared by owner; source/timing are not independently audited."
-      : "Qloo and agent currently use the same local scoreOption heuristic and are not independent predictors.",
+      : test.scoringVersion === "qloo-candidate-affinity-v1"
+        ? "Qloo and Agent share the same direct candidate affinity and abstention rule; not independent predictors."
+        : "Qloo and agent currently use the same local scoreOption heuristic and are not independent predictors.",
     minVotes: 20,
     minCases: 20,
   };
@@ -184,7 +197,7 @@ export function scoreFreeze(freeze, counts) {
     calibration: Object.fromEntries(
       Object.entries(p.branches).map(([key, value]) => [
         key,
-        actual
+        actual && value.pick !== "TIE"
           ? { confidence: value.confidence, correct: value.pick === actual }
           : null,
       ]),
@@ -212,5 +225,21 @@ export function benchmarkTally(rows) {
         },
       ]),
     ),
+    decisionCounts: decisionTally(eligible),
   };
+}
+export function decisionTally(rows) {
+  return Object.fromEntries(
+    ["llm", "qloo", "agent"].map((key) => [
+      key,
+      {
+        correct: rows.filter((r) => r.result.grades[key] === "✓").length,
+        total: rows.filter((r) => ["✓", "✗"].includes(r.result.grades[key]))
+          .length,
+        abstained: rows.filter((r) => r.result.grades[key] === "ABSTAIN")
+          .length,
+        cases: rows.length,
+      },
+    ]),
+  );
 }

@@ -93,13 +93,25 @@ export default function Benchmark() {
         </p>
         <p className="track-b-counts">
           {data &&
-            Object.entries(data.tally.counts)
+            Object.entries(data.tally.decisionCounts || data.tally.counts)
               .map(
                 ([key, count]) =>
                   `${key === "llm" ? "LLM-only" : labels[key]} ${count.correct}/${count.total}`,
               )
               .join(" · ")}
         </p>
+        {data?.tally.decisionCounts && (
+          <p>
+            Correct / declared A-or-B picks. Abstentions:{" "}
+            {Object.entries(data.tally.decisionCounts)
+              .map(
+                ([key, c]) =>
+                  `${key === "llm" ? "LLM-only" : labels[key]} ${c.abstained}/${c.cases}`,
+              )
+              .join(" · ")}
+            . Abstentions are not counted as wrong picks.
+          </p>
+        )}
         <p>
           At least 20 eligible closed cases; at least 20 votes per case. Mock
           signals, public cases, ties and unverified audience tastes are
@@ -136,6 +148,40 @@ export default function Benchmark() {
         )}
       </section>
       <section className="panel">
+        <h2>Track B case register</h2>
+        <a className="button" href="/api/benchmark/export.csv" download>
+          Export Track B CSV
+        </a>
+        <p>
+          Open and partial records are visible here, but never count as closed
+          or eligible cases. No original predictions are reconstructed.
+        </p>
+        {data?.pending?.map((row) => (
+          <article key={row.caseLabel}>
+            <h3>
+              {row.caseLabel} · {row.status}
+            </h3>
+            <p>{row.context}</p>
+            <p>{row.timing}</p>
+            <p>{row.missing}</p>
+          </article>
+        ))}
+        {data?.openCases?.map((row) => (
+          <article key={row.id}>
+            <h3>
+              <a href={`/test/${row.id}?view=prediction`}>{row.caseLabel}</a> ·{" "}
+              {row.status}
+            </h3>
+            <p>{row.context}</p>
+            <p>Seeds: {row.seeds.map((s) => s.name).join(" · ")}</p>
+            <p>
+              Server freeze: {row.frozenAt || "not frozen"} · Original record:{" "}
+              {row.originalRecordedAt || "not recorded separately"}
+            </p>
+          </article>
+        ))}
+      </section>
+      <section className="panel">
         <h2>Closed case ledger</h2>
         <p>
           ✓ matched · ✗ missed · ABSTAIN: too close to call. Excluded rows
@@ -146,6 +192,8 @@ export default function Benchmark() {
             <thead>
               <tr>
                 <th>Case / mode</th>
+                <th>Context / seeds</th>
+                <th>Prediction timing</th>
                 <th>LLM-only (manual paste)</th>
                 <th>Qloo</th>
                 <th>Agent</th>
@@ -160,6 +208,19 @@ export default function Benchmark() {
                     <a href={`/test/${row.id}`}>{row.caseLabel}</a>
                     <br />
                     {row.mode}
+                  </td>
+                  <td>
+                    {row.context || "Context not supplied"}
+                    <br />
+                    Seeds:{" "}
+                    {(row.seeds || []).map((s) => s.name).join(" · ") ||
+                      "not supplied"}
+                  </td>
+                  <td>
+                    Server freeze: {row.frozenAt}
+                    <br />
+                    Original:{" "}
+                    {row.originalRecordedAt || "not recorded separately"}
                   </td>
                   {["llm", "qloo", "agent"].map((key) => (
                     <td key={key}>

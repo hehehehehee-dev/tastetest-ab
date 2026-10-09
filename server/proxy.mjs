@@ -5,7 +5,7 @@ import {
   randomUUID,
   timingSafeEqual,
 } from "node:crypto";
-import { makeFreeze } from "./benchmark.mjs";
+import { makeFreeze, decisionTally } from "./benchmark.mjs";
 import { qlooAdapter, isMockMode, mockQlooAdapter } from "./qlooAdapter.mjs";
 import { typeUrns } from "./fixtures.mjs";
 
@@ -115,6 +115,7 @@ export function proxyTally(rows) {
     });
     return {
       cases: cases.length,
+      decisionCounts: decisionTally(cases),
       counts: Object.fromEntries(
         ["llm", "qloo", "agent"].map((key) => [
           key,
@@ -131,6 +132,9 @@ export function proxyTally(rows) {
     real: counts("real-qloo"),
     mock: counts("mock"),
     attempts: rows.length,
+    methods: [
+      ...new Set(rows.map((r) => r.scoringVersion || "concept-tag-fit-v2")),
+    ],
     policy:
       "First completed prediction freeze per case and mode; all attempts retained. Retrospective proxy, never Track B.",
   };
@@ -213,30 +217,88 @@ export async function predictProxy(
     : await adapter.getInsights(
         seeds.map((s) => s.entity_id),
         [typeUrns["Film/TV"]],
+        candidates.map((c) => c.entity_id),
       );
   const options = input.options.map((movie) => ({
     title: movieName(movie),
     description: `${movie.genres.join(", ")} movie released in ${movie.year || "unknown year"}.`,
   }));
   const scoringAdapter = mock ? mockQlooAdapter : adapter;
-  const prediction = await Promise.all(
-    options.map((option) =>
-      scoringAdapter.scoreOption(option, {
-        seeds,
-        insights,
-        note: input.audienceDefinition,
-      }),
-    ),
-  );
+  const prediction = mock
+    ? await Promise.all(
+        options.map((option) =>
+          scoringAdapter.scoreOption(option, {
+            seeds,
+            insights,
+            note: input.audienceDefinition,
+          }),
+        ),
+      )
+    : candidates.map((candidate) => {
+        const result = insights.results.entities.find(
+          (e) =>
+            e.entity_id.toLowerCase() === candidate.entity_id.toLowerCase(),
+        );
+        if (
+          !result ||
+          !Number.isFinite(result.query?.affinity) ||
+          result.query.affinity < 0 ||
+          result.query.affinity > 1
+        )
+          fail(
+            `Qloo did not return a valid affinity for ${candidate.name}. No substitute score was used.`,
+            422,
+          );
+        return {
+          score: result.query.affinity * 100,
+          components: {
+            baseline: 0,
+            affinity: result.query.affinity * 100,
+            tagOverlap: 0,
+            segmentWarning: 0,
+            affinitySum: result.query.affinity,
+          },
+          matchedTags: [],
+          reasons: [
+            "Score = 100 × this candidate's Qloo affinity to the three seed entities. No keyword/tag mapping.",
+          ],
+          warning: null,
+        };
+      });
   return {
     seeds,
     options,
     prediction,
     mode: mock ? "mock" : "real",
+    scoringVersion: mock ? "proxy-genre-mock-v1" : "qloo-candidate-affinity-v1",
+    provenance: {
+      source: mock ? "Synthetic genre fixtures" : "Qloo API",
+      endpoint: mock ? null : "/v2/insights",
+      fetchedAt: mock ? null : insights.fetchedAt,
+      seedEntityIds: seeds.map((s) => s.entity_id),
+      candidateEntityIds: candidates.map((c) => c.entity_id),
+      affinities: mock
+        ? []
+        : candidates.map((c) => {
+            const e = insights.results.entities.find(
+              (e) => e.entity_id.toLowerCase() === c.entity_id.toLowerCase(),
+            );
+            return {
+              entityId: c.entity_id,
+              name: c.name,
+              affinity: e.query.affinity,
+              explainability: e.query.explainability || null,
+            };
+          }),
+      mapping: mock
+        ? "Synthetic genre overlap workflow only"
+        : "fit score = 100 × candidate affinity; abstain if gap <10 fit points. Affinity is not a probability of votes or a MovieLens rating.",
+    },
     audienceNote: input.audienceDefinition,
     benchmarkMetadata: { track: "rehearsal", caseLabel: input.id },
-    scoringNote:
-      "Qloo and Agent use the existing local scoreOption concept/tag heuristic; no distinct combined model is claimed. MovieLens mean ratings are never supplied to scoring.",
+    scoringNote: mock
+      ? "Synthetic genre overlap; Qloo and Agent share one mock predictor. MovieLens outcomes are never supplied."
+      : "Qloo and Agent use the same direct candidate affinity, not independent predictors. MovieLens outcomes are never supplied to Qloo. The <10-point abstention rule is a declared heuristic, not calibrated confidence.",
   };
 }
 export function createProxyApi(
@@ -256,6 +318,7 @@ export function createProxyApi(
     const { ownerHash, ...safe } = run;
     if (!owner) {
       delete safe.prediction;
+      delete safe.provenance;
       safe.seeds = safe.seeds.map(({ entity_id, name, category }) => ({
         entity_id,
         name,
@@ -380,6 +443,7 @@ export function createProxyApi(
         id,
         caseId: run.proxyCaseId,
         caseSetHash: run.caseSetHash,
+        scoringVersion: run.scoringVersion || "concept-tag-fit-v2",
         mode: freeze.payload.mode,
         frozenAt: freeze.payload.frozenAt,
         revealedAt: new Date().toISOString(),
