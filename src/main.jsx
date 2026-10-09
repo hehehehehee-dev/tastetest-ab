@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import {
   BarChart3,
@@ -33,6 +33,11 @@ import Benchmark from "./Benchmark.jsx";
 import FreezePanel from "./FreezePanel.jsx";
 import ProxyCase from "./ProxyBenchmark.jsx";
 import { predictionConfidence } from "../shared/confidence.mjs";
+import {
+  PageSignalContext,
+  usePageSignal,
+  pageSignalLabel,
+} from "./PageSignal.jsx";
 
 const categoryIcons = {
   Music: Disc3,
@@ -172,7 +177,7 @@ function OptionImage({ option }) {
     </p>
   ) : null;
 }
-function Header({ mode, configured }) {
+function Header({ label }) {
   return (
     <header className="topbar">
       <div className="topbar-inner">
@@ -190,17 +195,7 @@ function Header({ mode, configured }) {
           TasteTest<span className="brand-ab">A/B</span>
         </a>
         <div className="header-right">
-          <span className="mock-pill">
-            {mode === "loading"
-              ? "Checking Qloo configuration…"
-              : mode === "unavailable"
-                ? "Qloo status unavailable"
-                : mode === "real"
-                  ? configured
-                    ? "Server: Qloo API ready"
-                    : "Qloo key not configured"
-                  : "Mock mode — Qloo not connected"}
-          </span>
+          {label && <span className="mock-pill">{label}</span>}
           <a
             href="/create"
             onClick={(e) => {
@@ -828,6 +823,7 @@ function Verdict({ test }) {
 }
 function TestView({ id, sample = false }) {
   const [test, setTest] = useState(null);
+  usePageSignal(test);
   const [liveSample, setLiveSample] = useState(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -1189,7 +1185,7 @@ function TestView({ id, sample = false }) {
         <span>TasteTest A/B</span>
         <p>
           {test.isPairedComparison
-            ? "Two locked AI predictions · same model · real Qloo context"
+            ? `Two locked AI predictions · same model · ${test.mode === "real" ? "real Qloo context" : "synthetic Qloo context"}`
             : test.mode === "real"
               ? "Real Qloo API affinities · local heuristic fit"
               : "Synthetic Qloo-style signals"}{" "}
@@ -1205,6 +1201,7 @@ function TestView({ id, sample = false }) {
 }
 function PollPage({ id }) {
   const [test, setTest] = useState(null);
+  usePageSignal(test);
   const [error, setError] = useState("");
   const [voting, setVoting] = useState(null);
   const [voted, setVoted] = useState(getLocal(`tastetest-vote-${id}`));
@@ -1369,13 +1366,24 @@ function App() {
       .catch(() => setConfig({ mode: "unavailable", configured: false }));
   }, []);
   const route = useRoute();
+  const [pageSignal, setPageSignal] = useState(null);
+  const publishSignal = useCallback(
+    (record) => setPageSignal({ route, record }),
+    [route],
+  );
   const match = route.match(/^\/(test|poll)\/([a-f0-9-]{36})$/);
   const proxyMatch = route.match(
     /^\/benchmark\/proxy\/(?:run\/([a-f0-9-]{36})|(PX-\d{3}))$/,
   );
   return (
-    <>
-      <Header mode={config.mode} configured={config.configured} />
+    <PageSignalContext.Provider value={publishSignal}>
+      <Header
+        label={pageSignalLabel(
+          route,
+          config,
+          pageSignal?.route === route ? pageSignal.record : null,
+        )}
+      />
       {[
         "/benchmark-lab/historical-case-01",
         "/case-study/cookie-cats",
@@ -1426,7 +1434,7 @@ function App() {
           Benchmark lab · Historical case 01 ↗
         </a>
       </footer>
-    </>
+    </PageSignalContext.Provider>
   );
 }
 createRoot(document.getElementById("root")).render(<App />);

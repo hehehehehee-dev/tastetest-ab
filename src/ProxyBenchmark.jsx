@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { benchmarkApi, BranchTable } from "./Benchmark.jsx";
+import { usePageSignal } from "./PageSignal.jsx";
 const labels = { llm: "LLM-only", qloo: "Qloo", agent: "Agent" };
 const ownerKey = (id) => `tastetest-proxy-owner-${id}`;
 export const proxyHonesty =
@@ -168,6 +169,7 @@ export default function ProxyCase({ caseId, runId }) {
     [run, setRun] = useState(null),
     [busy, setBusy] = useState(false),
     [error, setError] = useState("");
+  usePageSignal(run);
   const [llm, setLlm] = useState({
       pick: "A",
       confidence: 50,
