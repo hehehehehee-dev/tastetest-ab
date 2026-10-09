@@ -332,15 +332,11 @@ export function createApi(
           await Promise.all(
             (await store.list("tests/")).map(async (key) => {
               const test = await store.get(key);
-              if (
-                !test ||
-                test.benchmarkMetadata?.track !== "track-b" ||
-                (await store.get(`closed/${test.id}`))
-              )
-                return null;
+              if (!test || (await store.get(`closed/${test.id}`))) return null;
               const freeze = await store.get(`freezes/${test.id}`);
               const metadata =
                 freeze?.payload.metadata || test.benchmarkMetadata;
+              if (metadata?.track !== "track-b") return null;
               return {
                 id: test.id,
                 caseLabel:

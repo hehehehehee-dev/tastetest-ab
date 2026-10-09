@@ -7,6 +7,58 @@ import {
 } from "../server/benchmarkLedger.mjs";
 import { benchmarkTally } from "../server/benchmark.mjs";
 import { createApi } from "../server/api.mjs";
+test("open ledger follows frozen track metadata rather than the creation route", async () => {
+  const records = new Map([
+    [
+      "tests/promoted",
+      {
+        id: "promoted",
+        title: "A vs B",
+        seeds: [],
+        benchmarkMetadata: { track: "rehearsal" },
+      },
+    ],
+    [
+      "freezes/promoted",
+      {
+        payload: {
+          caseLabel: "TB-112",
+          frozenAt: "2026-10-09T21:33:49.306Z",
+          metadata: {
+            track: "track-b",
+            business: "Association",
+            decision: "Event theme",
+          },
+        },
+      },
+    ],
+    [
+      "tests/demoted",
+      {
+        id: "demoted",
+        title: "Rehearsal",
+        seeds: [],
+        benchmarkMetadata: { track: "track-b" },
+      },
+    ],
+    ["freezes/demoted", { payload: { metadata: { track: "rehearsal" } } }],
+  ]);
+  const api = createApi({
+    get: async (key) => records.get(key),
+    list: async (prefix) =>
+      [...records.keys()].filter((key) => key.startsWith(prefix)),
+  });
+  const data = await (
+    await api(new Request("https://fixture/api/benchmark"))
+  ).json();
+  assert.equal(data.openCases.length, 1);
+  assert.equal(data.openCases[0].caseLabel, "TB-112");
+  assert.equal(
+    data.openCases[0].status,
+    "predictions frozen / awaiting outcome",
+  );
+  assert.equal(data.tally.closedCases, 0);
+});
 test("closed unverifiable TB-001 has no invented answers or timing and is excluded from counts and exported honestly", async () => {
   const api = createApi({ list: async () => [], get: async () => null });
   const response = await api(new Request("https://fixture/api/benchmark"));
