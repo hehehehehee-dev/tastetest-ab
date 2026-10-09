@@ -267,8 +267,16 @@ test("real-shaped movie resolution uses the existing adapter and never receives 
         results: {
           entities: [
             {
+              entity_id: `00000000-0000-4000-8000-${String(1000 + searches).padStart(12, "0")}`,
+              name: title,
+              releaseYear: 2019,
+              tags: [],
+              category: "Film/TV",
+            },
+            {
               entity_id: `00000000-0000-4000-8000-${String(searches).padStart(12, "0")}`,
-              name: `${title} (1995)`,
+              name: title,
+              releaseYear: 1995,
               tags: [{ name: "drama" }],
               category: "Film/TV",
             },

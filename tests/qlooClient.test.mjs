@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { createQlooClient } from "../server/qlooClient.mjs";
+import { createQlooClient, normalizeEntity } from "../server/qlooClient.mjs";
 const id = "00000000-0000-4000-8000-000000000001";
 const entity = {
   entity_id: id,
@@ -9,6 +9,23 @@ const entity = {
   tags: [{ name: "Indie Folk", tag_id: "urn:tag:fixture:indie" }],
 };
 const json = (body) => new Response(JSON.stringify(body), { status: 200 });
+test("entity normalization preserves release year so remakes can be resolved without guessing", () => {
+  assert.equal(
+    normalizeEntity({ ...entity, properties: { release_year: 1997 } })
+      .releaseYear,
+    1997,
+  );
+  assert.equal(
+    normalizeEntity({ ...entity, properties: { release_date: "2019-02-14" } })
+      .releaseYear,
+    2019,
+  );
+  assert.equal(
+    normalizeEntity({ ...entity, properties: { release_year: "unknown" } })
+      .releaseYear,
+    undefined,
+  );
+});
 test("real transport normalizes search arrays, resolves IDs, and coalesces concurrent calls", async () => {
   let calls = 0;
   const client = createQlooClient({

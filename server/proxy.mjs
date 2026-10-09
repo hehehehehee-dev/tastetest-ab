@@ -173,14 +173,17 @@ export async function predictProxy(
       "Film/TV",
     );
     const matches = result.results.entities.filter((entity) => {
-      const year = Number(entity.name.match(/\((\d{4})\)\s*$/)?.[1]);
+      const year =
+        entity.releaseYear || Number(entity.name.match(/\((\d{4})\)\s*$/)?.[1]);
       return (
         normalizedTitle(entity.name) === normalizedTitle(movie.title) &&
         (!year || year === movie.year)
       );
     });
-    const exactYear = matches.filter((entity) =>
-      entity.name.includes(`(${movie.year})`),
+    const exactYear = matches.filter(
+      (entity) =>
+        entity.releaseYear === movie.year ||
+        entity.name.includes(`(${movie.year})`),
     );
     const candidates = exactYear.length ? exactYear : matches;
     if (candidates.length !== 1)
