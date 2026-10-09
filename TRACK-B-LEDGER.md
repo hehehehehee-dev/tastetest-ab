@@ -6,7 +6,9 @@ Cases with <20 votes are "indicative only" and don't count toward the headline r
 
 | Case   | Date frozen                                                      | Context (1 line)                                                                                                                                                                                 | LLM pick (conf) | Qloo pick (conf) | Agent pick (conf) | Votes A/B | Actual winner | LLM ✓/✗ | Qloo ✓/✗ | Agent ✓/✗ |
 | ------ | ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------- | ---------------- | ----------------- | --------- | ------------- | ------- | -------- | --------- |
-| TB-001 | entered 2026-10-09; exact original time not recorded; NOT frozen | Owner-reported real AI + Qloo case; reply template still contains placeholders. Situation, seeds, A/B, original branch answers and current outcome status unconfirmed. Partial record — pending. | ?               | ?                | ?                 | ?         | pending       | —       | —        | —         |
+| TB-001 | entered 2026-10-09; exact original time not recorded; NOT frozen | Owner confirms the original record cannot be recovered. Situation, audience, seeds, A/B, branch answers/confidences/sources, timing and outcome remain unconfirmed. Partial record — pending; not evidence; no rerun or backdating. | ?               | ?                | ?                 | ?         | pending       | —       | —        | —         |
+
+TB-001 remains pending and excluded. Any fresh Track B case must have a separate record, with predictions frozen before opening its poll.
 
 ## Running tally (update as cases close)
 

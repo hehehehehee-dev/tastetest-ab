@@ -4,15 +4,15 @@ export const pendingTrackB = [
     caseLabel: "TB-001",
     enteredOn: "2026-10-09",
     context:
-      "Owner reports an existing real AI + Qloo case; original record not supplied.",
+      "Owner confirms the original AI + Qloo record cannot be recovered. This incomplete registry entry is not evidence.",
     status: "partial record — pending",
     seeds: [],
     frozenAt: null,
     originalRecordedAt: null,
     missing:
-      "Situation, audience, 3–5 seeds, A/B descriptions, original branch answers/confidences/sources, original timing and customer outcome status remain unconfirmed. The submitted reply contains placeholders only.",
+      "Situation, audience, 3–5 seeds, A/B descriptions, original branch answers/confidences/sources, original timing and customer outcome status remain unconfirmed. The original record cannot be recovered. Do not use TB-001 as evidence, rerun it, or backdate it. A new Track B case needs a separate record and predictions frozen before polling.",
     timing:
-      "Entered into ledger on 2026-10-09; predictions reported before entry, exact original time not recorded. Not frozen, not collecting, not scored.",
+      "Entered into ledger on 2026-10-09; exact original prediction time remains unconfirmed. Not frozen, not collecting, not scored. No rerun or backdating.",
   },
 ];
 export function ledgerCsv(data) {
