@@ -17,6 +17,7 @@ import {
   comparisonConfig,
   createComparison,
   scoreComparison,
+  configurationMessage,
 } from "./aiComparison.mjs";
 const fail = (message, status = 400) => {
   throw Object.assign(new Error(message), { status });
@@ -331,10 +332,7 @@ export function createApi(store, { adapter = qlooAdapter, aiPredictor } = {}) {
       if (pathname === "/api/tests" && request.method === "POST") {
         const input = validateInput(await readBody(request));
         if (input.compareAi && !aiPredictor && !comparisonConfig().configured)
-          fail(
-            "AI comparison needs server-side OPENAI_API_KEY and OPENAI_MODEL. No AI prediction was fabricated.",
-            503,
-          );
+          fail(configurationMessage, 503);
         const ownerToken = randomBytes(32).toString("hex");
         const test = {
           ...input,

@@ -518,8 +518,8 @@ function CreateTest({ mode, aiConfig, configured }) {
           {compareAi && (
             <p className={aiReady ? "muted" : "error"} role="status">
               {aiReady
-                ? `Model: ${aiConfig.model}. Each new comparison makes two paid AI API requests. Images are not evaluated.`
-                : "AI comparison is not configured yet. Set OPENAI_API_KEY and OPENAI_MODEL on the server, and enable real Qloo. No AI results will be invented."}
+                ? `Provider: ${aiConfig.provider || "openai"} · Model: ${aiConfig.model}. Each new comparison makes two paid AI API requests. Images are not evaluated.`
+                : "AI comparison is not configured yet. Configure Replicate or OpenAI on the server, and enable real Qloo. No AI results will be invented."}
             </p>
           )}
         </section>

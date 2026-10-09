@@ -49,9 +49,10 @@ export default function AiComparison({ test }) {
         </button>
       </div>
       <p className="comparison-note">
-        Same model: <strong>{payload.model}</strong> · Same concepts, audience
-        and instructions. Only the Qloo context changes. Text descriptions only;
-        images are not evaluated.
+        Provider: {payload.provider || "openai"} · Same model:{" "}
+        <strong>{payload.requestedModel || payload.model}</strong> · Same
+        concepts, audience and instructions. Only the Qloo context changes. Text
+        descriptions only; images are not evaluated.
       </p>
       <div className="option-grid">
         {[
@@ -120,6 +121,17 @@ export default function AiComparison({ test }) {
           Poll opened: {test.pollOpenedAt || "Not yet opened"}
         </p>
         <p className="receipt-hash">SHA-256: {receipt.sha256}</p>
+        <p className="receipt-hash">
+          Requested / recorded model: {payload.model}
+        </p>
+        {payload.provider === "replicate" && (
+          <p>
+            Returned versions: {payload.aiOnly.returnedVersion} /{" "}
+            {payload.aiQloo.returnedVersion}.{" "}
+            {payload.aiOnly.versionVerification}{" "}
+            {payload.aiQloo.versionVerification}
+          </p>
+        )}
         <p>
           The JSON receipt includes both exact prompts, response IDs and
           returned model versions. Predictions cannot be edited or rerun on this
