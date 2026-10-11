@@ -35,6 +35,7 @@ import Benchmark from "./Benchmark.jsx";
 import FreezePanel from "./FreezePanel.jsx";
 import ProxyCase from "./ProxyBenchmark.jsx";
 import MusicCase from "./MusicProxy.jsx";
+import FAQ from "./FAQ.jsx";
 import { predictionConfidence } from "../shared/confidence.mjs";
 import {
   PageSignalContext,
@@ -1657,6 +1658,8 @@ function App() {
         <ProxyCase key={route} runId={proxyMatch[1]} caseId={proxyMatch[2]} />
       ) : route === "/benchmark" ? (
         <Benchmark />
+      ) : route === "/faq" ? (
+        <FAQ />
       ) : ["/create", "/benchmark/new"].includes(route) ? (
         <CreateTest
           mode={config.mode}
@@ -1677,6 +1680,7 @@ function App() {
           <Button onClick={() => navigate("/")}>Back to TasteTest</Button>
         </main>
       )}
+      {route !== "/faq" && <FAQ key={route} compact />}
       <footer className="evidence-footer">
         <span>Evidence & methodology</span>
         <a
@@ -1696,6 +1700,15 @@ function App() {
           }}
         >
           Benchmark lab · Historical case 01 ↗
+        </a>
+        <a
+          href="/faq"
+          onClick={(event) => {
+            event.preventDefault();
+            navigate("/faq");
+          }}
+        >
+          FAQ
         </a>
       </footer>
     </PageSignalContext.Provider>

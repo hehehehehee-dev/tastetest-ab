@@ -1078,6 +1078,120 @@ a.brand,
   font-size: 14px;
   margin-bottom: 16px;
 }
+
+.faq-section {
+  margin-top: 48px;
+  margin-bottom: 24px;
+}
+.faq-drawer {
+  border: 1px solid #37343b;
+  border-radius: 14px;
+  padding: 0 24px;
+  background: #131313;
+}
+.faq-drawer > summary {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  min-height: 72px;
+  cursor: pointer;
+  font-size: 14px;
+}
+.faq-drawer > summary span:first-child {
+  font-size: 22px;
+  font-weight: 600;
+}
+.faq-drawer > summary span:last-child {
+  color: #b7b7c0;
+}
+.faq-questions {
+  border-top: 1px solid #37343b;
+}
+.faq-question {
+  border-bottom: 1px solid #37343b;
+}
+.faq-question > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  min-height: 64px;
+  padding: 16px 0;
+  cursor: pointer;
+  font-size: 15px;
+  line-height: 1.5;
+  list-style: none;
+}
+.faq-question > summary::-webkit-details-marker,
+.faq-drawer > summary::-webkit-details-marker {
+  display: none;
+}
+.faq-question > summary::after {
+  content: "+";
+  font-size: 24px;
+  flex-shrink: 0;
+  color: #b7b7c0;
+}
+.faq-question[open] > summary::after {
+  content: "−";
+}
+.faq-answer {
+  padding-bottom: 20px;
+  max-width: 800px;
+  color: #b7b7c0;
+  font-size: 14px;
+  line-height: 1.8;
+}
+.faq-answer p {
+  margin: 0;
+}
+.faq-answer a {
+  color: #f2f2f2;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.faq-page-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  font-size: 14px;
+  margin: 12px 0;
+}
+.faq-page {
+  max-width: 1000px;
+  padding-bottom: 32px;
+}
+.faq-question > summary:hover,
+.faq-question > summary:focus-visible {
+  color: #fff;
+}
+.faq-question > summary:focus-visible,
+.faq-drawer > summary:focus-visible {
+  outline: 2px solid #aaa;
+  outline-offset: 4px;
+  border-radius: 6px;
+}
+@media (max-width: 700px) {
+  .faq-drawer {
+    padding: 0 18px;
+  }
+  .faq-drawer > summary {
+    align-items: flex-start;
+    flex-direction: column;
+    justify-content: center;
+    gap: 4px;
+    padding: 16px 0;
+  }
+  .faq-page .page-heading h1 {
+    font-size: 30px;
+  }
+}
+@media print {
+  .faq-section {
+    display: none !important;
+  }
+}
 .proxy-model-selector select {
   min-height: 44px;
   max-width: 100%;
