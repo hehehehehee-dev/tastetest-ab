@@ -64,6 +64,10 @@ The end-to-end tests use installed Microsoft Edge on Windows. On another OS, rep
 
 ## Deploy on Netlify
 
+### Deploys cost credits
+
+Each successful published production deploy costs **15 credits** on Netlify's credit-based Free plan (300 credits/month shared with traffic and compute). Batch related changes into one tested commit/push; do not deploy each small tweak. Use **`[skip netlify]`** in WIP, docs or bookkeeping commit messages. Skipped changes ship with the next real deploy. The Git build filter skips non-site-only changes and builds when code changes or checks are uncertain. See [NETLIFY-CREDITS.md](NETLIFY-CREDITS.md) for the October 30 submission and November 2–16 judging checks, limits and environment-change rules.
+
 Connect this public repository to a Netlify site. The included `netlify.toml` sets `npm run build`, `dist`, the API Function, and SPA fallback routes. Netlify automatically supplies the Functions' site context for **Netlify Blobs**. The deployed API uses a site-wide store with strong consistency, so polls survive deployments. No external database or key is required in mock mode.
 
 Alternatively run `npx netlify-cli dev` for Netlify emulation, or `npx netlify-cli deploy --build --prod` after logging in and linking your site. `npm run dev` is the simpler equivalent for local UI/API testing; it uses the local file store. Netlify CLI's function emulator uses its own sandbox Blobs store. Local file polls are not migrated automatically.
