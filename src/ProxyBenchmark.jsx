@@ -173,10 +173,17 @@ export default function ProxyCase({ caseId, runId }) {
   const [llm, setLlm] = useState({
       pick: "A",
       confidence: 50,
-      source: "",
+      source: "Human",
       answer: "",
     }),
     [beforeReveal, setBefore] = useState(false);
+  const [llmMode, setLlmMode] = useState("manual");
+  useEffect(() => {
+    if (run?.llmPrediction) {
+      setLlm(run.llmPrediction);
+      setLlmMode("automatic");
+    }
+  }, [run?.llmPrediction?.recordedAt]);
   const [isOwner, setOwner] = useState(false);
   const call = (action, body) =>
     benchmarkApi(`/proxy/runs/${run.id}/${action}`, {
@@ -232,7 +239,10 @@ export default function ProxyCase({ caseId, runId }) {
         window.location.assign(`/benchmark/proxy/run/${data.run.id}`);
       } else
         setRun(
-          await call(action, action === "freeze" ? { llm, beforeReveal } : {}),
+          await call(
+            action,
+            action === "freeze" ? { llm, llmMode, beforeReveal } : {},
+          ),
         );
     } catch (e) {
       setError(e.message);
@@ -360,51 +370,93 @@ export default function ProxyCase({ caseId, runId }) {
                   act("freeze");
                 }}
               >
-                <h3>LLM-only (manual paste)</h3>
-                <label>
-                  LLM pick
-                  <select
-                    aria-label="LLM pick"
-                    value={llm.pick}
-                    onChange={(e) => update("pick", e.target.value)}
+                <h3>AI prediction</h3>
+                <p>
+                  Run the configured AI, or enter a prediction manually. A
+                  reason is optional. Human selections are recorded as Human.
+                </p>
+                {catalog?.ai?.enabled && catalog.ai.configured && (
+                  <button
+                    type="button"
+                    className="button"
+                    disabled={busy || !!run.llmPrediction}
+                    onClick={() => act("ai")}
                   >
-                    <option>A</option>
-                    <option>B</option>
-                  </select>
-                </label>
-                <label>
-                  LLM confidence (0–100)
-                  <input
-                    type="number"
-                    required
-                    min="0"
-                    max="100"
-                    value={llm.confidence}
-                    onChange={(e) =>
-                      update("confidence", Number(e.target.value))
-                    }
-                  />
-                </label>
-                <label>
-                  Exact model/version or human
-                  <input
-                    required
-                    value={llm.source}
-                    maxLength={160}
-                    onChange={(e) => update("source", e.target.value)}
-                  />
-                </label>
-                <label>
-                  Paste original LLM answer
-                  <textarea
-                    required
-                    minLength={10}
-                    maxLength={6000}
-                    rows={4}
-                    value={llm.answer}
-                    onChange={(e) => update("answer", e.target.value)}
-                  />
-                </label>
+                    {busy
+                      ? "Working…"
+                      : run.llmPrediction
+                        ? "AI prediction recorded"
+                        : "Run AI automatically"}
+                  </button>
+                )}
+                {llmMode === "automatic" && (
+                  <button
+                    type="button"
+                    className="button subtle"
+                    onClick={() => {
+                      setLlmMode("manual");
+                      setLlm({
+                        pick: "A",
+                        confidence: 50,
+                        source: "Human",
+                        answer: "",
+                      });
+                    }}
+                  >
+                    Use a manual prediction instead
+                  </button>
+                )}
+                {llmMode === "automatic" && (
+                  <p>
+                    Recorded by API · {llm.source} ·{" "}
+                    {run.llmPrediction.recordedAt}
+                  </p>
+                )}
+                <fieldset disabled={busy || llmMode === "automatic"}>
+                  <label>
+                    LLM pick
+                    <select
+                      aria-label="LLM pick"
+                      value={llm.pick}
+                      onChange={(e) => update("pick", e.target.value)}
+                    >
+                      <option>A</option>
+                      <option>B</option>
+                      <option value="TIE">Abstain / too close</option>
+                    </select>
+                  </label>
+                  <label>
+                    LLM confidence (0–100)
+                    <input
+                      type="number"
+                      required
+                      min="0"
+                      max="100"
+                      value={llm.confidence}
+                      onChange={(e) =>
+                        update("confidence", Number(e.target.value))
+                      }
+                    />
+                  </label>
+                  <label>
+                    Exact model/version or human
+                    <input
+                      required
+                      value={llm.source}
+                      maxLength={160}
+                      onChange={(e) => update("source", e.target.value)}
+                    />
+                  </label>
+                  <label>
+                    Paste original LLM answer (optional)
+                    <textarea
+                      maxLength={6000}
+                      rows={4}
+                      value={llm.answer}
+                      onChange={(e) => update("answer", e.target.value)}
+                    />
+                  </label>
+                </fieldset>
                 <label className="check-label">
                   <input
                     type="checkbox"

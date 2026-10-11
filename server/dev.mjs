@@ -21,7 +21,10 @@ const vite = await createServer({
   },
   appType: "spa",
 });
-const api = createApi(fileStore(process.env.TASTETEST_DATA_DIR || undefined));
+const api = createApi(fileStore(process.env.TASTETEST_DATA_DIR || undefined), {
+  proxyOptions: { aiEnabled: true },
+  musicOptions: { aiEnabled: true },
+});
 const server = http.createServer(async (req, res) => {
   if (!req.url.startsWith("/api/")) return vite.middlewares(req, res);
   try {

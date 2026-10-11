@@ -74,7 +74,17 @@ export function heuristicBranch(scores) {
 export function makeFreeze(test, body, now = new Date().toISOString()) {
   if (!body || typeof body !== "object" || Array.isArray(body))
     fail("Provide a valid freeze record.");
-  const llm = validateManual(body.llm, "LLM-only (manual paste)");
+  const llm = {
+    ...validateManual(body.llm, "LLM-only", !!test.proxyCaseId),
+    ...(test.proxyLlmPrediction
+      ? {
+          method: test.proxyLlmPrediction.method,
+          provider: test.proxyLlmPrediction.provider,
+          responseId: test.proxyLlmPrediction.responseId,
+          recordedAt: test.proxyLlmPrediction.recordedAt,
+        }
+      : {}),
+  };
   const metadata = validateMetadata(body.metadata || test.benchmarkMetadata);
   const manual = body.mode === "manual";
   if (body.mode && !["manual", "mock", "real-qloo"].includes(body.mode))

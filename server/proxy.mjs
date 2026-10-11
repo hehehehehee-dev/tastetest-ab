@@ -8,6 +8,7 @@ import {
 import { makeFreeze, decisionTally } from "./benchmark.mjs";
 import { qlooAdapter, isMockMode, mockQlooAdapter } from "./qlooAdapter.mjs";
 import { typeUrns } from "./fixtures.mjs";
+import { comparisonConfig, configuredPredictor } from "./aiComparison.mjs";
 
 const fail = (message, status = 400) => {
   throw Object.assign(Error(message), { status });
@@ -358,8 +359,11 @@ export function createProxyApi(
     predictor = predictProxy,
     validateOutcomes = validateProxyOutcomes,
     casePattern = "PX-\\d{3}",
+    aiEnabled = false,
+    aiPredictor,
   } = {},
 ) {
+  const aiInFlight = new Set();
   const owns = (run, request) =>
     safeEqual(run.ownerHash, hash(request.headers.get("x-owner-token") || ""));
   async function snapshot(run, owner = false) {
@@ -380,6 +384,9 @@ export function createProxyApi(
       lifecycle: result ? "revealed" : freeze ? "predictions frozen" : "draft",
       frozenAt: freeze?.payload.frozenAt || null,
       ...(owner && freeze ? { freeze } : {}),
+      ...(owner
+        ? { llmPrediction: await store.get(`proxy-ai/${run.id}`) }
+        : {}),
       ...(owner && result
         ? {
             result: result.result,
@@ -424,6 +431,7 @@ export function createProxyApi(
       return {
         data: {
           ...catalog,
+          ai: { ...comparisonConfig(), enabled: aiEnabled },
           available: !!(await store.get(
             `proxy-outcomes/${catalog.caseSetHash}`,
           )),
@@ -459,7 +467,7 @@ export function createProxyApi(
       };
     }
     const match = pathname.match(
-      /^\/api\/proxy\/runs\/([a-f0-9-]{36})(?:\/(freeze|reveal))?$/,
+      /^\/api\/proxy\/runs\/([a-f0-9-]{36})(?:\/(freeze|reveal|ai))?$/,
     );
     if (!match) fail("Proxy route not found.", 404);
     const [, id, action] = match,
@@ -472,19 +480,99 @@ export function createProxyApi(
         "Only the creating browser can freeze or reveal this proxy run.",
         403,
       );
+    if (action === "ai" && request.method === "POST") {
+      if (!aiEnabled)
+        fail(
+          "Automatic AI is enabled for local testing only; use manual entry on this server.",
+          403,
+        );
+      if (await store.get(`freezes/${id}`))
+        fail("Frozen predictions cannot be edited.", 409);
+      if (await store.get(`proxy-ai/${id}`))
+        return { data: await snapshot(run, true) };
+      if (aiInFlight.has(id))
+        fail("An AI prediction is already running for this case.", 409);
+      aiInFlight.add(id);
+      try {
+        // Blind context: no Qloo scores, entity affinities or hidden dataset outcomes.
+        const context = {
+          options: run.options.map(({ title, description }, i) => ({
+            label: i ? "B" : "A",
+            title,
+            description,
+          })),
+          audience: {
+            tastes: run.input.seeds.map((seed) => seed.title || seed.name),
+            note: run.input.audienceDefinition,
+          },
+        };
+        const prediction = await (aiPredictor || configuredPredictor())(
+          context,
+        );
+        if (
+          !["A", "B", "TIE"].includes(prediction.choice) ||
+          !Number.isInteger(prediction.confidence) ||
+          prediction.confidence < 0 ||
+          prediction.confidence > 100 ||
+          !prediction.model
+        )
+          fail("AI returned an invalid prediction.", 502);
+        if (await store.get(`freezes/${id}`))
+          fail(
+            "This case was frozen while AI was running; the prediction was not recorded.",
+            409,
+          );
+        await store.set(
+          `proxy-ai/${id}`,
+          {
+            pick: prediction.choice,
+            confidence: prediction.confidence,
+            source: prediction.model,
+            answer:
+              prediction.rationale ||
+              `Pick: ${prediction.choice}; confidence: ${prediction.confidence}. No explanation recorded.`,
+            method: "automatic blind API",
+            provider: prediction.provider,
+            responseId: prediction.responseId,
+            recordedAt: prediction.finishedAt || new Date().toISOString(),
+          },
+          { onlyIfNew: true },
+        );
+        return { data: await snapshot(run, true) };
+      } finally {
+        aiInFlight.delete(id);
+      }
+    }
     if (action === "freeze") {
       if (await store.get(`freezes/${id}`))
         fail("Frozen predictions cannot be edited.", 409);
       if (request.method !== "POST") fail("This action is not supported.", 405);
       const body = await readBody(request);
+      if (aiInFlight.has(id))
+        fail("Wait for the AI prediction before freezing.", 409);
       if (body.mode === "manual")
         fail(
           "Proxy Qloo/Agent picks must come from the adapter, not manual overrides.",
         );
-      const freeze = makeFreeze(run, {
-        ...body,
-        metadata: run.benchmarkMetadata,
-      });
+      const automated =
+        body.llmMode === "automatic" ? await store.get(`proxy-ai/${id}`) : null;
+      if (body.llmMode === "automatic" && !automated)
+        fail("Run AI before freezing its prediction.");
+      const manual = body.llm;
+      const llm = automated || {
+        ...manual,
+        answer:
+          manual?.answer?.trim() ||
+          `Pick: ${manual?.pick}; confidence: ${manual?.confidence}. No explanation recorded.`,
+      };
+      const freeze = makeFreeze(
+        { ...run, proxyLlmPrediction: automated },
+        {
+          ...body,
+          llm,
+          metadata: run.benchmarkMetadata,
+        },
+      );
       if (!(await store.set(`freezes/${id}`, freeze, { onlyIfNew: true })))
         fail("Frozen predictions cannot be edited.", 409);
       return { data: await snapshot(run, true), status: 201 };

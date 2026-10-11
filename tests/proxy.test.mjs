@@ -385,3 +385,98 @@ test("verified Army of Darkness year exception remains narrow and rejects ambigu
     /Cannot unambiguously resolve/,
   );
 });
+
+test("proxy automatic AI is blind, owner-only, idempotent and frozen from server record; manual needs no reason", async (t) => {
+  const dir = await mkdtemp(path.join(os.tmpdir(), "tastetest-proxy-ai-"));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  const store = fileStore(dir),
+    { inputs, hidden } = generate();
+  await seedProxyOutcomes(store, inputs, hidden);
+  let calls = 0;
+  const options = {
+    adapter: mockQlooAdapter,
+    proxyOptions: {
+      catalogLoader: async () => inputs,
+      mockMode: () => true,
+      aiEnabled: true,
+      aiPredictor: async (context) => {
+        calls++;
+        assert.deepEqual(
+          context.audience.tastes,
+          inputs.cases[0].seeds.map((s) => s.title),
+        );
+        assert.deepEqual(Object.keys(context).sort(), ["audience", "options"]);
+        assert.equal(
+          /affinity|prediction|mean|actual/.test(JSON.stringify(context)),
+          false,
+        );
+        return {
+          choice: "B",
+          confidence: 71,
+          model: "synthetic-model-v1",
+          provider: "fixture",
+          responseId: "fixture-response",
+          finishedAt: "2026-10-11T12:00:00Z",
+          rationale: "Fixture B preference.",
+        };
+      },
+    },
+  };
+  const api = createApi(store, options);
+  const call = async (url, body = {}, token, handler = api) => {
+    const response = await handler(
+      new Request("http://localhost/api/proxy" + url, {
+        method: "POST",
+        headers: token ? { "x-owner-token": token } : {},
+        body: JSON.stringify(body),
+      }),
+    );
+    return { status: response.status, data: await response.json() };
+  };
+  const started = await call("/cases/" + inputs.cases[0].id + "/start");
+  const id = started.data.run.id,
+    token = started.data.ownerToken;
+  assert.equal((await call("/runs/" + id + "/ai")).status, 403);
+  const production = createApi(store, {
+    ...options,
+    proxyOptions: { ...options.proxyOptions, aiEnabled: false },
+  });
+  assert.equal(
+    (await call("/runs/" + id + "/ai", {}, token, production)).status,
+    403,
+  );
+  assert.equal(calls, 0);
+  assert.equal(
+    (await call("/runs/" + id + "/ai", {}, token)).data.llmPrediction.pick,
+    "B",
+  );
+  await call("/runs/" + id + "/ai", {}, token);
+  assert.equal(calls, 1);
+  const frozen = await call(
+    "/runs/" + id + "/freeze",
+    { beforeReveal: true, llmMode: "automatic", llm: { pick: "A" } },
+    token,
+  );
+  assert.equal(frozen.status, 201);
+  assert.equal(frozen.data.freeze.payload.branches.llm.pick, "B");
+  assert.equal(
+    frozen.data.freeze.payload.branches.llm.source,
+    "synthetic-model-v1",
+  );
+  assert.equal(
+    frozen.data.freeze.payload.branches.llm.method,
+    "automatic blind API",
+  );
+  assert.equal((await call("/runs/" + id + "/ai", {}, token)).status, 409);
+  const manual = await call("/cases/" + inputs.cases[0].id + "/start");
+  const saved = await call(
+    "/runs/" + manual.data.run.id + "/freeze",
+    { beforeReveal: true, llm: { pick: "A", confidence: 50, source: "Human" } },
+    manual.data.ownerToken,
+  );
+  assert.equal(saved.status, 201);
+  assert.match(
+    saved.data.freeze.payload.branches.llm.answer,
+    /No explanation recorded/,
+  );
+});
