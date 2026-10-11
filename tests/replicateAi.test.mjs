@@ -201,3 +201,23 @@ test("larger GPT-4.1 uses its pinned version and verifies the returned model", a
   assert.equal(result.requestedModel, "openai/gpt-4.1");
   assert.equal(result.model, "openai/gpt-4.1:" + version);
 });
+
+test("GPT-5 uses its reasoning schema without unsupported sampling parameters", async () => {
+  const result = await createReplicatePredictor({
+    ...defaults,
+    model: "openai/gpt-5",
+    fetchImpl: async (url, options) => {
+      const body = JSON.parse(options.body);
+      assert.equal(body.version, version);
+      assert.ok(Array.isArray(body.input.messages));
+      assert.equal(body.input.reasoning_effort, "minimal");
+      assert.equal(body.input.verbosity, "low");
+      assert.equal(body.input.max_completion_tokens, 1200);
+      assert.equal("temperature" in body.input, false);
+      assert.equal("top_p" in body.input, false);
+      return json({ ...completed, model: "openai/gpt-5" });
+    },
+  })({ audience: { tastes: ["Synthetic fixture"] } });
+  assert.equal(result.requestedModel, "openai/gpt-5");
+  assert.equal(result.model, "openai/gpt-5:" + version);
+});

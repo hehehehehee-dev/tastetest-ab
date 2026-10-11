@@ -1,8 +1,9 @@
+import ProxyVerdict from "./ProxyVerdict.jsx";
 import ProxyChoice from "./ProxyChoice.jsx";
 import React, { useEffect, useState } from "react";
 import { benchmarkApi, BranchTable } from "./Benchmark.jsx";
 import { usePageSignal } from "./PageSignal.jsx";
-const labels = { llm: "LLM-only", qloo: "Qloo", agent: "Agent" };
+const labels = { llm: "AI", qloo: "Qloo" };
 const ownerKey = (id) => `tastetest-proxy-owner-${id}`;
 export const proxyHonesty =
   "Individual titles may be familiar to language models; the segment's actual ratings — the thing being predicted — are not published per-segment and were computed from raw ratings for this benchmark.";
@@ -10,6 +11,7 @@ function Counts({ value }) {
   return (
     <p>
       {Object.entries(value.decisionCounts || value.counts)
+        .filter(([key]) => key !== "agent")
         .map(([key, count]) => `${labels[key]} ${count.correct}/${count.total}`)
         .join(" · ")}
       {value.decisionCounts && (
@@ -17,6 +19,7 @@ function Counts({ value }) {
           <br />
           Abstentions:{" "}
           {Object.entries(value.decisionCounts)
+            .filter(([key]) => key !== "agent")
             .map(([key, c]) => `${labels[key]} ${c.abstained}/${c.cases}`)
             .join(" · ")}
         </>
@@ -258,7 +261,9 @@ export default function ProxyCase({ caseId, runId }) {
     }
   }
   return (
-    <main className="container benchmark-page proxy-case-page">
+    <main
+      className={`container benchmark-page proxy-case-page ${run?.result ? "has-verdict" : ""}`}
+    >
       <a href="/benchmark">← Back to benchmark</a>
       <div className="page-heading">
         <div>
@@ -272,7 +277,7 @@ export default function ProxyCase({ caseId, runId }) {
           </p>
         </div>
       </div>
-      <p>{proxyHonesty}</p>
+      {!run?.result && <p>{proxyHonesty}</p>}
       {error && (
         <p role="alert" className="error">
           {error}
@@ -313,30 +318,7 @@ export default function ProxyCase({ caseId, runId }) {
       )}
       {run && (
         <>
-          {run.result && (
-            <section className="panel proxy-outcome">
-              <div className="eyebrow">
-                REVEALED / HISTORICAL PREFERENCE OUTCOME
-              </div>
-              <h2>
-                Segment winner: Option {run.outcome.actual} ·{" "}
-                {run.options[run.outcome.actual === "A" ? 0 : 1].title}
-              </h2>
-              <p>{run.outcome.segmentUsers} users liked all three seeds.</p>
-              {run.outcome.options.map((option, i) => (
-                <p key={option.movieId}>
-                  Option {i ? "B" : "A"}: mean {option.mean.toFixed(3)}/5 from{" "}
-                  {option.count} segment ratings · {option.overallRatings}{" "}
-                  overall ratings.
-                </p>
-              ))}
-              <p>
-                This proxy does not establish business results or causal
-                effects. It never contributes to Track B.
-              </p>
-              <a href="/benchmark">View separate proxy tally ↗</a>
-            </section>
-          )}
+          {run.result && <ProxyVerdict run={run} />}
           <section className="panel">
             <h2>
               {run.result
@@ -352,10 +334,23 @@ export default function ProxyCase({ caseId, runId }) {
                   ? "Real Qloo · direct candidate affinity."
                   : "Legacy run · local concept/tag heuristic (unchanged)."}
             </p>
-            {!run.result && <p>{run.scoringNote}</p>}
+            {!run.result && (
+              <p>
+                {run.scoringNote
+                  ?.replaceAll(
+                    "Qloo and Agent use the same direct candidate affinity, not independent predictors.",
+                    "Qloo uses direct candidate affinity.",
+                  )
+                  .replaceAll(
+                    "Qloo and Agent share one mock predictor.",
+                    "Qloo uses a mock predictor.",
+                  )
+                  .replaceAll("Qloo/Agent", "Qloo")}
+              </p>
+            )}
             {!run.freeze && run.proxyDecisionPolicy === "always-pick-v1" && (
               <p>
-                Qloo / Agent pick:{" "}
+                Qloo pick:{" "}
                 <strong>
                   {run.prediction[0].score >= run.prediction[1].score
                     ? "A"
@@ -370,11 +365,8 @@ export default function ProxyCase({ caseId, runId }) {
             )}
             {run.freeze ? (
               <>
-                <p>
-                  Agent repeats the Qloo predictor in this flow; it is not an
-                  independent combined AI agent.
-                </p>
                 <BranchTable
+                  proxy
                   branches={run.freeze.payload.branches}
                   result={run.result}
                 />
@@ -390,7 +382,16 @@ export default function ProxyCase({ caseId, runId }) {
                 )}
                 <details>
                   <summary>Freeze receipt</summary>
+                  <p>Frozen at {run.freeze.payload.frozenAt || run.frozenAt}</p>
                   <p className="receipt-hash">SHA-256 {run.freeze.sha256}</p>
+                  {Object.entries(run.freeze.payload.branches)
+                    .filter(([key]) => key !== "agent")
+                    .map(([key, branch]) => (
+                      <p className="receipt-hash" key={key}>
+                        {key === "llm" ? "AI" : "Qloo"} · full source:{" "}
+                        {branch.source}
+                      </p>
+                    ))}
                 </details>
                 <p>{run.freeze.payload.timing}</p>
                 {run.freeze.payload.provenance?.source === "Qloo API" && (

@@ -12,10 +12,16 @@ export async function benchmarkApi(path, options = {}) {
   return data;
 }
 const labels = { llm: "LLM-only (manual paste)", qloo: "Qloo", agent: "Agent" };
-export function BranchTable({ branches, result }) {
+const modelLabel = (source = "") =>
+  source
+    .replace(/^openai\//, "")
+    .replace(/:[a-f0-9]{64}$/, "")
+    .replace(/^gpt-/i, "GPT-")
+    .replace(/-mini$/, " mini");
+export function BranchTable({ branches, result, proxy = false }) {
   return (
     <div className="benchmark-scroll">
-      <table className="benchmark-table">
+      <table className={`benchmark-table ${proxy ? "proxy-branch-table" : ""}`}>
         <thead>
           <tr>
             <th>Branch</th>
@@ -26,33 +32,41 @@ export function BranchTable({ branches, result }) {
           </tr>
         </thead>
         <tbody>
-          {Object.entries(branches).map(([key, branch]) => (
-            <tr key={key}>
-              <td>
-                {key === "llm" && branch.method === "automatic blind API"
-                  ? "LLM-only (API)"
-                  : key === "agent"
-                    ? "Agent (same Qloo predictor)"
-                    : labels[key]}
-              </td>
-              <td>
-                {branch.pick == null
-                  ? "Not run"
-                  : branch.pick === "TIE"
-                    ? "Too close to call"
-                    : branch.pick}
-                {branch.lowSeparation && <small> · low separation</small>}
-              </td>
-              <td>
-                {branch.confidence == null ? "—" : `${branch.confidence}/100`}
-              </td>
-              <td>
-                {branch.provider === "replicate" ? "Replicate · " : ""}
-                {branch.source}
-              </td>
-              <td>{result?.grades[key] || "Pending outcome"}</td>
-            </tr>
-          ))}
+          {Object.entries(branches)
+            .filter(([key]) => !proxy || key !== "agent")
+            .map(([key, branch]) => (
+              <tr key={key}>
+                <td data-label="Branch">
+                  {key === "llm" && branch.method === "automatic blind API"
+                    ? proxy
+                      ? "AI (API)"
+                      : "LLM-only (API)"
+                    : key === "agent"
+                      ? "Agent (same Qloo predictor)"
+                      : labels[key]}
+                </td>
+                <td data-label="Pick">
+                  {branch.pick == null
+                    ? "Not run"
+                    : branch.pick === "TIE"
+                      ? "Too close to call"
+                      : branch.pick}
+                  {branch.lowSeparation && <small> · low separation</small>}
+                </td>
+                <td data-label="Confidence">
+                  {branch.confidence == null ? "—" : `${branch.confidence}/100`}
+                </td>
+                <td data-label="Source">
+                  {branch.provider === "replicate" ? "Replicate · " : ""}
+                  {proxy && key === "llm"
+                    ? modelLabel(branch.source)
+                    : branch.source}
+                </td>
+                <td data-label="Result">
+                  {result?.grades[key] || "Pending outcome"}
+                </td>
+              </tr>
+            ))}
         </tbody>
       </table>
     </div>
@@ -146,6 +160,7 @@ export default function Benchmark() {
               ? Object.entries(
                   proxy.tally.real.decisionCounts || proxy.tally.real.counts,
                 )
+                  .filter(([k]) => k !== "agent")
                   .map(
                     ([k, c]) =>
                       `${k === "llm" ? "LLM" : labels[k]} ${c.correct}/${c.total}`,

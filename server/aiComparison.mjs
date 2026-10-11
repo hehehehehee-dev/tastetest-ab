@@ -5,7 +5,9 @@ const modelVersion = (model) =>
     ? process.env.REPLICATE_VERSION
     : model === "openai/gpt-4.1"
       ? process.env.REPLICATE_GPT41_VERSION
-      : null;
+      : model === "openai/gpt-5"
+        ? process.env.REPLICATE_GPT5_VERSION
+        : null;
 export const comparisonModels = () =>
   process.env.AI_PROVIDER === "replicate"
     ? replicateModels
@@ -17,9 +19,16 @@ export const comparisonModels = () =>
         .map((id) => ({
           id,
           label:
-            id === "openai/gpt-4.1" ? "GPT-4.1 · larger model" : "GPT-4.1 mini",
+            id === "openai/gpt-5"
+              ? "GPT-5"
+              : id === "openai/gpt-4.1"
+                ? "GPT-4.1"
+                : "GPT-4.1 mini",
         }))
     : [];
+export const proxyDefaultModel = () =>
+  comparisonModels().find((option) => option.id === "openai/gpt-5")?.id ||
+  comparisonConfig().model;
 
 const fail = (message, status = 503) => {
   throw Object.assign(Error(message), { status });

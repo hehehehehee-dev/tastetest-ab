@@ -12,6 +12,7 @@ import {
   comparisonConfig,
   comparisonModels,
   configuredPredictor,
+  proxyDefaultModel,
 } from "./aiComparison.mjs";
 
 const fail = (message, status = 400) => {
@@ -441,6 +442,7 @@ export function createProxyApi(
           ...catalog,
           ai: {
             ...comparisonConfig(),
+            model: proxyDefaultModel(),
             enabled: aiEnabled,
             models: comparisonModels(),
           },
@@ -531,7 +533,7 @@ export function createProxyApi(
           },
         };
         const prediction = await (
-          aiPredictor || configuredPredictor(body.model)
+          aiPredictor || configuredPredictor(body.model || proxyDefaultModel())
         )(context);
         if (
           !["A", "B", "TIE"].includes(prediction.choice) ||

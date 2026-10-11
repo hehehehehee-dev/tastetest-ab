@@ -1087,3 +1087,244 @@ a.brand,
   border-radius: 8px;
   padding: 8px 12px;
 }
+
+.proxy-case-page.has-verdict .page-heading {
+  margin: 18px 0;
+  padding: 0;
+}
+.proxy-case-page.has-verdict .page-heading h1 {
+  font-size: 22px;
+  margin: 4px 0;
+}
+.proxy-case-page.has-verdict .page-heading p {
+  margin: 4px 0;
+  font-size: 14px;
+}
+.proxy-case-page .proxy-outcome {
+  padding: clamp(24px, 4vw, 48px);
+  border-color: #565159;
+  overflow: hidden;
+}
+.proxy-verdict-topline {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.proxy-verdict-tag {
+  font-size: 13px;
+  color: #bbb;
+  border: 1px solid #454249;
+  border-radius: 999px;
+  padding: 6px 12px;
+}
+.proxy-winner-hero {
+  display: flex;
+  gap: 28px;
+  align-items: center;
+  padding: 28px 0 32px;
+}
+.proxy-winner-letter {
+  font-size: clamp(100px, 12vw, 164px);
+  font-weight: 650;
+  line-height: 0.9;
+  letter-spacing: -0.08em;
+  color: #eee;
+  flex-shrink: 0;
+}
+.proxy-case-page .proxy-winner-hero h2 {
+  font-size: clamp(26px, 3.2vw, 42px);
+  line-height: 1.15;
+  letter-spacing: -0.035em;
+  margin: 0;
+}
+.proxy-winner-hero h2 span {
+  display: block;
+  font-size: 14px;
+  letter-spacing: 0.02em;
+  color: #aaa;
+  font-weight: 500;
+  margin-bottom: 12px;
+}
+.proxy-winner-hero p {
+  color: #aaa;
+  font-size: 14px;
+  margin-bottom: 0;
+}
+.proxy-verdict-bars {
+  display: grid;
+  gap: 24px;
+  padding: 24px 0;
+  border-top: 1px solid #353238;
+}
+.proxy-verdict-bar-label {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 20px;
+  font-size: 15px;
+}
+.proxy-verdict-bar-label span {
+  min-width: 0;
+}
+.proxy-verdict-bar-label b {
+  margin-right: 8px;
+  color: #aaa;
+}
+.proxy-verdict-bar-label strong {
+  font-size: 20px;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.proxy-verdict-track {
+  height: 10px;
+  background: #242327;
+  border-radius: 999px;
+  overflow: hidden;
+  margin-top: 12px;
+}
+.proxy-verdict-track > div {
+  height: 100%;
+  background: #67636d;
+  border-radius: inherit;
+  transform-origin: left;
+  animation: proxy-bar-in 0.65s ease-out both;
+}
+.is-winner .proxy-verdict-track > div {
+  background: var(--accent);
+}
+.proxy-verdict-option p {
+  font-size: 13px;
+  line-height: 1.6;
+  color: #aaa;
+  margin: 10px 0 0;
+}
+.proxy-verdict-option.is-winner .proxy-verdict-bar-label {
+  color: #fff;
+}
+.proxy-verdict-footer {
+  border-top: 1px solid #353238;
+  padding-top: 20px;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  justify-content: space-between;
+}
+.proxy-verdict-footer p {
+  font-size: 13px;
+  color: #aaa;
+  margin: 0;
+  max-width: 560px;
+}
+.proxy-verdict-footer a {
+  flex-shrink: 0;
+  font-size: 14px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+}
+.proxy-branch-table {
+  font-size: 14px;
+}
+.proxy-branch-table td:nth-child(2) {
+  font-size: 20px;
+  font-weight: 600;
+}
+.proxy-branch-table td:nth-child(2) small {
+  display: block;
+  font-size: 13px;
+  font-weight: 400;
+}
+.proxy-branch-table td:last-child {
+  font-size: 18px;
+}
+@keyframes proxy-bar-in {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+@media (max-width: 700px) {
+  .proxy-branch-table {
+    display: block;
+    min-width: 0;
+  }
+  .proxy-branch-table thead {
+    display: none;
+  }
+  .proxy-branch-table tbody {
+    display: grid;
+    gap: 16px;
+  }
+  .proxy-branch-table tr {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-areas: "branch result" "pick confidence" "source source";
+    gap: 14px;
+    padding: 18px;
+    border: 1px solid #39363d;
+    border-radius: 12px;
+  }
+  .proxy-branch-table td {
+    border: 0;
+    padding: 0;
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+  .proxy-branch-table td:first-child {
+    grid-area: branch;
+    font-weight: 600;
+  }
+  .proxy-branch-table td:nth-child(2) {
+    grid-area: pick;
+  }
+  .proxy-branch-table td:nth-child(3) {
+    grid-area: confidence;
+  }
+  .proxy-branch-table td:nth-child(4) {
+    grid-area: source;
+  }
+  .proxy-branch-table td:last-child {
+    grid-area: result;
+    text-align: right;
+    font-size: 20px;
+  }
+  .proxy-branch-table td:not(:first-child)::before {
+    content: attr(data-label);
+    display: block;
+    color: #aaa;
+    font-size: 13px;
+    font-weight: 400;
+    margin-bottom: 5px;
+  }
+  .proxy-winner-hero {
+    gap: 20px;
+    align-items: flex-start;
+  }
+  .proxy-winner-letter {
+    font-size: 90px;
+  }
+  .proxy-case-page .proxy-winner-hero h2 {
+    font-size: 26px;
+  }
+  .proxy-verdict-footer {
+    display: block;
+  }
+  .proxy-verdict-topline {
+    gap: 10px;
+  }
+  .proxy-verdict-bar-label {
+    gap: 12px;
+  }
+  .proxy-verdict-bar-label strong {
+    font-size: 18px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .proxy-verdict-track > div {
+    animation: none;
+  }
+}

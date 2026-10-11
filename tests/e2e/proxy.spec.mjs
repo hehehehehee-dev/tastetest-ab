@@ -185,7 +185,7 @@ test("proxy UI hides ratings until an immutable freeze then reveals separate moc
       name: "Mock proxy workflow · 1 completed cases",
     }),
   ).toBeVisible();
-  await expect(page.locator(".proxy-section")).toContainText("LLM-only 0/0");
+  await expect(page.locator(".proxy-section")).toContainText("AI 0/0");
   await expect(
     page.locator(".benchmark-overview article").first().locator("strong"),
   ).toHaveText("LLM 0/0 · Qloo 0/0 · Agent 0/0");
@@ -215,7 +215,7 @@ test("selected Replicate model runs and reveals without manual prediction fields
   const llmPrediction = {
     pick: "A",
     confidence: 70,
-    source: "fixture-model-v1",
+    source: "openai/gpt-5:" + "a".repeat(64),
     provider: "replicate",
     method: "automatic blind API",
     recordedAt: "2026-10-11T12:00:00Z",
@@ -244,10 +244,11 @@ test("selected Replicate model runs and reveals without manual prediction fields
         ai: {
           configured: true,
           enabled: true,
-          model: "openai/gpt-4.1-mini",
+          model: "openai/gpt-5",
           models: [
             { id: "openai/gpt-4.1-mini", label: "GPT-4.1 mini" },
             { id: "openai/gpt-4.1", label: "GPT-4.1" },
+            { id: "openai/gpt-5", label: "GPT-5" },
           ],
         },
       },
@@ -257,7 +258,7 @@ test("selected Replicate model runs and reveals without manual prediction fields
     route.fulfill({ json: run }),
   );
   await page.route("**/api/proxy/runs/" + id + "/ai", (route) => {
-    expect(route.request().postDataJSON().model).toBe("openai/gpt-4.1");
+    expect(route.request().postDataJSON().model).toBe("openai/gpt-5");
     return route.fulfill({ json: { ...run, llmPrediction } });
   });
   let frozen = false;
@@ -289,20 +290,22 @@ test("selected Replicate model runs and reveals without manual prediction fields
           payload: { branches: { llm: llmPrediction }, visitorPick: null },
           sha256: "a".repeat(64),
         },
-        result: { actual: "A", grades: { llm: "✓" } },
+        result: { actual: "B", grades: { llm: "✗" } },
         outcome: {
-          actual: "A",
+          actual: "B",
           segmentUsers: 30,
           options: [
-            { movieId: "1", mean: 4.3, count: 25, overallRatings: 500 },
-            { movieId: "2", mean: 3.7, count: 22, overallRatings: 500 },
+            { movieId: "1", mean: 3.7, count: 25, overallRatings: 500 },
+            { movieId: "2", mean: 4.3, count: 22, overallRatings: 500 },
           ],
         },
       },
     }),
   );
   await page.goto("/benchmark/proxy/run/" + id);
-  await page.getByLabel("AI model · Replicate").selectOption("openai/gpt-4.1");
+  await expect(page.getByLabel("AI model · Replicate")).toHaveValue(
+    "openai/gpt-5",
+  );
   await expect(page.locator("main input, main textarea")).toHaveCount(0);
   await page
     .getByRole("button", { name: "Skip my guess → Show results", exact: true })
@@ -311,6 +314,18 @@ test("selected Replicate model runs and reveals without manual prediction fields
     page.getByRole("heading", { name: "Comparison results" }),
   ).toBeVisible();
   await expect(page.getByRole("table")).toContainText("Replicate");
+  await expect(page.getByRole("table")).toContainText("GPT-5");
+  await expect(page.getByRole("table")).not.toContainText("a".repeat(64));
+  await expect(page.getByRole("table")).not.toContainText("Agent");
+  await expect(page.locator(".proxy-winner-letter")).toHaveText("B");
+  const grade = page
+    .locator('.proxy-branch-table td[data-label="Result"]')
+    .first();
+  await grade.scrollIntoViewIfNeeded();
+  await expect(grade).toBeInViewport();
+  await expect(page.locator(".proxy-verdict-option.is-winner")).toContainText(
+    "Fixture B",
+  );
   await expect(
     page.getByRole("heading", { name: "Your guess · optional" }),
   ).toHaveCount(0);
