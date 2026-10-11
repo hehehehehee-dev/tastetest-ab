@@ -1502,6 +1502,32 @@ body::before,
 .commit-lock small {
   color: #a4a4ae;
 }
+.historical-comparison {
+  overflow-x: auto;
+  margin-block: 24px;
+}
+.historical-comparison table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  table-layout: fixed;
+}
+.historical-comparison caption {
+  text-align: left;
+  margin-bottom: 12px;
+  font-weight: 600;
+}
+.historical-comparison th,
+.historical-comparison td {
+  padding: 12px 8px;
+  text-align: left;
+  vertical-align: top;
+  overflow-wrap: anywhere;
+  border-bottom: 1px solid var(--border, #303036);
+}
+.historical-comparison th:last-child {
+  width: 48%;
+}
 .case-result {
   margin-top: 26px;
   padding-top: 22px;

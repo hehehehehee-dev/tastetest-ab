@@ -58,6 +58,21 @@ async function harness(t) {
   };
   return { call, directory };
 }
+test("historical reveal needs no prediction and does not create benchmark evidence", async (t) => {
+  const { call } = await harness(t);
+  const before = await call("/benchmark/ledger");
+  const { data, status } = await call("/historical-case/reveal", "POST");
+  assert.equal(status, 200);
+  assert.equal(data.result.actual, "A");
+  assert.equal(data.result.rows, 90189);
+  assert.equal(data.branches.llm.pick, null);
+  assert.equal(data.branches.qloo.pick, null);
+  assert.equal(data.branches.llm.status, "not-recorded");
+  assert.equal(data.branches.qloo.status, "not-applicable");
+  const after = await call("/benchmark/ledger");
+  assert.deepEqual(after, before);
+});
+
 test("sample exposes synthetic, decomposable predictions and a complete verdict", async (t) => {
   const { call } = await harness(t);
   const { data, status } = await call("/sample");

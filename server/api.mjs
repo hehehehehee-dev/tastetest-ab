@@ -387,6 +387,28 @@ export function createApi(
         return json(data);
       }
       if (
+        pathname === "/api/historical-case/reveal" &&
+        request.method === "POST"
+      ) {
+        return json({
+          result: cookieCats,
+          branches: {
+            llm: {
+              pick: null,
+              status: "not-recorded",
+              note: "No recorded AI prediction exists for this historical case. No AI is called by this page.",
+            },
+            qloo: {
+              pick: null,
+              status: "not-applicable",
+              note: "No Qloo prediction exists. Gate placement has no configured taste-entity scoring method.",
+            },
+          },
+          purpose:
+            "Historical case study only; excluded from all benchmark accuracy tallies.",
+        });
+      }
+      if (
         pathname === "/api/historical-case/commit" &&
         request.method === "POST"
       ) {

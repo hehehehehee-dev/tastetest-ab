@@ -312,14 +312,15 @@ export default function Benchmark() {
       </details>
       <details className="benchmark-drawer">
         <summary>
-          Workflow rehearsal<span>Open section</span>
+          Historical & sample cases<span>Open section</span>
         </summary>
         <section className="panel">
-          <div className="eyebrow">WORKFLOW REHEARSAL</div>
+          <div className="eyebrow">HISTORICAL & SAMPLE CASES</div>
           <h2>Public cases stay separate.</h2>
           <p>
-            Famous answers may be memorized. These datasets test commit → reveal
-            → score mechanics and never count as Track B accuracy.
+            Famous answers may be memorized. Cookie Cats reveals observed data
+            directly and marks missing AI/Qloo predictions. These examples never
+            count as Track B accuracy.
           </p>
           <a href="/benchmark-lab/historical-case-01">
             Cookie Cats · Historical case 01 ↗

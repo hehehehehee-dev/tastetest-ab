@@ -19,7 +19,7 @@ export function pageSignalLabel(route, config, record) {
       route,
     )
   )
-    return "Historical case · workflow rehearsal";
+    return "Historical case · observed data only";
   if (route === "/benchmark") return "Benchmark · see each case’s data source";
   if (/^\/benchmark\/proxy\/PX-\d{3}$/.test(route))
     return "Proxy case · prediction not started";
