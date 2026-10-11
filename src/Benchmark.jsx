@@ -37,7 +37,10 @@ export function BranchTable({ branches, result }) {
                 {branch.lowSeparation && <small> · low separation</small>}
               </td>
               <td>{branch.confidence}/100</td>
-              <td>{branch.source}</td>
+              <td>
+                {branch.provider === "replicate" ? "Replicate · " : ""}
+                {branch.source}
+              </td>
               <td>{result?.grades[key] || "Pending outcome"}</td>
             </tr>
           ))}

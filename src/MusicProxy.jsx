@@ -244,7 +244,13 @@ export default function MusicCase({ caseId, runId }) {
         setRun(
           await call(
             action,
-            action === "freeze" ? { llm, llmMode, beforeReveal } : {},
+            action === "freeze"
+              ? {
+                  llm,
+                  llmMode,
+                  beforeReveal: llmMode === "automatic" ? true : beforeReveal,
+                }
+              : {},
           ),
         );
     } catch (e) {
@@ -422,65 +428,85 @@ export default function MusicCase({ caseId, runId }) {
                 )}
                 {llmMode === "automatic" && (
                   <p>
-                    Recorded by API · {llm.source} ·{" "}
-                    {run.llmPrediction.recordedAt}
+                    Recorded by{" "}
+                    {run.llmPrediction.provider === "replicate"
+                      ? "Replicate API"
+                      : "AI API"}{" "}
+                    · {llm.source} · {run.llmPrediction.recordedAt}
                   </p>
                 )}
-                <fieldset disabled={busy || llmMode === "automatic"}>
-                  <label>
-                    LLM pick
-                    <select
-                      aria-label="LLM pick"
-                      value={llm.pick}
-                      onChange={(e) => update("pick", e.target.value)}
-                    >
-                      <option>A</option>
-                      <option>B</option>
-                      <option value="TIE">Abstain / too close</option>
-                    </select>
-                  </label>
-                  <label>
-                    LLM confidence (0–100)
-                    <input
-                      type="number"
-                      required
-                      min="0"
-                      max="100"
-                      value={llm.confidence}
-                      onChange={(e) =>
-                        update("confidence", Number(e.target.value))
-                      }
-                    />
-                  </label>
-                  <label>
-                    Exact model/version or human
-                    <input
-                      required
-                      value={llm.source}
-                      maxLength={160}
-                      onChange={(e) => update("source", e.target.value)}
-                    />
-                  </label>
-                  <label>
-                    Paste original LLM answer (optional)
-                    <textarea
-                      maxLength={6000}
-                      rows={4}
-                      value={llm.answer}
-                      onChange={(e) => update("answer", e.target.value)}
-                    />
-                  </label>
-                </fieldset>
-                <label className="check-label">
-                  <input
-                    type="checkbox"
-                    required
-                    checked={beforeReveal}
-                    onChange={(e) => setBefore(e.target.checked)}
-                  />
-                  I have not viewed this segment's outcome before recording
-                  these predictions.
-                </label>
+                {llmMode === "automatic" ? (
+                  <div className="ai-api-summary" role="status">
+                    <p>
+                      <strong>
+                        AI pick: {llm.pick === "TIE" ? "Abstain" : llm.pick}
+                      </strong>{" "}
+                      · Confidence {llm.confidence}/100
+                    </p>
+                    <p>
+                      No manual input needed. The server will seal this API
+                      response with Qloo before revealing the outcome.
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    <fieldset disabled={busy}>
+                      <label>
+                        LLM pick
+                        <select
+                          aria-label="LLM pick"
+                          value={llm.pick}
+                          onChange={(e) => update("pick", e.target.value)}
+                        >
+                          <option>A</option>
+                          <option>B</option>
+                          <option value="TIE">Abstain / too close</option>
+                        </select>
+                      </label>
+                      <label>
+                        LLM confidence (0–100)
+                        <input
+                          type="number"
+                          required
+                          min="0"
+                          max="100"
+                          value={llm.confidence}
+                          onChange={(e) =>
+                            update("confidence", Number(e.target.value))
+                          }
+                        />
+                      </label>
+                      <label>
+                        Exact model/version or human
+                        <input
+                          required
+                          value={llm.source}
+                          maxLength={160}
+                          onChange={(e) => update("source", e.target.value)}
+                        />
+                      </label>
+                      <label>
+                        Paste original LLM answer (optional)
+                        <textarea
+                          maxLength={6000}
+                          rows={4}
+                          value={llm.answer}
+                          onChange={(e) => update("answer", e.target.value)}
+                        />
+                      </label>
+                    </fieldset>
+                    <label className="check-label">
+                      <input
+                        type="checkbox"
+                        required
+                        checked={beforeReveal}
+                        onChange={(e) => setBefore(e.target.checked)}
+                      />
+                      I have not viewed this segment's outcome before recording
+                      these predictions.
+                    </label>
+                  </>
+                )}
                 <button className="button primary" disabled={busy}>
                   Freeze proxy predictions
                 </button>

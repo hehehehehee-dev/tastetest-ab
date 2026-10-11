@@ -190,3 +190,81 @@ test("proxy UI hides ratings until an immutable freeze then reveals separate moc
     ),
   ).toBe(false);
 });
+
+test("recorded Replicate API answer freezes without manual fields or checkbox", async ({
+  page,
+}) => {
+  const id = "00000000-0000-4000-8000-000000000222";
+  const input = {
+    id: "PX-001",
+    seeds: [{ title: "Fixture seed", year: 1995, genres: ["Drama"] }],
+    options: [
+      { title: "Fixture A", year: 1995, genres: ["Drama"] },
+      { title: "Fixture B", year: 1995, genres: ["Drama"] },
+    ],
+    audienceDefinition: "Synthetic audience",
+  };
+  const llmPrediction = {
+    pick: "A",
+    confidence: 70,
+    source: "fixture-model-v1",
+    provider: "replicate",
+    method: "automatic blind API",
+    recordedAt: "2026-10-11T12:00:00Z",
+    answer: "Fixture API answer",
+  };
+  const run = {
+    id,
+    input,
+    options: input.options,
+    seeds: [],
+    mode: "real",
+    scoringVersion: "qloo-candidate-affinity-v1",
+    prediction: [{ score: 80 }, { score: 81 }],
+    proxyDecisionPolicy: "always-pick-v1",
+    llmPrediction,
+  };
+  await page.addInitScript(
+    ({ id }) =>
+      localStorage.setItem("tastetest-proxy-owner-" + id, "fixture-owner"),
+    { id },
+  );
+  await page.route("**/api/proxy", (route) =>
+    route.fulfill({
+      json: { cases: [input], ai: { configured: true, enabled: true } },
+    }),
+  );
+  await page.route("**/api/proxy/runs/" + id, (route) =>
+    route.fulfill({ json: run }),
+  );
+  let frozen = false;
+  await page.route("**/api/proxy/runs/" + id + "/freeze", (route) => {
+    const body = route.request().postDataJSON();
+    expect(body.llmMode).toBe("automatic");
+    expect(body.beforeReveal).toBe(true);
+    frozen = true;
+    return route.fulfill({
+      json: {
+        ...run,
+        freeze: {
+          payload: {
+            branches: { llm: llmPrediction },
+            timing: "Fixture timing",
+            note: "fixture",
+          },
+          sha256: "a".repeat(64),
+        },
+        frozenAt: "2026-10-11T12:01:00Z",
+      },
+    });
+  });
+  await page.goto("/benchmark/proxy/run/" + id);
+  await expect(page.getByText(/Recorded by Replicate API/)).toBeVisible();
+  await expect(page.getByText("AI pick: A")).toBeVisible();
+  await expect(
+    page.locator("main input, main select, main textarea"),
+  ).toHaveCount(0);
+  await page.getByRole("button", { name: "Freeze proxy predictions" }).click();
+  await expect(page.getByText(/^SHA-256 /)).toBeVisible();
+  expect(frozen).toBe(true);
+});
