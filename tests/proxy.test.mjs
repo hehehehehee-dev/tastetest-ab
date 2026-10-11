@@ -329,3 +329,59 @@ test("real-shaped movie resolution uses the existing adapter and never receives 
     /No substitute score/,
   );
 });
+
+test("verified Army of Darkness year exception remains narrow and rejects ambiguity", async () => {
+  const input = generate().inputs.cases[0];
+  input.seeds[0] = {
+    movieId: "1215",
+    title: "Army of Darkness",
+    year: 1993,
+    genres: ["Horror"],
+  };
+  let duplicate = false;
+  const adapter = {
+    searchEntities: async (title) => {
+      const movie = [...input.seeds, ...input.options].find(
+        (m) => m.title === title,
+      );
+      const entity = {
+        entity_id: "fixture-" + movie.movieId,
+        name: title,
+        releaseYear: title === "Army of Darkness" ? 1992 : movie.year,
+        tags: [],
+      };
+      return {
+        results: {
+          entities:
+            duplicate && title === "Army of Darkness"
+              ? [entity, { ...entity, entity_id: "other" }]
+              : [entity],
+        },
+      };
+    },
+    getInsights: async (ids, types, candidateIds) => ({
+      mode: "real",
+      results: {
+        entities: candidateIds.map((entity_id, i) => ({
+          entity_id,
+          query: { affinity: i ? 0.2 : 0.8 },
+        })),
+      },
+    }),
+  };
+  const result = await predictProxy(input, adapter, false);
+  assert.equal(result.provenance.resolutionNotes[0].lookupYear, 1992);
+  assert.equal(result.provenance.resolutionNotes[0].datasetYear, 1993);
+  assert.equal(input.seeds[0].year, 1993);
+  duplicate = true;
+  await assert.rejects(
+    () => predictProxy(input, adapter, false),
+    /Cannot unambiguously resolve/,
+  );
+  duplicate = false;
+  input.seeds[0].movieId = "unverified";
+  await assert.rejects(
+    () => predictProxy(input, adapter, false),
+    /Cannot unambiguously resolve/,
+  );
+});

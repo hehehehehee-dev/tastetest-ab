@@ -166,6 +166,15 @@ function normalizedTitle(title) {
     .replace(/^(the|a|an) /i, "")
     .replace(/[^\p{L}\p{N}]/gu, "");
 }
+// Verified catalog-year discrepancy; never relax year matching globally.
+const filmYearExceptions = {
+  1215: {
+    title: "Army of Darkness",
+    datasetYear: 1993,
+    catalogYear: 1992,
+    source: "https://www.universalpicturesathome.com/movies/army-of-darkness",
+  },
+};
 export async function predictProxy(
   input,
   adapter = qlooAdapter,
@@ -174,6 +183,7 @@ export async function predictProxy(
 ) {
   const music = domain === "music";
   const entityType = music ? "Music" : "Film/TV";
+  const resolutionNotes = [];
   async function resolve(movie) {
     if (mock) {
       const entity = mockMovie(movie);
@@ -181,6 +191,12 @@ export async function predictProxy(
         ? { ...entity, category: "Music", types: [typeUrns.Music] }
         : entity;
     }
+    const exception = !music && filmYearExceptions[movie.movieId];
+    const verifiedException =
+      exception &&
+      movie.title === exception.title &&
+      movie.year === exception.datasetYear;
+    const lookupYear = verifiedException ? exception.catalogYear : movie.year;
     const result = await adapter.searchEntities(
       movie.title.replace(/, (The|A|An)$/, ""),
       entityType,
@@ -193,13 +209,13 @@ export async function predictProxy(
           ? entity.name.normalize("NFC").toLowerCase() ===
             movie.title.normalize("NFC").toLowerCase()
           : normalizedTitle(entity.name) === normalizedTitle(movie.title)) &&
-        (music || !year || year === movie.year)
+        (music || !year || year === lookupYear)
       );
     });
     const exactYear = matches.filter(
       (entity) =>
-        entity.releaseYear === movie.year ||
-        entity.name.includes(`(${movie.year})`),
+        entity.releaseYear === lookupYear ||
+        entity.name.includes(`(${lookupYear})`),
     );
     const candidates = exactYear.length ? exactYear : matches;
     if (candidates.length !== 1)
@@ -207,6 +223,15 @@ export async function predictProxy(
         `Cannot unambiguously resolve ${movieName(movie)} in Qloo. No prediction was invented.`,
         422,
       );
+    if (verifiedException)
+      resolutionNotes.push({
+        movieId: movie.movieId,
+        title: movie.title,
+        datasetYear: movie.year,
+        lookupYear,
+        source: exception.source,
+        note: "Verified catalog-year discrepancy; original dataset inputs unchanged.",
+      });
     return candidates[0];
   }
   const seeds = await Promise.all(input.seeds.map(resolve)),
@@ -296,6 +321,7 @@ export async function predictProxy(
       source: mock ? "Synthetic genre fixtures" : "Qloo API",
       endpoint: mock ? null : "/v2/insights",
       fetchedAt: mock ? null : insights.fetchedAt,
+      ...(resolutionNotes.length ? { resolutionNotes } : {}),
       seedEntityIds: seeds.map((s) => s.entity_id),
       candidateEntityIds: candidates.map((c) => c.entity_id),
       affinities: mock
