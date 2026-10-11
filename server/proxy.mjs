@@ -71,8 +71,13 @@ export function validateProxyOutcomes(catalog, body) {
   }
   return body;
 }
-export async function seedProxyOutcomes(store, catalog, body) {
-  validateProxyOutcomes(catalog, body);
+export async function seedProxyOutcomes(
+  store,
+  catalog,
+  body,
+  validator = validateProxyOutcomes,
+) {
+  validator(catalog, body);
   const existing = await store.get(`proxy-outcomes/${catalog.caseSetHash}`);
   if (existing) {
     if (JSON.stringify(existing) !== JSON.stringify(body))
@@ -165,19 +170,30 @@ export async function predictProxy(
   input,
   adapter = qlooAdapter,
   mock = isMockMode(),
+  domain = "film",
 ) {
+  const music = domain === "music";
+  const entityType = music ? "Music" : "Film/TV";
   async function resolve(movie) {
-    if (mock) return mockMovie(movie);
+    if (mock) {
+      const entity = mockMovie(movie);
+      return music
+        ? { ...entity, category: "Music", types: [typeUrns.Music] }
+        : entity;
+    }
     const result = await adapter.searchEntities(
       movie.title.replace(/, (The|A|An)$/, ""),
-      "Film/TV",
+      entityType,
     );
     const matches = result.results.entities.filter((entity) => {
       const year =
         entity.releaseYear || Number(entity.name.match(/\((\d{4})\)\s*$/)?.[1]);
       return (
-        normalizedTitle(entity.name) === normalizedTitle(movie.title) &&
-        (!year || year === movie.year)
+        (music
+          ? entity.name.normalize("NFC").toLowerCase() ===
+            movie.title.normalize("NFC").toLowerCase()
+          : normalizedTitle(entity.name) === normalizedTitle(movie.title)) &&
+        (music || !year || year === movie.year)
       );
     });
     const exactYear = matches.filter(
@@ -219,12 +235,14 @@ export async function predictProxy(
       }
     : await adapter.getInsights(
         seeds.map((s) => s.entity_id),
-        [typeUrns["Film/TV"]],
+        [typeUrns[entityType]],
         candidates.map((c) => c.entity_id),
       );
   const options = input.options.map((movie) => ({
     title: movieName(movie),
-    description: `${movie.genres.join(", ")} movie released in ${movie.year || "unknown year"}.`,
+    description: music
+      ? "Candidate artist for this historical music preference segment."
+      : `${movie.genres.join(", ")} movie released in ${movie.year || "unknown year"}.`,
   }));
   const scoringAdapter = mock ? mockQlooAdapter : adapter;
   const prediction = mock
@@ -311,6 +329,9 @@ export function createProxyApi(
     catalogLoader = loadProxyCatalog,
     mockMode = isMockMode,
     adminToken = () => process.env.PROXY_ADMIN_TOKEN,
+    predictor = predictProxy,
+    validateOutcomes = validateProxyOutcomes,
+    casePattern = "PX-\\d{3}",
   } = {},
 ) {
   const owns = (run, request) =>
@@ -357,7 +378,12 @@ export function createProxyApi(
           403,
         );
       const body = await readBody(request);
-      const created = await seedProxyOutcomes(store, catalog, body);
+      const created = await seedProxyOutcomes(
+        store,
+        catalog,
+        body,
+        validateOutcomes,
+      );
       return {
         data: { seeded: catalog.cases.length, created },
         status: created ? 201 : 200,
@@ -379,7 +405,9 @@ export function createProxyApi(
         },
       };
     }
-    const start = pathname.match(/^\/api\/proxy\/cases\/(PX-\d{3})\/start$/);
+    const start = pathname.match(
+      new RegExp(`^/api/proxy/cases/(${casePattern})/start$`),
+    );
     if (start && request.method === "POST") {
       const input = catalog.cases.find((c) => c.id === start[1]);
       if (!input) fail("Proxy case not found.", 404);
@@ -390,7 +418,7 @@ export function createProxyApi(
         );
       const ownerToken = randomBytes(32).toString("hex");
       const run = {
-        ...(await predictProxy(input, adapter, mockMode())),
+        ...(await predictor(input, adapter, mockMode())),
         id: randomUUID(),
         proxyCaseId: input.id,
         caseSetHash: catalog.caseSetHash,

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { ProxySection } from "./ProxyBenchmark.jsx";
+import { MusicSection } from "./MusicProxy.jsx";
 export async function benchmarkApi(path, options = {}) {
   const response = await fetch(`/api${path}`, {
     ...options,
@@ -302,6 +303,12 @@ export default function Benchmark() {
           <span>{proxy?.cases.length ?? "…"} cases · MovieLens</span>
         </summary>
         <ProxySection />
+      </details>
+      <details className="benchmark-drawer">
+        <summary>
+          Proxy — music<span>40 cases · Last.fm · separate tally</span>
+        </summary>
+        <MusicSection />
       </details>
       <details className="benchmark-drawer">
         <summary>

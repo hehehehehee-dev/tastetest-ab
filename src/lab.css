@@ -1556,7 +1556,8 @@ body::before,
   margin-top: 24px;
   padding: 24px;
 }
-.proxy-section {
+.proxy-section,
+.music-proxy-section {
   border-top: 2px solid #777;
   margin-top: 48px !important;
 }

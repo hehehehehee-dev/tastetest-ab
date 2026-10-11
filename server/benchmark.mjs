@@ -140,7 +140,9 @@ export function makeFreeze(test, body, now = new Date().toISOString()) {
           proxyCaseId: test.proxyCaseId,
           beforeRevealConfirmed: true,
           timing:
-            "Retrospective proxy: ratings pre-exist this freeze. Only reveal occurs after predictions are sealed.",
+            test.proxyDomain === "music"
+              ? "Retrospective music proxy: listening records pre-exist this freeze. Only reveal occurs after predictions are sealed."
+              : "Retrospective proxy: ratings pre-exist this freeze. Only reveal occurs after predictions are sealed.",
         }
       : {}),
     originalRecordedAt: manual

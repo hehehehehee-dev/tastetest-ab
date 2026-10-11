@@ -1,0 +1,1153 @@
+{
+  "manifest": {
+    "dataset": "hetrec2011-lastfm-2k",
+    "domain": "music",
+    "protocolVersion": "lastfm-proxy-v2",
+    "selection": "One case per seed triple; segments may overlap in users. No independence claim.",
+    "seed": "tastetest-lastfm-v2",
+    "rules": {
+      "count": 40,
+      "minUsers": 30,
+      "minSegmentListeners": 20,
+      "minOverallListeners": 200,
+      "minRelativeGap": 0.2,
+      "topFraction": 0.2
+    },
+    "definitions": {
+      "topProfile": "Upper 20% by rank in each user’s observed listening records, including boundary ties; three seed artists must all qualify.",
+      "mean": "Mean over every segment user; absent artist records contribute zero observed listens (not evidence of dislike).",
+      "gap": "abs(meanA-meanB)/min(meanA,meanB)",
+      "unit": "Implicit listening counts, not explicit ratings or business results"
+    },
+    "source": "https://grouplens.org/datasets/hetrec-2011/",
+    "credit": "Last.fm; HetRec 2011, Universidad Autónoma de Madrid; distributed by GroupLens",
+    "label": "Historical preferences, not business results",
+    "sourceHashes": {
+      "artists": "c173881362c6b28551368fecb3c0be5a6a30a6cd859e1f5775413dfe46d48648",
+      "listens": "001400dc3c7d2667fca6e4ea6dc6acc31a9dd28ad5cd0f74cea988c019934d3b"
+    }
+  },
+  "cases": [
+    {
+      "id": "MX-001",
+      "dataset": "hetrec2011-lastfm-2k",
+      "seeds": [
+        {
+          "artistId": "289",
+          "name": "Britney Spears"
+        },
+        {
+          "artistId": "67",
+          "name": "Madonna"
+        },
+        {
+          "artistId": "89",
+          "name": "Lady Gaga"
+        }
+      ],
+      "options": [
+        {
+          "artistId": "466",
+          "name": "Ke$ha"
+        },
+        {
+          "artistId": "291",
+          "name": "Kelly Clarkson"
+        }
+      ]
+    },
+    {
+      "id": "MX-002",
+      "dataset": "hetrec2011-lastfm-2k",
+      "seeds": [
+        {
+          "artistId": "300",
+          "name": "Katy Perry"
+        },
+        {
+          "artistId": "466",
+          "name": "Ke$ha"
+        },
+        {
+          "artistId": "89",
+          "name": "Lady Gaga"
+        }
+      ],
+      "options": [
+        {
+          "artistId": "288",
+          "name": "Rihanna"
+        },
+        {
+          "artistId": "292",
+          "name": "Christina Aguilera"
+        }
+      ]
+    },
+    {
+      "id": "MX-003",
+      "dataset": "hetrec2011-lastfm-2k",
+      "seeds": [
+        {
+          "artistId": "289",
+          "name": "Britney Spears"
+        },
+        {
+          "artistId": "466",
+          "name": "Ke$ha"
+        },
+        {
+          "artistId": "89",
+          "name": "Lady Gaga"
+        }
+      ],
+      "options": [
+        {
+          "artistId": "291",
+          "name": "Kelly Clarkson"
+        },
+        {
+          "artistId": "288",
+          "name": "Rihanna"
+        }
+      ]
+    },
+    {
+      "id": "MX-004",
+      "dataset": "hetrec2011-lastfm-2k",
+      "seeds": [
+        {
+          "artistId": "289",
+          "name": "Britney Spears"
+        },
+        {
+          "artistId": "300",
+          "name": "Katy Perry"
+        },
+        {
+          "artistId": "466",
+          "name": "Ke$ha"
+        }
+      ],
+      "options": [
+        {
+          "artistId": "295",
+          "name": "Beyoncé"
+        },
+        {
+          "artistId": "306",
+          "name": "Black Eyed Peas"
+        }
+      ]
+    },
+    {
+      "id": "MX-005",
+      "dataset": "hetrec2011-lastfm-2k",
+      "seeds": [
+        {
+          "artistId": "288",
+          "name": "Rihanna"
+        },
+        {
+          "artistId": "289",
+          "name": "Britney Spears"
+        },
+        {
+          "artistId": "89",
+          "name": "Lady Gaga"
+        }
+      ],
+      "options": [
+        {
+          "artistId": "291",
+          "name": "Kelly Clarkson"
+        },
+        {
+          "artistId": "298",
+          "name": "Lily Allen"
+        }
+      ]
+    },
+    {
+      "id": "MX-006",
+      "dataset": "hetrec2011-lastfm-2k",
+      "seeds": [
+        {
+          "artistId": "289",
+          "name": "Britney Spears"
+        },
+        {
+          "artistId": "292",
+          "name": "Christina Aguilera"
+        },
+        {
+          "artistId": "300",
+          "name": "Katy Perry"
+        }
+      ],
+      "options": [
+        {
+          "artistId": "461",
+          "name": "Miley Cyrus"
+        },
+        {
+          "artistId": "498",
+          "name": "Paramore"
+        }
+      ]
+    },
+    {
+      "id": "MX-007",
+      "dataset": "hetrec2011-lastfm-2k",
+      "seeds": [
+        {
+          "artistId": "288",
+          "name": "Rihanna"
+        },
+        {
+          "artistId": "292",
+          "name": "Christina Aguilera"
+        },
+        {
+          "artistId": "89",
+          "name": "Lady Gaga"
+        }
+      ],
+      "options": [
+        {
+          "artistId": "461",
+          "name": "Miley Cyrus"
+        },
+        {
+          "artistId": "300",
+          "name": "Katy Perry"
+        }
+      ]
+    },
+    {
+      "id": "MX-008",
+      "dataset": "hetrec2011-lastfm-2k",
+      "seeds": [
+        {
+          "artistId": "289",
+          "name": "Britney Spears"
+        },
+        {
+          "artistId": "300",
+          "name": "Katy Perry"
+        },
+        {
+          "artistId": "89",
+          "name": "Lady Gaga"
+        }
+      ],
+      "options": [
+        {
+          "artistId": "67",
+          "name": "Madonna"
+        },
+        {
+          "artistId": "55",
+          "name": "Kylie Minogue"
+        }
+      ]
+    },
+    {
+      "id": "MX-009",
+      "dataset": "hetrec2011-lastfm-2k",
+      "seeds": [
+        {
+          "artistId": "289",
+          "name": "Britney Spears"
+        },
+        {
+          "artistId": "292",
+          "name": "Christina Aguilera"
+        },
+        {
+          "artistId": "89",
+          "name": "Lady Gaga"
+        }
+      ],
+      "options": [
+        {
+          "artistId": "55",
+          "name": "Kylie Minogue"
+        },
+        {
+          "artistId": "257",
+          "name": "Mariah Carey"
+        }
+      ]
+    },
+    {
+      "id": "MX-010",
+      "dataset": "hetrec2011-lastfm-2k",
+      "seeds": [
+        {
+          "artistId": "289",
+          "name": "Britney Spears"
+        },
+        {
+          "artistId": "292",
+          "name": "Christina Aguilera"
+        },
+        {
+          "artistId": "295",
+          "name": "Beyoncé"
+        }
+      ],
+      "options": [
+        {
+          "artistId": "300",
+          "name": "Katy Perry"
+        },
+        {
+          "artistId": "302",
+          "name": "P!nk"
+        }
+      ]
+    },
+    {
+      "id": "MX-011",
+      "dataset": "hetrec2011-lastfm-2k",
+      "seeds": [
+        {
+          "artistId": "292",
+          "name": "Christina Aguilera"
+        },
+        {
+          "artistId": "300",
+          "name": "Katy Perry"
+        },
+        {
+          "artistId": "89",
+          "name": "Lady Gaga"
+        }
+      ],
+      "options": [
+        {
+          "artistId": "288",
+          "name": "Rihanna"
+        },
+        {
+          "artistId": "299",
+          "name": "Jennifer Lopez"
+        }
+      ]
+    },
+    {
+      "id": "MX-012",
+      "dataset": "hetrec2011-lastfm-2k",
+      "seeds": [
+        {
+          "artistId": "288",
+          "name": "Rihanna"
+        },
+        {
+          "artistId": "289",
+          "name": "Britney Spears"
+        },
+        {
+          "artistId": "292",
+          "name": "Christina Aguilera"
+        }
+      ],
+      "options": [
+        {
+          "artistId": "333",
+          "name": "Avril Lavigne"
+        },
+        {
+          "artistId": "302",
+          "name": "P!nk"
+        }
+      ]
+    },
+    {
+      "id": "MX-013",
+      "dataset": "hetrec2011-lastfm-2k",
+      "seeds": [
+        {
+          "artistId": "288",
+          "name": "Rihanna"
+        },
+        {
+          "artistId": "289",
+          "name": "Britney Spears"
+        },
+        {
+          "artistId": "333",
+          "name": "Avril Lavigne"
+        }
+      ],
+      "options": [
+        {
+          "artistId": "295",
+          "name": "Beyoncé"
+        },
+        {
+          "artistId": "306",
+          "name": "Black Eyed Peas"
+        }
+      ]
+    },
+    {
+      "id": "MX-014",
+      "dataset": "hetrec2011-lastfm-2k",
+      "seeds": [
+        {
+          "artistId": "292",
+          "name": "Christina Aguilera"
+        },
+        {
+          "artistId": "295",
+          "name": "Beyoncé"
+        },
+        {
+          "artistId": "89",
+          "name": "Lady Gaga"
+        }
+      ],
+      "options": [
+        {
+          "artistId": "289",
+          "name": "Britney Spears"
+        },
+        {
+          "artistId": "67",
+          "name": "Madonna"
+        }
+      ]
+    },
+    {
+      "id": "MX-015",
+      "dataset": "hetrec2011-lastfm-2k",
+      "seeds": [
+        {
+          "artistId": "288",
+          "name": "Rihanna"
+        },
+        {
+          "artistId": "292",
+          "name": "Christina Aguilera"
+        },
+        {
+          "artistId": "466",
+          "name": "Ke$ha"
+        }
+      ],
+      "options": [
+        {
+          "artistId": "299",
+          "name": "Jennifer Lopez"
+        },
+        {
+          "artistId": "295",
+          "name": "Beyoncé"
+        }
+      ]
+    },
+    {
+      "id": "MX-016",
+      "dataset": "hetrec2011-lastfm-2k",
+      "seeds": [
+        {
+          "artistId": "292",
+          "name": "Christina Aguilera"
+        },
+        {
+          "artistId": "67",
+          "name": "Madonna"
+        },
+        {
+          "artistId": "89",
+          "name": "Lady Gaga"
+        }
+      ],
+      "options": [
+        {
+          "artistId": "349",
+          "name": "The Pussycat Dolls"
+        },
+        {
+          "artistId": "55",
+          "name": "Kylie Minogue"
+        }
+      ]
+    },
+    {
+      "id": "MX-017",
+      "dataset": "hetrec2011-lastfm-2k",
+      "seeds": [
+        {
+          "artistId": "289",
+          "name": "Britney Spears"
+        },
+        {
+          "artistId": "292",
+          "name": "Christina Aguilera"
+        },
+        {
+          "artistId": "466",
+          "name": "Ke$ha"
+        }
+      ],
+      "options": [
+        {
+          "artistId": "288",
+          "name": "Rihanna"
+        },
+        {
+          "artistId": "299",
+          "name": "Jennifer Lopez"
+        }
+      ]
+    },
+    {
+      "id": "MX-018",
+      "dataset": "hetrec2011-lastfm-2k",
+      "seeds": [
+        {
+          "artistId": "288",
+          "name": "Rihanna"
+        },
+        {
+          "artistId": "300",
+          "name": "Katy Perry"
+        },
+        {
+          "artistId": "89",
+          "name": "Lady Gaga"
+        }
+      ],
+      "options": [
+        {
+          "artistId": "349",
+          "name": "The Pussycat Dolls"
+        },
+        {
+          "artistId": "475",
+          "name": "Eminem"
+        }
+      ]
+    },
+    {
+      "id": "MX-019",
+      "dataset": "hetrec2011-lastfm-2k",
+      "seeds": [
+        {
+          "artistId": "292",
+          "name": "Christina Aguilera"
+        },
+        {
+          "artistId": "466",
+          "name": "Ke$ha"
+        },
+        {
+          "artistId": "89",
+          "name": "Lady Gaga"
+        }
+      ],
+      "options": [
+        {
+          "artistId": "306",
+          "name": "Black Eyed Peas"
+        },
+        {
+          "artistId": "333",
+          "name": "Avril Lavigne"
+        }
+      ]
+    },
+    {
+      "id": "MX-020",
+      "dataset": "hetrec2011-lastfm-2k",
+      "seeds": [
+        {
+          "artistId": "288",
+          "name": "Rihanna"
+        },
+        {
+          "artistId": "289",
+          "name": "Britney Spears"
+        },
+        {
+          "artistId": "466",
+          "name": "Ke$ha"
+        }
+      ],
+      "options": [
+        {
+          "artistId": "300",
+          "name": "Katy Perry"
+        },
+        {
+          "artistId": "498",
+          "name": "Paramore"
+        }
+      ]
+    },
+    {
+      "id": "MX-021",
+      "dataset": "hetrec2011-lastfm-2k",
+      "seeds": [
+        {
+          "artistId": "288",
+          "name": "Rihanna"
+        },
+        {
+          "artistId": "289",
+          "name": "Britney Spears"
+        },
+        {
+          "artistId": "67",
+          "name": "Madonna"
+        }
+      ],
+      "options": [
+        {
+          "artistId": "302",
+          "name": "P!nk"
+        },
+        {
+          "artistId": "298",
+          "name": "Lily Allen"
+        }
+      ]
+    },
+    {
+      "id": "MX-022",
+      "dataset": "hetrec2011-lastfm-2k",
+      "seeds": [
+        {
+          "artistId": "288",
+          "name": "Rihanna"
+        },
+        {
+          "artistId": "67",
+          "name": "Madonna"
+        },
+        {
+          "artistId": "89",
+          "name": "Lady Gaga"
+        }
+      ],
+      "options": [
+        {
+          "artistId": "292",
+          "name": "Christina Aguilera"
+        },
+        {
+          "artistId": "701",
+          "name": "Shakira"
+        }
+      ]
+    },
+    {
+      "id": "MX-023",
+      "dataset": "hetrec2011-lastfm-2k",
+      "seeds": [
+        {
+          "artistId": "288",
+          "name": "Rihanna"
+        },
+        {
+          "artistId": "292",
+          "name": "Christina Aguilera"
+        },
+        {
+          "artistId": "67",
+          "name": "Madonna"
+        }
+      ],
+      "options": [
+        {
+          "artistId": "349",
+          "name": "The Pussycat Dolls"
+        },
+        {
+          "artistId": "333",
+          "name": "Avril Lavigne"
+        }
+      ]
+    },
+    {
+      "id": "MX-024",
+      "dataset": "hetrec2011-lastfm-2k",
+      "seeds": [
+        {
+          "artistId": "288",
+          "name": "Rihanna"
+        },
+        {
+          "artistId": "289",
+          "name": "Britney Spears"
+        },
+        {
+          "artistId": "295",
+          "name": "Beyoncé"
+        }
+      ],
+      "options": [
+        {
+          "artistId": "257",
+          "name": "Mariah Carey"
+        },
+        {
+          "artistId": "475",
+          "name": "Eminem"
+        }
+      ]
+    },
+    {
+      "id": "MX-025",
+      "dataset": "hetrec2011-lastfm-2k",
+      "seeds": [
+        {
+          "artistId": "288",
+          "name": "Rihanna"
+        },
+        {
+          "artistId": "295",
+          "name": "Beyoncé"
+        },
+        {
+          "artistId": "89",
+          "name": "Lady Gaga"
+        }
+      ],
+      "options": [
+        {
+          "artistId": "157",
+          "name": "Michael Jackson"
+        },
+        {
+          "artistId": "701",
+          "name": "Shakira"
+        }
+      ]
+    },
+    {
+      "id": "MX-026",
+      "dataset": "hetrec2011-lastfm-2k",
+      "seeds": [
+        {
+          "artistId": "288",
+          "name": "Rihanna"
+        },
+        {
+          "artistId": "292",
+          "name": "Christina Aguilera"
+        },
+        {
+          "artistId": "300",
+          "name": "Katy Perry"
+        }
+      ],
+      "options": [
+        {
+          "artistId": "289",
+          "name": "Britney Spears"
+        },
+        {
+          "artistId": "257",
+          "name": "Mariah Carey"
+        }
+      ]
+    },
+    {
+      "id": "MX-027",
+      "dataset": "hetrec2011-lastfm-2k",
+      "seeds": [
+        {
+          "artistId": "288",
+          "name": "Rihanna"
+        },
+        {
+          "artistId": "466",
+          "name": "Ke$ha"
+        },
+        {
+          "artistId": "89",
+          "name": "Lady Gaga"
+        }
+      ],
+      "options": [
+        {
+          "artistId": "295",
+          "name": "Beyoncé"
+        },
+        {
+          "artistId": "292",
+          "name": "Christina Aguilera"
+        }
+      ]
+    },
+    {
+      "id": "MX-028",
+      "dataset": "hetrec2011-lastfm-2k",
+      "seeds": [
+        {
+          "artistId": "289",
+          "name": "Britney Spears"
+        },
+        {
+          "artistId": "295",
+          "name": "Beyoncé"
+        },
+        {
+          "artistId": "89",
+          "name": "Lady Gaga"
+        }
+      ],
+      "options": [
+        {
+          "artistId": "701",
+          "name": "Shakira"
+        },
+        {
+          "artistId": "292",
+          "name": "Christina Aguilera"
+        }
+      ]
+    },
+    {
+      "id": "MX-029",
+      "dataset": "hetrec2011-lastfm-2k",
+      "seeds": [
+        {
+          "artistId": "289",
+          "name": "Britney Spears"
+        },
+        {
+          "artistId": "292",
+          "name": "Christina Aguilera"
+        },
+        {
+          "artistId": "679",
+          "name": "Glee Cast"
+        }
+      ],
+      "options": [
+        {
+          "artistId": "89",
+          "name": "Lady Gaga"
+        },
+        {
+          "artistId": "466",
+          "name": "Ke$ha"
+        }
+      ]
+    },
+    {
+      "id": "MX-030",
+      "dataset": "hetrec2011-lastfm-2k",
+      "seeds": [
+        {
+          "artistId": "288",
+          "name": "Rihanna"
+        },
+        {
+          "artistId": "289",
+          "name": "Britney Spears"
+        },
+        {
+          "artistId": "300",
+          "name": "Katy Perry"
+        }
+      ],
+      "options": [
+        {
+          "artistId": "89",
+          "name": "Lady Gaga"
+        },
+        {
+          "artistId": "306",
+          "name": "Black Eyed Peas"
+        }
+      ]
+    },
+    {
+      "id": "MX-031",
+      "dataset": "hetrec2011-lastfm-2k",
+      "seeds": [
+        {
+          "artistId": "288",
+          "name": "Rihanna"
+        },
+        {
+          "artistId": "300",
+          "name": "Katy Perry"
+        },
+        {
+          "artistId": "466",
+          "name": "Ke$ha"
+        }
+      ],
+      "options": [
+        {
+          "artistId": "289",
+          "name": "Britney Spears"
+        },
+        {
+          "artistId": "306",
+          "name": "Black Eyed Peas"
+        }
+      ]
+    },
+    {
+      "id": "MX-032",
+      "dataset": "hetrec2011-lastfm-2k",
+      "seeds": [
+        {
+          "artistId": "289",
+          "name": "Britney Spears"
+        },
+        {
+          "artistId": "292",
+          "name": "Christina Aguilera"
+        },
+        {
+          "artistId": "55",
+          "name": "Kylie Minogue"
+        }
+      ],
+      "options": [
+        {
+          "artistId": "349",
+          "name": "The Pussycat Dolls"
+        },
+        {
+          "artistId": "257",
+          "name": "Mariah Carey"
+        }
+      ]
+    },
+    {
+      "id": "MX-033",
+      "dataset": "hetrec2011-lastfm-2k",
+      "seeds": [
+        {
+          "artistId": "289",
+          "name": "Britney Spears"
+        },
+        {
+          "artistId": "55",
+          "name": "Kylie Minogue"
+        },
+        {
+          "artistId": "89",
+          "name": "Lady Gaga"
+        }
+      ],
+      "options": [
+        {
+          "artistId": "333",
+          "name": "Avril Lavigne"
+        },
+        {
+          "artistId": "466",
+          "name": "Ke$ha"
+        }
+      ]
+    },
+    {
+      "id": "MX-034",
+      "dataset": "hetrec2011-lastfm-2k",
+      "seeds": [
+        {
+          "artistId": "289",
+          "name": "Britney Spears"
+        },
+        {
+          "artistId": "292",
+          "name": "Christina Aguilera"
+        },
+        {
+          "artistId": "333",
+          "name": "Avril Lavigne"
+        }
+      ],
+      "options": [
+        {
+          "artistId": "55",
+          "name": "Kylie Minogue"
+        },
+        {
+          "artistId": "295",
+          "name": "Beyoncé"
+        }
+      ]
+    },
+    {
+      "id": "MX-035",
+      "dataset": "hetrec2011-lastfm-2k",
+      "seeds": [
+        {
+          "artistId": "289",
+          "name": "Britney Spears"
+        },
+        {
+          "artistId": "333",
+          "name": "Avril Lavigne"
+        },
+        {
+          "artistId": "89",
+          "name": "Lady Gaga"
+        }
+      ],
+      "options": [
+        {
+          "artistId": "292",
+          "name": "Christina Aguilera"
+        },
+        {
+          "artistId": "344",
+          "name": "Taylor Swift"
+        }
+      ]
+    },
+    {
+      "id": "MX-036",
+      "dataset": "hetrec2011-lastfm-2k",
+      "seeds": [
+        {
+          "artistId": "289",
+          "name": "Britney Spears"
+        },
+        {
+          "artistId": "55",
+          "name": "Kylie Minogue"
+        },
+        {
+          "artistId": "67",
+          "name": "Madonna"
+        }
+      ],
+      "options": [
+        {
+          "artistId": "288",
+          "name": "Rihanna"
+        },
+        {
+          "artistId": "299",
+          "name": "Jennifer Lopez"
+        }
+      ]
+    },
+    {
+      "id": "MX-037",
+      "dataset": "hetrec2011-lastfm-2k",
+      "seeds": [
+        {
+          "artistId": "288",
+          "name": "Rihanna"
+        },
+        {
+          "artistId": "289",
+          "name": "Britney Spears"
+        },
+        {
+          "artistId": "461",
+          "name": "Miley Cyrus"
+        }
+      ],
+      "options": [
+        {
+          "artistId": "300",
+          "name": "Katy Perry"
+        },
+        {
+          "artistId": "302",
+          "name": "P!nk"
+        }
+      ]
+    },
+    {
+      "id": "MX-038",
+      "dataset": "hetrec2011-lastfm-2k",
+      "seeds": [
+        {
+          "artistId": "288",
+          "name": "Rihanna"
+        },
+        {
+          "artistId": "292",
+          "name": "Christina Aguilera"
+        },
+        {
+          "artistId": "295",
+          "name": "Beyoncé"
+        }
+      ],
+      "options": [
+        {
+          "artistId": "55",
+          "name": "Kylie Minogue"
+        },
+        {
+          "artistId": "67",
+          "name": "Madonna"
+        }
+      ]
+    },
+    {
+      "id": "MX-039",
+      "dataset": "hetrec2011-lastfm-2k",
+      "seeds": [
+        {
+          "artistId": "289",
+          "name": "Britney Spears"
+        },
+        {
+          "artistId": "292",
+          "name": "Christina Aguilera"
+        },
+        {
+          "artistId": "67",
+          "name": "Madonna"
+        }
+      ],
+      "options": [
+        {
+          "artistId": "349",
+          "name": "The Pussycat Dolls"
+        },
+        {
+          "artistId": "300",
+          "name": "Katy Perry"
+        }
+      ]
+    },
+    {
+      "id": "MX-040",
+      "dataset": "hetrec2011-lastfm-2k",
+      "seeds": [
+        {
+          "artistId": "289",
+          "name": "Britney Spears"
+        },
+        {
+          "artistId": "461",
+          "name": "Miley Cyrus"
+        },
+        {
+          "artistId": "89",
+          "name": "Lady Gaga"
+        }
+      ],
+      "options": [
+        {
+          "artistId": "679",
+          "name": "Glee Cast"
+        },
+        {
+          "artistId": "292",
+          "name": "Christina Aguilera"
+        }
+      ]
+    }
+  ],
+  "caseSetHash": "6cfd06ef0ddf751703d45684e47b3cb7b7d41c526822283e0048b1743e6f3e05"
+}

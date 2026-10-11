@@ -10,7 +10,14 @@ function fixture(userCount = 600) {
     artistId: String(i + 1),
     name: `Fixture artist ${i + 1}`,
   }));
-  const weights = [1000, 950, 900, 400, 200, ...Array(45).fill(10)];
+  const weights = [
+    1000,
+    950,
+    900,
+    400,
+    200,
+    ...Array.from({ length: 45 }, (_, i) => 45 - i),
+  ];
   const listens = Array.from({ length: userCount }, (_, u) =>
     artists.map((a, i) => ({
       userId: String(u + 1),
@@ -27,6 +34,12 @@ test("Last.fm deterministic fixture produces 40 distinct, blinded music inputs u
   assert.deepEqual(a.inputs, b.inputs);
   assert.deepEqual(a.hidden, b.hidden);
   assert.equal(a.inputs.cases.length, 40);
+  assert.equal(
+    new Set(
+      a.inputs.cases.map((c) => JSON.stringify(c.seeds.map((s) => s.artistId))),
+    ).size,
+    40,
+  );
   assert.equal(a.inputs.cases[0].id, "MX-001");
   assert.equal(a.inputs.cases[39].id, "MX-040");
   assert.equal(
@@ -46,7 +59,7 @@ test("Last.fm deterministic fixture produces 40 distinct, blinded music inputs u
   );
   for (const c of a.inputs.cases) {
     assert.equal(c.seeds.length, 3);
-    assert.ok(c.seeds.every((s) => Number(s.artistId) <= 5)); // Per-user top decile of 50 observed artists.
+    assert.ok(c.seeds.every((s) => Number(s.artistId) <= 10)); // Per-user top 20% of 50 observed artists.
     assert.ok(
       c.options.every((o) => !c.seeds.some((s) => s.artistId === o.artistId)),
     );
@@ -55,7 +68,7 @@ test("Last.fm deterministic fixture produces 40 distinct, blinded music inputs u
     assert.ok(o.segmentUsers >= 30);
     assert.ok(o.relativeGap >= 0.2);
     assert.ok(
-      o.options.every((v) => v.count >= 20 && v.overallListeners >= 500),
+      o.options.every((v) => v.count >= 20 && v.overallListeners >= 200),
     );
     assert.equal(o.actual, o.options[0].mean > o.options[1].mean ? "A" : "B");
     // Means include all segment users, not only listeners of each artist.
@@ -74,7 +87,7 @@ test("Last.fm fails with a complete audit rather than weakening eligibility or p
     () => generateLastfmCases(f.artists, f.listens),
     (error) => {
       assert.equal(error.audit.eligibleCases, 0);
-      assert.equal(error.audit.maxTopDecileSegment, 26);
+      assert.equal(error.audit.maxTopProfileSegment, 26);
       assert.equal(error.audit.popularArtists.length, 0);
       assert.match(error.message, /No thresholds relaxed, no cases written/);
       return true;
@@ -83,8 +96,8 @@ test("Last.fm fails with a complete audit rather than weakening eligibility or p
   for (const override of [
     { minUsers: 29 },
     { minSegmentListeners: 19 },
-    { minOverallListeners: 499 },
-    { topFraction: 0.2 },
+    { minOverallListeners: 199 },
+    { topFraction: 0.25 },
     { minRelativeGap: 0.19 },
   ])
     assert.throws(

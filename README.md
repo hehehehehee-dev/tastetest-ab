@@ -52,6 +52,14 @@ Public datasets live under **workflow rehearsal**, separate from Track B. Cookie
 
 A separate **Proxy benchmark — real preference data** section at /benchmark uses freeze → reveal for historical movie preferences. It never enters Track B totals. LLM-only remains manual; mock and real-Qloo counts are separate. See [the proxy protocol](PROXY-BENCHMARK.md) for deterministic generation, hidden server-only outcomes, admin-only seeding, dataset-choice constraints and interpretation limits.
 
+## Last.fm music proxy (protocol v2)
+
+Open `/benchmark` → **Proxy — music**, separately from MovieLens and Track B. There are 40 MX cases, one per seed triple. The authorized v2 uses top **20%** of each user's observed artist weights (boundary ties included), ≥30 segment users, ≥20 candidate listeners in the segment, ≥200 candidate listeners overall, and ≥20% relative mean gap. The original top-decile / ≥500 protocol produced no eligible cases in HetRec 2k and is not the music protocol. MovieLens retains its ≥500 rule. Segments may overlap; no independent-case or business-result claim is made. Absent artist records contribute zero observed listens, not evidence of dislike.
+
+Raw data and outcomes stay under ignored `.local/lastfm/`. Fetch with `node --use-system-ca scripts/fetch-lastfm-data.mjs` (or `--archive=PATH` for your ZIP); generate with `node scripts/build-proxy-lastfm-cases.mjs`. Only the input catalog ships. For local freeze → reveal, run `node scripts/seed-music-outcomes.mjs --local`, then `npm run dev`. For Netlify, the same script with `--url=https://YOUR-SITE` uses server-only `PROXY_ADMIN_TOKEN` against `/api/music-proxy/admin/seed`. No paid LLM calls. Real Music entities use direct candidate affinities when resolved unambiguously; missing/ambiguous entities fail explicitly rather than inventing scores. Qloo and Agent share that predictor, as disclosed.
+
+Source/credit: [Last.fm HetRec 2011, Universidad Autónoma de Madrid, distributed by GroupLens](https://grouplens.org/datasets/hetrec-2011/). Dataset README permits non-commercial use. Music proxy results never merge into film or Track B totals.
+
 ## Validation
 
 ```sh

@@ -8,9 +8,9 @@ export const LASTFM_RULES = Object.freeze({
   count: 40,
   minUsers: 30,
   minSegmentListeners: 20,
-  minOverallListeners: 500,
+  minOverallListeners: 200,
   minRelativeGap: 0.2,
-  topFraction: 0.1,
+  topFraction: 0.2,
 });
 const digest = (text) => createHash("sha256").update(text).digest("hex");
 function tsv(text, header) {
@@ -42,16 +42,16 @@ export function parseLastfm(artistText, weightText) {
 export function generateLastfmCases(
   artists,
   listens,
-  { seed = "tastetest-lastfm-v1", rules = LASTFM_RULES } = {},
+  { seed = "tastetest-lastfm-v2", rules = LASTFM_RULES } = {},
 ) {
   rules = { ...LASTFM_RULES, ...rules };
   if (
     !Number.isInteger(rules.count) ||
     rules.count < 1 ||
-    rules.topFraction !== 0.1 ||
+    rules.topFraction !== 0.2 ||
     rules.minUsers < 30 ||
     rules.minSegmentListeners < 20 ||
-    rules.minOverallListeners < 500 ||
+    rules.minOverallListeners < 200 ||
     rules.minRelativeGap < 0.2
   )
     throw Error("Last.fm generator cannot relax the locked eligibility rules.");
@@ -79,7 +79,7 @@ export function generateLastfmCases(
     if (!byArtist.has(artist)) byArtist.set(artist, new Map());
     byArtist.get(artist).set(user, row.weight);
   }
-  // Upper 10% by rank within each user's OBSERVED artist records; boundary ties included.
+  // Upper 20% by rank within each user's OBSERVED artist records; boundary ties included.
   // Exhaustively enumerate triples: failure is proven, not a random-search timeout.
   const triples = new Map();
   for (const [user, rows] of users) {
@@ -147,23 +147,25 @@ export function generateLastfmCases(
       listeners: u.size,
     })),
     eligibleSegments: segments.length,
-    maxTopDecileSegment: [...triples.values()].reduce(
+    maxTopProfileSegment: [...triples.values()].reduce(
       (max, u) => Math.max(max, u.length),
       0,
     ),
     eligibleCases: valid.length,
     rules,
     definitions: {
-      topDecile:
-        "Upper 10% by rank in each user’s observed listening records, including boundary ties; three seed artists must all qualify.",
+      topProfile:
+        "Upper 20% by rank in each user’s observed listening records, including boundary ties; three seed artists must all qualify.",
       mean: "Mean over every segment user; absent artist records contribute zero observed listens (not evidence of dislike).",
       gap: "abs(meanA-meanB)/min(meanA,meanB)",
       unit: "Implicit listening counts, not explicit ratings or business results",
     },
   };
-  if (valid.length < rules.count) {
+  const distinctSegments = new Set(valid.map((c) => JSON.stringify(c.seeds)))
+    .size;
+  if (distinctSegments < rules.count) {
     const error = Error(
-      `Cannot generate ${rules.count} music cases: ${valid.length} eligible combinations; maximum top-decile segment ${audit.maxTopDecileSegment}; ${popular.length} artists with >=${rules.minOverallListeners} listeners. No thresholds relaxed, no cases written.`,
+      `Cannot generate ${rules.count} music cases: ${valid.length} eligible combinations; maximum top-20% segment ${audit.maxTopProfileSegment}; ${popular.length} artists with >=${rules.minOverallListeners} listeners. No thresholds relaxed, no cases written.`,
     );
     error.audit = audit;
     throw error;
@@ -173,10 +175,19 @@ export function generateLastfmCases(
     const j = Math.floor(rng() * (i + 1));
     [valid[i], valid[j]] = [valid[j], valid[i]];
   }
+  const selected = [];
+  const seenSegments = new Set();
+  for (const candidate of valid) {
+    const key = JSON.stringify(candidate.seeds);
+    if (seenSegments.has(key)) continue;
+    seenSegments.add(key);
+    selected.push(candidate);
+    if (selected.length === rules.count) break;
+  }
   const cases = [],
     outcomes = [];
   const publicArtist = (id) => ({ artistId: id, name: artistMap.get(id).name });
-  for (const candidate of valid.slice(0, rules.count)) {
+  for (const candidate of selected) {
     const id = `MX-${String(cases.length + 1).padStart(3, "0")}`;
     const options =
       rng() < 0.5 ? candidate.options : [...candidate.options].reverse();
@@ -198,6 +209,9 @@ export function generateLastfmCases(
   const manifest = {
     dataset: "hetrec2011-lastfm-2k",
     domain: "music",
+    protocolVersion: "lastfm-proxy-v2",
+    selection:
+      "One case per seed triple; segments may overlap in users. No independence claim.",
     seed,
     rules,
     definitions: audit.definitions,

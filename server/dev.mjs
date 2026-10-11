@@ -6,6 +6,16 @@ const port = Number(process.env.PORT || 5173);
 if (process.argv.includes("--mock")) process.env.USE_QLOO_MOCK = "true";
 const vite = await createServer({
   server: {
+    fs: {
+      deny: [
+        "**/.local/**",
+        "**/.netlify/**",
+        ".env",
+        ".env.*",
+        "*.{crt,pem}",
+        "**/.git/**",
+      ],
+    },
     middlewareMode: true,
     hmr: { port: Number(process.env.HMR_PORT || 24678) },
   },

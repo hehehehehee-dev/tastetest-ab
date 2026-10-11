@@ -21,6 +21,7 @@ import {
 } from "./benchmark.mjs";
 import { createComparison, scoreComparison } from "./aiComparison.mjs";
 import { createProxyApi } from "./proxy.mjs";
+import { createMusicProxyApi } from "./musicProxy.mjs";
 import {
   pendingTrackB,
   excludedTrackBNotes,
@@ -183,9 +184,15 @@ function verdict(test, counts) {
 }
 export function createApi(
   store,
-  { adapter = qlooAdapter, aiPredictor, proxyOptions = {} } = {},
+  {
+    adapter = qlooAdapter,
+    aiPredictor,
+    proxyOptions = {},
+    musicOptions = {},
+  } = {},
 ) {
   const proxyApi = createProxyApi(store, { adapter, ...proxyOptions });
+  const musicApi = createMusicProxyApi(store, { adapter, ...musicOptions });
   const owns = (test, request) =>
     !!test.ownerHash &&
     timingSafeEqual(
@@ -288,7 +295,9 @@ export function createApi(
     try {
       const url = new URL(request.url);
       const pathname = url.pathname.replace(/\/$/, "");
-      const proxyResponse = await proxyApi(request, pathname, readBody);
+      const proxyResponse =
+        (await musicApi(request, pathname, readBody)) ||
+        (await proxyApi(request, pathname, readBody));
       if (proxyResponse)
         return json(proxyResponse.data, proxyResponse.status || 200);
       if (pathname === "/api/config" && request.method === "GET")

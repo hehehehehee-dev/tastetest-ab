@@ -34,6 +34,7 @@ import AiComparison from "./AiComparison.jsx";
 import Benchmark from "./Benchmark.jsx";
 import FreezePanel from "./FreezePanel.jsx";
 import ProxyCase from "./ProxyBenchmark.jsx";
+import MusicCase from "./MusicProxy.jsx";
 import { predictionConfidence } from "../shared/confidence.mjs";
 import {
   PageSignalContext,
@@ -1627,6 +1628,9 @@ function App() {
     [route],
   );
   const match = route.match(/^\/(test|poll)\/([a-f0-9-]{36})$/);
+  const musicMatch = route.match(
+    /^\/benchmark\/music\/(?:run\/([a-f0-9-]{36})|(MX-\d{3}))$/,
+  );
   const proxyMatch = route.match(
     /^\/benchmark\/proxy\/(?:run\/([a-f0-9-]{36})|(PX-\d{3}))$/,
   );
@@ -1644,6 +1648,8 @@ function App() {
         "/case-study/cookie-cats",
       ].includes(route) ? (
         <CaseStudy />
+      ) : musicMatch ? (
+        <MusicCase key={route} runId={musicMatch[1]} caseId={musicMatch[2]} />
       ) : proxyMatch ? (
         <ProxyCase key={route} runId={proxyMatch[1]} caseId={proxyMatch[2]} />
       ) : route === "/benchmark" ? (
