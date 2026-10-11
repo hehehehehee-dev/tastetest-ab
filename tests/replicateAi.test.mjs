@@ -184,3 +184,20 @@ test("Replicate timeout cancels only its exact job; auth/quota/config errors are
     /REPLICATE_API_TOKEN/,
   );
 });
+
+test("larger GPT-4.1 uses its pinned version and verifies the returned model", async () => {
+  const predictor = createReplicatePredictor({
+    ...defaults,
+    model: "openai/gpt-4.1",
+    fetchImpl: async (url, options) => {
+      const body = JSON.parse(options.body);
+      assert.equal(body.version, version);
+      assert.equal(typeof body.input.messages, "string");
+      assert.equal(JSON.parse(body.input.messages)[0].role, "system");
+      return json({ ...completed, model: "openai/gpt-4.1" });
+    },
+  });
+  const result = await predictor({ audience: { tastes: ["Fixture"] } });
+  assert.equal(result.requestedModel, "openai/gpt-4.1");
+  assert.equal(result.model, "openai/gpt-4.1:" + version);
+});

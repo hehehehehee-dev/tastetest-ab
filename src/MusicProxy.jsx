@@ -234,7 +234,7 @@ export default function MusicCase({ caseId, runId }) {
       setBusy(false);
     }
   }
-  async function complete(visitorPick) {
+  async function complete(visitorPick, model) {
     setBusy(true);
     setError("");
     try {
@@ -245,7 +245,7 @@ export default function MusicCase({ caseId, runId }) {
           catalog?.ai?.enabled &&
           catalog.ai.configured
         )
-          current = await call("ai", {});
+          current = await call("ai", { model });
         current = await call("freeze", {
           llmMode: current.llmPrediction ? "automatic" : "skip",
           beforeReveal: true,
@@ -312,6 +312,33 @@ export default function MusicCase({ caseId, runId }) {
       )}
       {run && (
         <>
+          {run.result && (
+            <section className="panel proxy-outcome">
+              <div className="eyebrow">
+                REVEALED / HISTORICAL PREFERENCE OUTCOME
+              </div>
+              <h2>
+                Segment winner: Option {run.outcome.actual} ·{" "}
+                {run.options[run.outcome.actual === "A" ? 0 : 1].title}
+              </h2>
+              <p>
+                {run.outcome.segmentUsers} users had all three seeds in their
+                top 20% of observed listening.
+              </p>
+              {run.outcome.options.map((option, i) => (
+                <p key={option.artistId}>
+                  Option {i ? "B" : "A"}: mean {option.mean.toFixed(3)} observed
+                  listens per segment user; {option.count} segment listeners ·{" "}
+                  {option.overallListeners} overall listeners.
+                </p>
+              ))}
+              <p>
+                This proxy does not establish business results or causal
+                effects. It never contributes to Track B.
+              </p>
+              <a href="/benchmark">View separate proxy tally ↗</a>
+            </section>
+          )}
           <section className="panel">
             <h2>
               {run.result
@@ -345,6 +372,10 @@ export default function MusicCase({ caseId, runId }) {
             )}
             {run.freeze ? (
               <>
+                <p>
+                  Agent repeats the Qloo predictor in this flow; it is not an
+                  independent combined AI agent.
+                </p>
                 <BranchTable
                   branches={run.freeze.payload.branches}
                   result={run.result}
@@ -403,6 +434,8 @@ export default function MusicCase({ caseId, runId }) {
                 busy={busy}
                 hasAi={!!run.llmPrediction}
                 aiAvailable={!!(catalog?.ai?.enabled && catalog.ai.configured)}
+                models={catalog?.ai?.models}
+                defaultModel={catalog?.ai?.model}
                 onComplete={complete}
               />
             ) : (
@@ -421,33 +454,6 @@ export default function MusicCase({ caseId, runId }) {
               </button>
             )}
           </section>
-          {run.result && (
-            <section className="panel proxy-outcome">
-              <div className="eyebrow">
-                REVEALED / HISTORICAL PREFERENCE OUTCOME
-              </div>
-              <h2>
-                Segment winner: Option {run.outcome.actual} ·{" "}
-                {run.options[run.outcome.actual === "A" ? 0 : 1].title}
-              </h2>
-              <p>
-                {run.outcome.segmentUsers} users had all three seeds in their
-                top 20% of observed listening.
-              </p>
-              {run.outcome.options.map((option, i) => (
-                <p key={option.artistId}>
-                  Option {i ? "B" : "A"}: mean {option.mean.toFixed(3)} observed
-                  listens per segment user; {option.count} segment listeners ·{" "}
-                  {option.overallListeners} overall listeners.
-                </p>
-              ))}
-              <p>
-                This proxy does not establish business results or causal
-                effects. It never contributes to Track B.
-              </p>
-              <a href="/benchmark">View separate proxy tally ↗</a>
-            </section>
-          )}
         </>
       )}
     </main>

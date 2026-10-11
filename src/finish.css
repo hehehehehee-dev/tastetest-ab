@@ -1069,3 +1069,21 @@ a.brand,
 .chip > button {
   flex-shrink: 0;
 }
+
+.proxy-model-selector {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  font-size: 14px;
+  margin-bottom: 16px;
+}
+.proxy-model-selector select {
+  min-height: 44px;
+  max-width: 100%;
+  color: #eee;
+  background: #202022;
+  border: 1px solid #444;
+  border-radius: 8px;
+  padding: 8px 12px;
+}

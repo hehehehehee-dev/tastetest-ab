@@ -154,6 +154,19 @@ test("proxy UI hides ratings until an immutable freeze then reveals separate moc
     page.getByRole("heading", { name: "Segment winner: Option A" }),
   ).toBeVisible();
   await expect(page.locator(".proxy-outcome")).toContainText("mean 4.300/5");
+  expect(
+    await page
+      .locator("main")
+      .evaluate(
+        (el) =>
+          !!(
+            el
+              .querySelector(".proxy-outcome")
+              .compareDocumentPosition(el.querySelector(".benchmark-table")) &
+            Node.DOCUMENT_POSITION_FOLLOWING
+          ),
+      ),
+  ).toBe(true);
   await expect(
     page.getByRole("row").filter({ hasText: "LLM-only (manual paste)" }),
   ).toContainText("NOT RUN");
@@ -186,7 +199,7 @@ test("proxy UI hides ratings until an immutable freeze then reveals separate moc
   ).toBe(false);
 });
 
-test("recorded Replicate API answer freezes without manual fields or checkbox", async ({
+test("selected Replicate model runs and reveals without manual prediction fields", async ({
   page,
 }) => {
   const id = "00000000-0000-4000-8000-000000000222";
@@ -217,7 +230,7 @@ test("recorded Replicate API answer freezes without manual fields or checkbox", 
     scoringVersion: "qloo-candidate-affinity-v1",
     prediction: [{ score: 80 }, { score: 81 }],
     proxyDecisionPolicy: "always-pick-v1",
-    llmPrediction,
+    llmPrediction: null,
   };
   await page.addInitScript(
     ({ id }) =>
@@ -226,12 +239,27 @@ test("recorded Replicate API answer freezes without manual fields or checkbox", 
   );
   await page.route("**/api/proxy", (route) =>
     route.fulfill({
-      json: { cases: [input], ai: { configured: true, enabled: true } },
+      json: {
+        cases: [input],
+        ai: {
+          configured: true,
+          enabled: true,
+          model: "openai/gpt-4.1-mini",
+          models: [
+            { id: "openai/gpt-4.1-mini", label: "GPT-4.1 mini" },
+            { id: "openai/gpt-4.1", label: "GPT-4.1" },
+          ],
+        },
+      },
     }),
   );
   await page.route("**/api/proxy/runs/" + id, (route) =>
     route.fulfill({ json: run }),
   );
+  await page.route("**/api/proxy/runs/" + id + "/ai", (route) => {
+    expect(route.request().postDataJSON().model).toBe("openai/gpt-4.1");
+    return route.fulfill({ json: { ...run, llmPrediction } });
+  });
   let frozen = false;
   await page.route("**/api/proxy/runs/" + id + "/freeze", (route) => {
     const body = route.request().postDataJSON();
@@ -274,12 +302,8 @@ test("recorded Replicate API answer freezes without manual fields or checkbox", 
     }),
   );
   await page.goto("/benchmark/proxy/run/" + id);
-  await expect(
-    page.getByText("AI is already recorded.", { exact: false }),
-  ).toBeVisible();
-  await expect(
-    page.locator("main input, main select, main textarea"),
-  ).toHaveCount(0);
+  await page.getByLabel("AI model · Replicate").selectOption("openai/gpt-4.1");
+  await expect(page.locator("main input, main textarea")).toHaveCount(0);
   await page
     .getByRole("button", { name: "Skip my guess → Show results", exact: true })
     .click();

@@ -2,6 +2,7 @@ const fail = (message, status = 503) => {
   throw Object.assign(Error(message), { status });
 };
 const versionPattern = /^[a-f0-9]{64}$/;
+export const replicateModels = ["openai/gpt-4.1-mini", "openai/gpt-4.1"];
 const createGate = {
   tail: Promise.resolve(),
   lastStartedAt: 0,
@@ -21,11 +22,11 @@ export function createReplicatePredictor({
   return async (context) => {
     if (
       !token ||
-      model !== "openai/gpt-4.1-mini" ||
+      !replicateModels.includes(model) ||
       !versionPattern.test(version || "")
     )
       fail(
-        "Replicate comparison needs REPLICATE_API_TOKEN, REPLICATE_MODEL=openai/gpt-4.1-mini and a pinned REPLICATE_VERSION on the server.",
+        "Replicate needs server-side REPLICATE_API_TOKEN, a supported GPT-4.1 model and its pinned version.",
       );
     const input = JSON.stringify(context);
     const system = `${instructions}\nReturn only a JSON object with exactly these fields: choice (\"A\", \"B\", or \"TIE\"), confidence (an integer from 0 to 100), rationale (a short nonempty explanation, at most 1200 characters). Do not use Markdown fences or other text.`;
@@ -113,10 +114,16 @@ export function createReplicatePredictor({
       let prediction = await request("/predictions", "POST", {
         version,
         input: {
-          messages: [
-            { role: "system", content: system },
-            { role: "user", content: input },
-          ],
+          messages:
+            model === "openai/gpt-4.1"
+              ? JSON.stringify([
+                  { role: "system", content: system },
+                  { role: "user", content: input },
+                ])
+              : [
+                  { role: "system", content: system },
+                  { role: "user", content: input },
+                ],
           ...settings,
         },
       });

@@ -31,7 +31,9 @@ export function BranchTable({ branches, result }) {
               <td>
                 {key === "llm" && branch.method === "automatic blind API"
                   ? "LLM-only (API)"
-                  : labels[key]}
+                  : key === "agent"
+                    ? "Agent (same Qloo predictor)"
+                    : labels[key]}
               </td>
               <td>
                 {branch.pick == null

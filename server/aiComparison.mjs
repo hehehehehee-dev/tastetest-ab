@@ -1,5 +1,25 @@
 import { createHash } from "node:crypto";
-import { createReplicatePredictor } from "./replicateAi.mjs";
+import { createReplicatePredictor, replicateModels } from "./replicateAi.mjs";
+const modelVersion = (model) =>
+  model === process.env.REPLICATE_MODEL
+    ? process.env.REPLICATE_VERSION
+    : model === "openai/gpt-4.1"
+      ? process.env.REPLICATE_GPT41_VERSION
+      : null;
+export const comparisonModels = () =>
+  process.env.AI_PROVIDER === "replicate"
+    ? replicateModels
+        .filter(
+          (model) =>
+            !!process.env.REPLICATE_API_TOKEN &&
+            /^[a-f0-9]{64}$/.test(modelVersion(model) || ""),
+        )
+        .map((id) => ({
+          id,
+          label:
+            id === "openai/gpt-4.1" ? "GPT-4.1 · larger model" : "GPT-4.1 mini",
+        }))
+    : [];
 
 const fail = (message, status = 503) => {
   throw Object.assign(Error(message), { status });
@@ -11,7 +31,7 @@ export const comparisonConfig = () => {
       provider,
       configured:
         !!process.env.REPLICATE_API_TOKEN &&
-        process.env.REPLICATE_MODEL === "openai/gpt-4.1-mini" &&
+        replicateModels.includes(process.env.REPLICATE_MODEL) &&
         /^[a-f0-9]{64}$/.test(process.env.REPLICATE_VERSION || ""),
       model: process.env.REPLICATE_MODEL || null,
     };
@@ -26,13 +46,20 @@ export const comparisonConfig = () => {
 };
 export const configurationMessage =
   "AI comparison needs a configured provider: Replicate token/model/pinned version, or OpenAI key/model. No AI prediction was fabricated.";
-export function configuredPredictor() {
+export function configuredPredictor(requestedModel) {
   if (!comparisonConfig().configured) fail(configurationMessage);
+  if (
+    requestedModel &&
+    (comparisonConfig().provider !== "replicate"
+      ? requestedModel !== comparisonConfig().model
+      : !comparisonModels().some((option) => option.id === requestedModel))
+  )
+    fail("This model is not configured on the server.", 400);
   return comparisonConfig().provider === "replicate"
     ? createReplicatePredictor({
         token: process.env.REPLICATE_API_TOKEN,
-        model: process.env.REPLICATE_MODEL,
-        version: process.env.REPLICATE_VERSION,
+        model: requestedModel || process.env.REPLICATE_MODEL,
+        version: modelVersion(requestedModel || process.env.REPLICATE_MODEL),
         instructions,
       })
     : createAiPredictor({

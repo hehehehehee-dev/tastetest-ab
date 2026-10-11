@@ -231,7 +231,7 @@ export default function ProxyCase({ caseId, runId }) {
       setBusy(false);
     }
   }
-  async function complete(visitorPick) {
+  async function complete(visitorPick, model) {
     setBusy(true);
     setError("");
     try {
@@ -242,7 +242,7 @@ export default function ProxyCase({ caseId, runId }) {
           catalog?.ai?.enabled &&
           catalog.ai.configured
         )
-          current = await call("ai", {});
+          current = await call("ai", { model });
         current = await call("freeze", {
           llmMode: current.llmPrediction ? "automatic" : "skip",
           beforeReveal: true,
@@ -313,6 +313,30 @@ export default function ProxyCase({ caseId, runId }) {
       )}
       {run && (
         <>
+          {run.result && (
+            <section className="panel proxy-outcome">
+              <div className="eyebrow">
+                REVEALED / HISTORICAL PREFERENCE OUTCOME
+              </div>
+              <h2>
+                Segment winner: Option {run.outcome.actual} ·{" "}
+                {run.options[run.outcome.actual === "A" ? 0 : 1].title}
+              </h2>
+              <p>{run.outcome.segmentUsers} users liked all three seeds.</p>
+              {run.outcome.options.map((option, i) => (
+                <p key={option.movieId}>
+                  Option {i ? "B" : "A"}: mean {option.mean.toFixed(3)}/5 from{" "}
+                  {option.count} segment ratings · {option.overallRatings}{" "}
+                  overall ratings.
+                </p>
+              ))}
+              <p>
+                This proxy does not establish business results or causal
+                effects. It never contributes to Track B.
+              </p>
+              <a href="/benchmark">View separate proxy tally ↗</a>
+            </section>
+          )}
           <section className="panel">
             <h2>
               {run.result
@@ -346,6 +370,10 @@ export default function ProxyCase({ caseId, runId }) {
             )}
             {run.freeze ? (
               <>
+                <p>
+                  Agent repeats the Qloo predictor in this flow; it is not an
+                  independent combined AI agent.
+                </p>
                 <BranchTable
                   branches={run.freeze.payload.branches}
                   result={run.result}
@@ -404,6 +432,8 @@ export default function ProxyCase({ caseId, runId }) {
                 busy={busy}
                 hasAi={!!run.llmPrediction}
                 aiAvailable={!!(catalog?.ai?.enabled && catalog.ai.configured)}
+                models={catalog?.ai?.models}
+                defaultModel={catalog?.ai?.model}
                 onComplete={complete}
               />
             ) : (
@@ -422,30 +452,6 @@ export default function ProxyCase({ caseId, runId }) {
               </button>
             )}
           </section>
-          {run.result && (
-            <section className="panel proxy-outcome">
-              <div className="eyebrow">
-                REVEALED / HISTORICAL PREFERENCE OUTCOME
-              </div>
-              <h2>
-                Segment winner: Option {run.outcome.actual} ·{" "}
-                {run.options[run.outcome.actual === "A" ? 0 : 1].title}
-              </h2>
-              <p>{run.outcome.segmentUsers} users liked all three seeds.</p>
-              {run.outcome.options.map((option, i) => (
-                <p key={option.movieId}>
-                  Option {i ? "B" : "A"}: mean {option.mean.toFixed(3)}/5 from{" "}
-                  {option.count} segment ratings · {option.overallRatings}{" "}
-                  overall ratings.
-                </p>
-              ))}
-              <p>
-                This proxy does not establish business results or causal
-                effects. It never contributes to Track B.
-              </p>
-              <a href="/benchmark">View separate proxy tally ↗</a>
-            </section>
-          )}
         </>
       )}
     </main>

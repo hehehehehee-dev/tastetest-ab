@@ -135,3 +135,6 @@ The prospective study has 25 unpublished taste-based cases planned. Local Git-ig
 End-to-end tests start an isolated mock server on port 5174 with a separate HMR port; they never load the private key or spend real API quota. `server/qlooClient.mjs` contains the real HTTP transport; `server/qlooAdapter.mjs` selects the mode and applies the local fit heuristic. Private verification captures remain under ignored `.local/`.
 
 The original requested build is preserved in `PROJECT-BRIEF.md`. MIT licensed; see `LICENSE`.
+
+
+Local Replicate proxy model selection supports `openai/gpt-4.1-mini` (existing default, `REPLICATE_MODEL`/`REPLICATE_VERSION`) and optional `openai/gpt-4.1` (`REPLICATE_GPT41_VERSION`). Configure the extra pinned adapter version privately; models appear only when configured. The GPT-4.1 adapter serializes messages as the JSON string required by its input schema. A recorded response cannot be silently replaced with another model. Start a new run to compare models, and report the model/version with each result. The Agent branch currently repeats Qloo and is labeled accordingly; it is not independent combined-model evidence. Result pages display observed historical outcome before branch choices.

@@ -8,7 +8,11 @@ import {
 import { makeFreeze, decisionTally } from "./benchmark.mjs";
 import { qlooAdapter, isMockMode, mockQlooAdapter } from "./qlooAdapter.mjs";
 import { typeUrns } from "./fixtures.mjs";
-import { comparisonConfig, configuredPredictor } from "./aiComparison.mjs";
+import {
+  comparisonConfig,
+  comparisonModels,
+  configuredPredictor,
+} from "./aiComparison.mjs";
 
 const fail = (message, status = 400) => {
   throw Object.assign(Error(message), { status });
@@ -435,7 +439,11 @@ export function createProxyApi(
       return {
         data: {
           ...catalog,
-          ai: { ...comparisonConfig(), enabled: aiEnabled },
+          ai: {
+            ...comparisonConfig(),
+            enabled: aiEnabled,
+            models: comparisonModels(),
+          },
           available: !!(await store.get(
             `proxy-outcomes/${catalog.caseSetHash}`,
           )),
@@ -492,8 +500,20 @@ export function createProxyApi(
         );
       if (await store.get(`freezes/${id}`))
         fail("Frozen predictions cannot be edited.", 409);
-      if (await store.get(`proxy-ai/${id}`))
+      const body = await readBody(request);
+      const recorded = await store.get(`proxy-ai/${id}`);
+      if (recorded) {
+        if (
+          body.model &&
+          body.model !==
+            (recorded.requestedModel || recorded.source.split(":")[0])
+        )
+          fail(
+            "This run already has a recorded AI model. Start a new run to compare another model.",
+            409,
+          );
         return { data: await snapshot(run, true) };
+      }
       if (aiInFlight.has(id))
         fail("An AI prediction is already running for this case.", 409);
       aiInFlight.add(id);
@@ -510,9 +530,9 @@ export function createProxyApi(
             note: run.input.audienceDefinition,
           },
         };
-        const prediction = await (aiPredictor || configuredPredictor())(
-          context,
-        );
+        const prediction = await (
+          aiPredictor || configuredPredictor(body.model)
+        )(context);
         if (
           !["A", "B", "TIE"].includes(prediction.choice) ||
           !Number.isInteger(prediction.confidence) ||
@@ -538,6 +558,10 @@ export function createProxyApi(
             method: "automatic blind API",
             provider: prediction.provider,
             responseId: prediction.responseId,
+            requestedModel:
+              prediction.requestedModel ||
+              body.model ||
+              comparisonConfig().model,
             recordedAt: prediction.finishedAt || new Date().toISOString(),
           },
           { onlyIfNew: true },
