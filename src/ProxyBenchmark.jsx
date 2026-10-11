@@ -322,6 +322,21 @@ export default function ProxyCase({ caseId, runId }) {
                   : "Legacy run · local concept/tag heuristic (unchanged)."}
             </p>
             <p>{run.scoringNote}</p>
+            {!run.freeze && run.proxyDecisionPolicy === "always-pick-v1" && (
+              <p>
+                Qloo / Agent pick:{" "}
+                <strong>
+                  {run.prediction[0].score >= run.prediction[1].score
+                    ? "A"
+                    : "B"}
+                </strong>
+                {Math.abs(run.prediction[0].score - run.prediction[1].score) <
+                10
+                  ? " · low separation"
+                  : ""}
+                . Higher score wins; exact ties choose A.
+              </p>
+            )}
             {run.freeze ? (
               <>
                 <BranchTable

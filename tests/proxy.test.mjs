@@ -1,3 +1,4 @@
+import { makeFreeze } from "../server/benchmark.mjs";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { mkdtemp, rm } from "node:fs/promises";
@@ -479,4 +480,34 @@ test("proxy automatic AI is blind, owner-only, idempotent and frozen from server
     saved.data.freeze.payload.branches.llm.answer,
     /No explanation recorded/,
   );
+});
+
+test("always-pick proxy policy chooses low-gap winner and exact-tie A without changing legacy freezes", async () => {
+  const run = await predictProxy(
+    generate().inputs.cases[0],
+    mockQlooAdapter,
+    true,
+  );
+  run.id = "fixture";
+  run.proxyCaseId = "PX-001";
+  run.prediction = [{ score: 80 }, { score: 81 }];
+  const body = {
+    beforeReveal: true,
+    llm: {
+      pick: "A",
+      confidence: 50,
+      source: "Human",
+      answer: "No explanation recorded.",
+    },
+  };
+  const forced = makeFreeze(run, body);
+  assert.equal(forced.payload.branches.qloo.pick, "B");
+  assert.equal(forced.payload.branches.qloo.lowSeparation, true);
+  assert.equal(forced.payload.decisionPolicy, "always-pick-v1");
+  delete run.proxyDecisionPolicy;
+  assert.equal(makeFreeze(run, body).payload.branches.qloo.pick, "TIE");
+  assert.equal(forced.payload.branches.qloo.pick, "B");
+  run.proxyDecisionPolicy = "always-pick-v1";
+  run.prediction = [{ score: 80 }, { score: 80 }];
+  assert.equal(makeFreeze(run, body).payload.branches.qloo.pick, "A");
 });

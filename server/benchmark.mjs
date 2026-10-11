@@ -112,6 +112,15 @@ export function makeFreeze(test, body, now = new Date().toISOString()) {
     automatic.method =
       "Direct /v2/insights candidate affinity; gap rule <10 abstains";
   }
+  if (test.proxyCaseId && test.proxyDecisionPolicy === "always-pick-v1") {
+    automatic.pick =
+      test.prediction[0].score >= test.prediction[1].score ? "A" : "B";
+    automatic.lowSeparation = automatic.gap < 10;
+    automatic.decisionPolicy = "always-pick-v1";
+    automatic.method =
+      "Higher fit score always wins; exact ties choose A. Low separation is disclosed, not an abstention.";
+    automatic.source += " · always-pick-v1";
+  }
   const qloo = manual
     ? validateManual(body.qloo, "Qloo", true)
     : { ...automatic };
@@ -141,6 +150,9 @@ export function makeFreeze(test, body, now = new Date().toISOString()) {
     ...(test.proxyCaseId
       ? {
           scoringVersion: test.scoringVersion || "concept-tag-fit-v2",
+          ...(test.proxyDecisionPolicy
+            ? { decisionPolicy: test.proxyDecisionPolicy }
+            : {}),
           provenance: test.provenance || null,
         }
       : {}),
@@ -161,7 +173,9 @@ export function makeFreeze(test, body, now = new Date().toISOString()) {
     note: manual
       ? "External predictions recorded before any outcome, as declared by owner; source/timing are not independently audited."
       : test.scoringVersion === "qloo-candidate-affinity-v1"
-        ? "Qloo and Agent share the same direct candidate affinity and abstention rule; not independent predictors."
+        ? test.proxyDecisionPolicy === "always-pick-v1"
+          ? "Qloo and Agent share direct candidate affinity and always-pick-v1; higher score wins, exact ties choose A. Not independent predictors."
+          : "Qloo and Agent share the same direct candidate affinity and abstention rule; not independent predictors."
         : "Qloo and agent currently use the same local scoreOption heuristic and are not independent predictors.",
     minVotes: 20,
     minCases: 20,

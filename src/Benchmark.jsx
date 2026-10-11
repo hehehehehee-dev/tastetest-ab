@@ -27,9 +27,14 @@ export function BranchTable({ branches, result }) {
         <tbody>
           {Object.entries(branches).map(([key, branch]) => (
             <tr key={key}>
-              <td>{labels[key]}</td>
+              <td>
+                {key === "llm" && branch.method === "automatic blind API"
+                  ? "LLM-only (API)"
+                  : labels[key]}
+              </td>
               <td>
                 {branch.pick === "TIE" ? "Too close to call" : branch.pick}
+                {branch.lowSeparation && <small> · low separation</small>}
               </td>
               <td>{branch.confidence}/100</td>
               <td>{branch.source}</td>

@@ -318,6 +318,7 @@ export async function predictProxy(
     prediction,
     mode: mock ? "mock" : "real",
     scoringVersion: mock ? "proxy-genre-mock-v1" : "qloo-candidate-affinity-v1",
+    proxyDecisionPolicy: "always-pick-v1",
     provenance: {
       source: mock ? "Synthetic genre fixtures" : "Qloo API",
       endpoint: mock ? null : "/v2/insights",
@@ -340,13 +341,13 @@ export async function predictProxy(
           }),
       mapping: mock
         ? "Synthetic genre overlap workflow only"
-        : "fit score = 100 × candidate affinity; abstain if gap <10 fit points. Affinity is not a probability of votes or a MovieLens rating.",
+        : "fit score = 100 × candidate affinity; higher score always wins, exact ties choose A. Gaps <10 are labeled low separation. Affinity is not a probability of votes or a MovieLens rating.",
     },
     audienceNote: input.audienceDefinition,
     benchmarkMetadata: { track: "rehearsal", caseLabel: input.id },
     scoringNote: mock
       ? "Synthetic genre overlap; Qloo and Agent share one mock predictor. MovieLens outcomes are never supplied."
-      : "Qloo and Agent use the same direct candidate affinity, not independent predictors. MovieLens outcomes are never supplied to Qloo. The <10-point abstention rule is a declared heuristic, not calibrated confidence.",
+      : "Qloo and Agent use the same direct candidate affinity, not independent predictors. Higher score always wins; exact ties choose A. Gaps <10 are low separation, not an abstention. MovieLens outcomes are never supplied to Qloo. Confidence is not calibrated.",
   };
 }
 export function createProxyApi(

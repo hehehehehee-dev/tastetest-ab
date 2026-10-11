@@ -50,7 +50,7 @@ Public datasets live under **workflow rehearsal**, separate from Track B. Cookie
 
 ## MovieLens proxy benchmark
 
-A separate **Proxy benchmark — real preference data** section at /benchmark uses freeze → reveal for historical movie preferences. It never enters Track B totals. LLM-only supports a configured API on local dev, or manual entry without a required explanation; production stays manual; mock and real-Qloo counts are separate. See [the proxy protocol](PROXY-BENCHMARK.md) for deterministic generation, hidden server-only outcomes, admin-only seeding, dataset-choice constraints and interpretation limits.
+A separate **Proxy benchmark — real preference data** section at /benchmark uses freeze → reveal for historical movie preferences. It never enters Track B totals. New proxy runs use decision policy `always-pick-v1`: Qloo/Agent pick the higher score even with a gap below 10 (labeled low separation); exact ties choose A. Already frozen records retain their original abstention policy. These policies must be disclosed when reporting results. LLM-only supports a configured API on local dev, or manual entry without a required explanation; production stays manual; mock and real-Qloo counts are separate. See [the proxy protocol](PROXY-BENCHMARK.md) for deterministic generation, hidden server-only outcomes, admin-only seeding, dataset-choice constraints and interpretation limits.
 
 ## Last.fm music proxy (protocol v2)
 
