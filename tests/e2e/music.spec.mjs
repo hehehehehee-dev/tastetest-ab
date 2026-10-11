@@ -51,11 +51,8 @@ test("music drawer and case support manual freeze, hidden outcome and isolated r
   await expect(
     page.getByRole("heading", { name: "MX-001", exact: true }),
   ).toBeVisible();
-  await page
-    .getByRole("button", { name: "Start proxy case", exact: true })
-    .click();
   await expect(
-    page.getByRole("heading", { name: "Record the independent prediction" }),
+    page.getByRole("heading", { name: "Your guess · optional" }),
   ).toBeVisible();
   await expect(page.locator(".proxy-outcome")).toHaveCount(0);
   await expect(
@@ -64,6 +61,7 @@ test("music drawer and case support manual freeze, hidden outcome and isolated r
   await page
     .getByRole("button", { name: "Skip my guess → Show results", exact: true })
     .click();
+  await expect(page).toHaveURL(/\/benchmark\/music\/run\//);
   await expect(
     page.getByRole("heading", { name: "Segment winner: Option A" }),
   ).toBeVisible();

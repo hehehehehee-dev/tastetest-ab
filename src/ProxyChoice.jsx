@@ -31,7 +31,7 @@ export default function ProxyChoice({
               aria-pressed={pick === choice}
               onClick={() => setPick(choice)}
             >
-              {choice} · {option.title}
+              {choice} · {option.title || option.name}
             </button>
           );
         })}

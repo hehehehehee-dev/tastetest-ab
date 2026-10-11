@@ -175,14 +175,15 @@ export default function ProxyCase({ caseId, runId }) {
     [error, setError] = useState("");
   usePageSignal(run);
   const [isOwner, setOwner] = useState(false);
-  const call = (action, body) =>
-    benchmarkApi(`/proxy/runs/${run.id}/${action}`, {
+  const callRun = (currentRun, action, body) =>
+    benchmarkApi(`/proxy/runs/${currentRun.id}/${action}`, {
       method: "POST",
       headers: {
-        "x-owner-token": localStorage.getItem(ownerKey(run.id)) || "",
+        "x-owner-token": localStorage.getItem(ownerKey(currentRun.id)) || "",
       },
       body: JSON.stringify(body),
     });
+  const call = (action, body) => callRun(run, action, body);
   useEffect(() => {
     let active = true;
     benchmarkApi("/proxy")
@@ -210,50 +211,52 @@ export default function ProxyCase({ caseId, runId }) {
     setBusy(true);
     setError("");
     try {
-      if (action === "start") {
-        const data = await benchmarkApi(`/proxy/cases/${input.id}/start`, {
-          method: "POST",
-          body: "{}",
-        });
-        localStorage.setItem(ownerKey(data.run.id), data.ownerToken);
-        let ids = [];
-        try {
-          ids = JSON.parse(
-            localStorage.getItem("tastetest-proxy-runs") || "[]",
-          );
-        } catch {}
-        localStorage.setItem(
-          "tastetest-proxy-runs",
-          JSON.stringify([...new Set([...ids, data.run.id])]),
-        );
-        window.location.assign(`/benchmark/proxy/run/${data.run.id}`);
-      } else setRun(await call(action, {}));
+      setRun(await call(action, {}));
     } catch (e) {
       setError(e.message);
     } finally {
       setBusy(false);
     }
   }
+  async function startRun() {
+    const data = await benchmarkApi(`/proxy/cases/${input.id}/start`, {
+      method: "POST",
+      body: "{}",
+    });
+    localStorage.setItem(ownerKey(data.run.id), data.ownerToken);
+    let ids = [];
+    try {
+      ids = JSON.parse(localStorage.getItem("tastetest-proxy-runs") || "[]");
+    } catch {}
+    localStorage.setItem(
+      "tastetest-proxy-runs",
+      JSON.stringify([...new Set([...ids, data.run.id])]),
+    );
+    window.history.replaceState({}, "", `/benchmark/proxy/run/${data.run.id}`);
+    setOwner(true);
+    setRun(data.run);
+    return data.run;
+  }
   async function complete(visitorPick) {
     setBusy(true);
     setError("");
     try {
-      let current = run;
+      let current = run || (await startRun());
       if (!current.freeze) {
         if (
           !current.llmPrediction &&
           catalog?.ai?.enabled &&
           catalog.ai.configured
         )
-          current = await call("ai", {});
-        current = await call("freeze", {
+          current = await callRun(current, "ai", {});
+        current = await callRun(current, "freeze", {
           llmMode: current.llmPrediction ? "automatic" : "skip",
           beforeReveal: true,
           visitorPick,
         });
       }
       setRun(current);
-      setRun(await call("reveal", {}));
+      setRun(await callRun(current, "reveal", {}));
     } catch (e) {
       setError(e.message);
     } finally {
@@ -306,13 +309,19 @@ export default function ProxyCase({ caseId, runId }) {
             ))}
           </div>
           {!run && (
-            <button
-              className="button primary"
-              disabled={busy || !catalog?.available}
-              onClick={() => act("start")}
-            >
-              {busy ? "Resolving movie tastes…" : "Start proxy case"}
-            </button>
+            <section className="panel proxy-inline-run">
+              <h2>Reveal AI, Qloo and the historical result</h2>
+              <ProxyChoice
+                options={input.options}
+                busy={busy || !catalog?.available}
+                hasAi={false}
+                aiAvailable={!!(catalog?.ai?.enabled && catalog.ai.configured)}
+                onComplete={complete}
+              />
+              {!catalog?.available && (
+                <p role="status">This case is not available yet.</p>
+              )}
+            </section>
           )}
         </>
       )}

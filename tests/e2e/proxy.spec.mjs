@@ -137,19 +137,21 @@ test("proxy UI hides ratings until an immutable freeze then reveals separate moc
     .getByRole("link", { name: /PX-001 · Fixture candidate A/ })
     .click();
   await expect(page.locator(".proxy-outcome")).toHaveCount(0);
-  await page.getByRole("button", { name: "Start proxy case" }).click();
-  await expect(page).toHaveURL(/\/benchmark\/proxy\/run\//);
+  await expect(
+    page.getByRole("heading", { name: "Your guess · optional" }),
+  ).toBeVisible();
   await expect(
     page.getByRole("button", { name: "Reveal proxy outcome" }),
   ).toHaveCount(0);
   await page
     .getByRole("button", {
-      name: "B · Fixture candidate B (1995)",
+      name: "B · Fixture candidate B",
       exact: true,
     })
     .click();
   await expect(page.locator(".proxy-outcome")).toHaveCount(0);
   await page.getByRole("button", { name: "Show results", exact: true }).click();
+  await expect(page).toHaveURL(/\/benchmark\/proxy\/run\//);
   await expect(
     page.getByRole("heading", { name: "Segment winner: Option A" }),
   ).toBeVisible();

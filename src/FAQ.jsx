@@ -13,10 +13,10 @@ const questions = [
     "How do I try a film or music case?",
     <p>
       Open <a href="/benchmark#film-cases">film cases</a> or{" "}
-      <a href="/benchmark#music-cases">music cases</a>, choose a case and click
-      Start proxy case. You can guess A or B, or skip your guess. Show results
-      runs the configured AI when available, freezes the predictions, then
-      reveals the historical outcome.
+      <a href="/benchmark#music-cases">music cases</a> and choose a case. Your
+      optional A/B guess appears on that same page. Show results runs the
+      configured AI when available, freezes the predictions, then reveals the
+      historical outcome.
     </p>,
   ],
   [
