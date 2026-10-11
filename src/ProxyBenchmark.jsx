@@ -23,7 +23,7 @@ function Counts({ value }) {
     </p>
   );
 }
-export function ProxySection() {
+export function ProxySection({ browseOpen = false }) {
   const [data, setData] = useState(null),
     [error, setError] = useState(""),
     [runs, setRuns] = useState([]);
@@ -108,7 +108,7 @@ export function ProxySection() {
               outcomes.
             </p>
           )}
-          <details className="proxy-case-list">
+          <details className="proxy-case-list" open={browseOpen || undefined}>
             <summary>Browse {data.cases.length} proxy cases</summary>
             {data.cases.map((input) => (
               <div key={input.id} className="proxy-case-entry">

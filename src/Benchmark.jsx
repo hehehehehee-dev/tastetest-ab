@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { ProxySection } from "./ProxyBenchmark.jsx";
 import { MusicSection } from "./MusicProxy.jsx";
+import CaseNavigation from "./CaseNavigation.jsx";
 export async function benchmarkApi(path, options = {}) {
   const response = await fetch(`/api${path}`, {
     ...options,
@@ -50,6 +51,19 @@ export function BranchTable({ branches, result }) {
   );
 }
 export default function Benchmark() {
+  const [caseSection, setCaseSection] = useState(window.location.hash);
+  useEffect(() => {
+    const update = () => setCaseSection(window.location.hash);
+    window.addEventListener("hashchange", update);
+    return () => window.removeEventListener("hashchange", update);
+  }, []);
+  useEffect(() => {
+    if (["#film-cases", "#music-cases"].includes(caseSection)) {
+      document
+        .getElementById(caseSection.slice(1))
+        ?.scrollIntoView({ block: "start" });
+    }
+  }, [caseSection]);
   const [data, setData] = useState(null),
     [drafts, setDrafts] = useState([]),
     [proxy, setProxy] = useState(null),
@@ -98,6 +112,7 @@ export default function Benchmark() {
           </p>
         </div>
       </div>
+      <CaseNavigation />
       <a className="button primary" href="/benchmark/new">
         Create a new case
       </a>
@@ -305,18 +320,26 @@ export default function Benchmark() {
           {data && !data.rows.length && <p>No cases have closed yet.</p>}
         </section>
       </details>
-      <details className="benchmark-drawer">
+      <details
+        className="benchmark-drawer"
+        id="film-cases"
+        open={caseSection === "#film-cases" || undefined}
+      >
         <summary>
           Proxy benchmark — real preference data
           <span>{proxy?.cases.length ?? "…"} cases · MovieLens</span>
         </summary>
-        <ProxySection />
+        <ProxySection browseOpen={caseSection === "#film-cases"} />
       </details>
-      <details className="benchmark-drawer">
+      <details
+        className="benchmark-drawer"
+        id="music-cases"
+        open={caseSection === "#music-cases" || undefined}
+      >
         <summary>
           Proxy — music<span>40 cases · Last.fm · separate tally</span>
         </summary>
-        <MusicSection />
+        <MusicSection browseOpen={caseSection === "#music-cases"} />
       </details>
       <details className="benchmark-drawer">
         <summary>

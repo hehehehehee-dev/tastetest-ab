@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import CaseNavigation from "./CaseNavigation.jsx";
 
 export default function CaseStudy() {
   const [revealed, setRevealed] = useState(null);
@@ -25,6 +26,7 @@ export default function CaseStudy() {
     <main className="container case-study">
       <div className="eyebrow">BENCHMARK LAB / HISTORICAL CASE STUDY</div>
       <h1>{result ? "Cookie Cats · the result" : "Historical case 01"}</h1>
+      <CaseNavigation />
       <section className="panel case-panel">
         <h2>The decision</h2>
         <p>

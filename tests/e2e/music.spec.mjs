@@ -44,7 +44,10 @@ test("music drawer and case support manual freeze, hidden outcome and isolated r
   ).toBeVisible();
   await expect(page.getByText(/Music protocol v2:/)).toBeVisible();
   await page.getByText("Browse 40 proxy cases", { exact: true }).last().click();
-  await page.getByRole("link", { name: /MX-001/ }).click();
+  await page
+    .locator(".music-proxy-section .proxy-case-list")
+    .getByRole("link", { name: /MX-001/ })
+    .click();
   await expect(
     page.getByRole("heading", { name: "MX-001", exact: true }),
   ).toBeVisible();

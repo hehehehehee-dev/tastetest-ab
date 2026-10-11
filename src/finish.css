@@ -938,6 +938,63 @@ a.brand,
 .header-new {
   justify-content: center;
 }
+.header-cases {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 1px solid #444;
+  border-radius: 8px;
+  color: #eee;
+  font-size: 14px;
+  white-space: nowrap;
+}
+.case-navigation {
+  margin: 20px 0;
+  padding: 18px 20px;
+  border: 1px solid #333;
+  border-radius: 12px;
+  background: #151516;
+}
+.case-navigation p {
+  margin: 6px 0 14px;
+  color: #aaa;
+  font-size: 14px;
+}
+.case-navigation-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.case-navigation-links a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 1px solid #404043;
+  border-radius: 8px;
+  font-size: 14px;
+  color: #eee;
+}
+.header-cases:hover,
+.case-navigation-links a:hover {
+  border-color: #888;
+  background: #242426;
+}
+#film-cases,
+#music-cases {
+  scroll-margin-top: 100px;
+}
+@media (max-width: 600px) {
+  .header-cases {
+    font-size: 13px;
+    padding: 8px;
+  }
+  .case-navigation-links {
+    flex-direction: column;
+  }
+}
 .seed-guidance {
   margin: 10px 0;
   color: #bbb;

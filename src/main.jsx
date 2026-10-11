@@ -232,6 +232,9 @@ function Header({ label }) {
         </a>
         <div className="header-right">
           {label && <span className="mock-pill">{label}</span>}
+          <a className="header-cases" href="/benchmark">
+            Explore cases
+          </a>
           <a
             href="/create"
             onClick={(e) => {

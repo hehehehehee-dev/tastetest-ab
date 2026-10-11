@@ -76,3 +76,45 @@ test("home stays a completed cafe example with a separate always-open live twin"
     page.getByRole("heading", { name: "Historical case 01" }),
   ).toBeVisible();
 });
+
+test("visible case navigation opens film and music catalogues from historical page", async ({
+  page,
+}) => {
+  await page.goto("/benchmark-lab/historical-case-01");
+  await expect(
+    page.getByRole("link", { name: "Explore cases", exact: true }),
+  ).toBeVisible();
+  const nav = page.getByRole("navigation", { name: "Explore benchmark cases" });
+  await expect(
+    nav.getByRole("link", { name: "Film · start PX-001 ↗", exact: true }),
+  ).toBeVisible();
+  await expect(
+    nav.getByRole("link", { name: "Music · start MX-001 ↗", exact: true }),
+  ).toBeVisible();
+  await nav
+    .getByRole("link", { name: "Browse 40 film cases", exact: true })
+    .click();
+  await expect(page.locator("#film-cases")).toHaveAttribute("open", "");
+  await expect(page.locator("#film-cases .proxy-case-list")).toHaveAttribute(
+    "open",
+    "",
+  );
+  await expect(page.locator("#film-cases .proxy-case-entry a")).toHaveCount(40);
+  await page
+    .getByRole("navigation", { name: "Explore benchmark cases" })
+    .getByRole("link", { name: "Browse 40 music cases", exact: true })
+    .click();
+  await expect(page.locator("#music-cases")).toHaveAttribute("open", "");
+  await expect(page.locator("#music-cases .proxy-case-list")).toHaveAttribute(
+    "open",
+    "",
+  );
+  await expect(page.locator("#music-cases .proxy-case-entry a")).toHaveCount(
+    40,
+  );
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth > innerWidth,
+    ),
+  ).toBe(false);
+});
