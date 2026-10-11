@@ -480,6 +480,30 @@ test("proxy automatic AI is blind, owner-only, idempotent and frozen from server
     saved.data.freeze.payload.branches.llm.answer,
     /No explanation recorded/,
   );
+  const skipped = await call("/cases/" + inputs.cases[0].id + "/start");
+  const skipUrl = "/runs/" + skipped.data.run.id;
+  const skipFreeze = await call(
+    skipUrl + "/freeze",
+    { beforeReveal: true, llmMode: "skip", visitorPick: "B" },
+    skipped.data.ownerToken,
+  );
+  assert.equal(skipFreeze.status, 201);
+  assert.equal(skipFreeze.data.freeze.payload.visitorPick, "B");
+  assert.equal(skipFreeze.data.freeze.payload.branches.llm.pick, null);
+  const revealed = await call(skipUrl + "/reveal", {}, skipped.data.ownerToken);
+  assert.equal(revealed.data.result.grades.llm, "NOT RUN");
+  const tally = proxyTally([
+    {
+      id: skipped.data.run.id,
+      caseId: inputs.cases[0].id,
+      mode: "mock",
+      frozenAt: skipFreeze.data.frozenAt,
+      result: revealed.data.result,
+    },
+  ]);
+  assert.equal(tally.mock.counts.llm.total, 0);
+  assert.equal(tally.mock.decisionCounts.llm.total, 0);
+  assert.equal(tally.mock.decisionCounts.llm.abstained, 0);
 });
 
 test("always-pick proxy policy chooses low-gap winner and exact-tie A without changing legacy freezes", async () => {

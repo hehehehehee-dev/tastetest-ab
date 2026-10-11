@@ -99,11 +99,13 @@ export function scoreProxyFreeze(freeze, outcome) {
     grades: Object.fromEntries(
       Object.entries(freeze.payload.branches).map(([key, branch]) => [
         key,
-        branch.pick === "TIE"
-          ? "ABSTAIN"
-          : branch.pick === outcome.actual
-            ? "✓"
-            : "✗",
+        branch.pick == null
+          ? "NOT RUN"
+          : branch.pick === "TIE"
+            ? "ABSTAIN"
+            : branch.pick === outcome.actual
+              ? "✓"
+              : "✗",
       ]),
     ),
   };
@@ -128,7 +130,8 @@ export function proxyTally(rows) {
           {
             correct: cases.filter((row) => row.result.grades[key] === "✓")
               .length,
-            total: cases.length,
+            total: cases.filter((row) => row.result.grades[key] !== "NOT RUN")
+              .length,
           },
         ]),
       ),
@@ -560,6 +563,10 @@ export function createProxyApi(
       if (body.llmMode === "automatic" && !automated)
         fail("Run AI before freezing its prediction.");
       const manual = body.llm;
+      if (body.visitorPick != null && !["A", "B"].includes(body.visitorPick))
+        fail("Visitor pick must be A or B, or skipped.");
+      if (body.llmMode === "skip" && (await store.get(`proxy-ai/${id}`)))
+        fail("An AI response is already recorded; use it instead of skipping.");
       const llm = automated || {
         ...manual,
         answer:
@@ -567,7 +574,12 @@ export function createProxyApi(
           `Pick: ${manual?.pick}; confidence: ${manual?.confidence}. No explanation recorded.`,
       };
       const freeze = makeFreeze(
-        { ...run, proxyLlmPrediction: automated },
+        {
+          ...run,
+          proxyLlmPrediction: automated,
+          proxySkipLlm: body.llmMode === "skip",
+          proxyVisitorPick: body.visitorPick ?? null,
+        },
         {
           ...body,
           llm,

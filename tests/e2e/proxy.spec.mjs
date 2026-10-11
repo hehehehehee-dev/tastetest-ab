@@ -76,7 +76,14 @@ test("proxy UI hides ratings until an immutable freeze then reveals separate moc
       const body = route.request().postDataJSON();
       run = {
         ...run,
-        freeze: makeFreeze(run, { ...body, metadata: run.benchmarkMetadata }),
+        freeze: makeFreeze(
+          {
+            ...run,
+            proxySkipLlm: body.llmMode === "skip",
+            proxyVisitorPick: body.visitorPick,
+          },
+          { ...body, metadata: run.benchmarkMetadata },
+        ),
         lifecycle: "predictions frozen",
       };
       run.frozenAt = run.freeze.payload.frozenAt;
@@ -102,7 +109,10 @@ test("proxy UI hides ratings until an immutable freeze then reveals separate moc
         counts: Object.fromEntries(
           Object.entries(run.result.grades).map(([key, grade]) => [
             key,
-            { correct: grade === "✓" ? 1 : 0, total: 1 },
+            {
+              correct: grade === "✓" ? 1 : 0,
+              total: grade === "NOT RUN" ? 0 : 1,
+            },
           ]),
         ),
       };
@@ -132,36 +142,21 @@ test("proxy UI hides ratings until an immutable freeze then reveals separate moc
   await expect(
     page.getByRole("button", { name: "Reveal proxy outcome" }),
   ).toHaveCount(0);
-  await page.getByLabel("LLM pick", { exact: true }).selectOption("B");
-  await page.getByLabel("Exact model/version or human").fill("human");
   await page
-    .getByLabel("Paste original LLM answer")
-    .fill(
-      "Synthetic UI fixture: choosing option B, not a real model prediction.",
-    );
-  await page
-    .getByLabel(
-      "I have not viewed this segment's outcome before recording these predictions.",
-    )
-    .check();
-  await page.getByRole("button", { name: "Freeze proxy predictions" }).click();
-  await expect(
-    page.getByRole("heading", { name: /^Frozen at / }),
-  ).toBeVisible();
-  expect(revealed).toBe(false);
+    .getByRole("button", {
+      name: "B · Fixture candidate B (1995)",
+      exact: true,
+    })
+    .click();
   await expect(page.locator(".proxy-outcome")).toHaveCount(0);
-  await page.reload();
-  await expect(
-    page.getByRole("button", { name: "Freeze proxy predictions" }),
-  ).toHaveCount(0);
-  await page.getByRole("button", { name: "Reveal proxy outcome" }).click();
+  await page.getByRole("button", { name: "Show results", exact: true }).click();
   await expect(
     page.getByRole("heading", { name: "Segment winner: Option A" }),
   ).toBeVisible();
   await expect(page.locator(".proxy-outcome")).toContainText("mean 4.300/5");
   await expect(
     page.getByRole("row").filter({ hasText: "LLM-only (manual paste)" }),
-  ).toContainText("✗");
+  ).toContainText("NOT RUN");
   await mkdir("artifacts", { recursive: true });
   await page.screenshot({
     path: `artifacts/proxy-reveal-${testInfo.project.name}.png`,
@@ -177,7 +172,7 @@ test("proxy UI hides ratings until an immutable freeze then reveals separate moc
       name: "Mock proxy workflow · 1 completed cases",
     }),
   ).toBeVisible();
-  await expect(page.locator(".proxy-section")).toContainText("LLM-only 0/1");
+  await expect(page.locator(".proxy-section")).toContainText("LLM-only 0/0");
   await expect(
     page.locator(".benchmark-overview article").first().locator("strong"),
   ).toHaveText("LLM 0/0 · Qloo 0/0 · Agent 0/0");
@@ -258,13 +253,42 @@ test("recorded Replicate API answer freezes without manual fields or checkbox", 
       },
     });
   });
+  await page.route("**/api/proxy/runs/" + id + "/reveal", (route) =>
+    route.fulfill({
+      json: {
+        ...run,
+        freeze: {
+          payload: { branches: { llm: llmPrediction }, visitorPick: null },
+          sha256: "a".repeat(64),
+        },
+        result: { actual: "A", grades: { llm: "✓" } },
+        outcome: {
+          actual: "A",
+          segmentUsers: 30,
+          options: [
+            { movieId: "1", mean: 4.3, count: 25, overallRatings: 500 },
+            { movieId: "2", mean: 3.7, count: 22, overallRatings: 500 },
+          ],
+        },
+      },
+    }),
+  );
   await page.goto("/benchmark/proxy/run/" + id);
-  await expect(page.getByText(/Recorded by Replicate API/)).toBeVisible();
-  await expect(page.getByText("AI pick: A")).toBeVisible();
+  await expect(
+    page.getByText("AI is already recorded.", { exact: false }),
+  ).toBeVisible();
   await expect(
     page.locator("main input, main select, main textarea"),
   ).toHaveCount(0);
-  await page.getByRole("button", { name: "Freeze proxy predictions" }).click();
-  await expect(page.getByText(/^SHA-256 /)).toBeVisible();
+  await page
+    .getByRole("button", { name: "Skip my guess → Show results", exact: true })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "Comparison results" }),
+  ).toBeVisible();
+  await expect(page.getByRole("table")).toContainText("Replicate");
+  await expect(
+    page.getByRole("heading", { name: "Your guess · optional" }),
+  ).toHaveCount(0);
   expect(frozen).toBe(true);
 });

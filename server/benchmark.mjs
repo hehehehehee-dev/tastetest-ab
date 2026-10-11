@@ -75,7 +75,15 @@ export function makeFreeze(test, body, now = new Date().toISOString()) {
   if (!body || typeof body !== "object" || Array.isArray(body))
     fail("Provide a valid freeze record.");
   const llm = {
-    ...validateManual(body.llm, "LLM-only", !!test.proxyCaseId),
+    ...(test.proxyCaseId && test.proxySkipLlm
+      ? {
+          pick: null,
+          confidence: null,
+          source: "Not run",
+          method: "not-run",
+          answer: "No AI prediction was recorded.",
+        }
+      : validateManual(body.llm, "LLM-only", !!test.proxyCaseId)),
     ...(test.proxyLlmPrediction
       ? {
           method: test.proxyLlmPrediction.method,
@@ -161,6 +169,9 @@ export function makeFreeze(test, body, now = new Date().toISOString()) {
       ? {
           proxyCaseId: test.proxyCaseId,
           beforeRevealConfirmed: true,
+          ...(test.proxyVisitorPick !== undefined
+            ? { visitorPick: test.proxyVisitorPick }
+            : {}),
           timing:
             test.proxyDomain === "music"
               ? "Retrospective music proxy: listening records pre-exist this freeze. Only reveal occurs after predictions are sealed."

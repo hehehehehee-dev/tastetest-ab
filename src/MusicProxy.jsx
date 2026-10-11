@@ -1,3 +1,4 @@
+import ProxyChoice from "./ProxyChoice.jsx";
 import React, { useEffect, useState } from "react";
 import { benchmarkApi, BranchTable } from "./Benchmark.jsx";
 import { usePageSignal } from "./PageSignal.jsx";
@@ -170,20 +171,6 @@ export default function MusicCase({ caseId, runId }) {
     [busy, setBusy] = useState(false),
     [error, setError] = useState("");
   usePageSignal(run);
-  const [llm, setLlm] = useState({
-      pick: "A",
-      confidence: 50,
-      source: "Human",
-      answer: "",
-    }),
-    [beforeReveal, setBefore] = useState(false);
-  const [llmMode, setLlmMode] = useState("manual");
-  useEffect(() => {
-    if (run?.llmPrediction) {
-      setLlm(run.llmPrediction);
-      setLlmMode("automatic");
-    }
-  }, [run?.llmPrediction?.recordedAt]);
   const [isOwner, setOwner] = useState(false);
   const call = (action, body) =>
     benchmarkApi(`/music-proxy/runs/${run.id}/${action}`, {
@@ -240,27 +227,39 @@ export default function MusicCase({ caseId, runId }) {
           JSON.stringify([...new Set([...ids, data.run.id])]),
         );
         window.location.assign(`/benchmark/music/run/${data.run.id}`);
-      } else
-        setRun(
-          await call(
-            action,
-            action === "freeze"
-              ? {
-                  llm,
-                  llmMode,
-                  beforeReveal: llmMode === "automatic" ? true : beforeReveal,
-                }
-              : {},
-          ),
-        );
+      } else setRun(await call(action, {}));
     } catch (e) {
       setError(e.message);
     } finally {
       setBusy(false);
     }
   }
-  const update = (field, value) =>
-    setLlm((old) => ({ ...old, [field]: value }));
+  async function complete(visitorPick) {
+    setBusy(true);
+    setError("");
+    try {
+      let current = run;
+      if (!current.freeze) {
+        if (
+          !current.llmPrediction &&
+          catalog?.ai?.enabled &&
+          catalog.ai.configured
+        )
+          current = await call("ai", {});
+        current = await call("freeze", {
+          llmMode: current.llmPrediction ? "automatic" : "skip",
+          beforeReveal: true,
+          visitorPick,
+        });
+      }
+      setRun(current);
+      setRun(await call("reveal", {}));
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setBusy(false);
+    }
+  }
   return (
     <main className="container benchmark-page proxy-case-page">
       <a href="/benchmark">← Back to benchmark</a>
@@ -282,7 +281,7 @@ export default function MusicCase({ caseId, runId }) {
           {error}
         </p>
       )}
-      {input && (
+      {input && !run?.result && (
         <>
           <section className="panel">
             <h2>Taste-defined audience</h2>
@@ -315,9 +314,11 @@ export default function MusicCase({ caseId, runId }) {
         <>
           <section className="panel">
             <h2>
-              {run.freeze
-                ? `Frozen at ${run.frozenAt}`
-                : "Record the independent prediction"}
+              {run.result
+                ? "Comparison results"
+                : run.freeze
+                  ? `Frozen at ${run.frozenAt}`
+                  : "Record the independent prediction"}
             </h2>
             <p>
               {run.mode === "mock"
@@ -326,7 +327,7 @@ export default function MusicCase({ caseId, runId }) {
                   ? "Real Qloo · direct candidate affinity."
                   : "Legacy run · local concept/tag heuristic (unchanged)."}
             </p>
-            <p>{run.scoringNote}</p>
+            {!run.result && <p>{run.scoringNote}</p>}
             {!run.freeze && run.proxyDecisionPolicy === "always-pick-v1" && (
               <p>
                 Qloo / Agent pick:{" "}
@@ -348,7 +349,20 @@ export default function MusicCase({ caseId, runId }) {
                   branches={run.freeze.payload.branches}
                   result={run.result}
                 />
-                <p className="receipt-hash">SHA-256 {run.freeze.sha256}</p>
+                {run.freeze.payload.visitorPick && (
+                  <p>
+                    Your guess: {run.freeze.payload.visitorPick}
+                    {run.result
+                      ? run.freeze.payload.visitorPick === run.result.actual
+                        ? " · matched"
+                        : " · missed"
+                      : ""}
+                  </p>
+                )}
+                <details>
+                  <summary>Freeze receipt</summary>
+                  <p className="receipt-hash">SHA-256 {run.freeze.sha256}</p>
+                </details>
                 <p>{run.freeze.payload.timing}</p>
                 {run.freeze.payload.provenance?.source === "Qloo API" && (
                   <details className="qloo-proof">
@@ -384,133 +398,13 @@ export default function MusicCase({ caseId, runId }) {
                 )}
               </>
             ) : isOwner ? (
-              <form
-                onSubmit={(event) => {
-                  event.preventDefault();
-                  act("freeze");
-                }}
-              >
-                <h3>AI prediction</h3>
-                <p>
-                  Run the configured AI, or enter a prediction manually. A
-                  reason is optional. Human selections are recorded as Human.
-                </p>
-                {catalog?.ai?.enabled && catalog.ai.configured && (
-                  <button
-                    type="button"
-                    className="button"
-                    disabled={busy || !!run.llmPrediction}
-                    onClick={() => act("ai")}
-                  >
-                    {busy
-                      ? "Working…"
-                      : run.llmPrediction
-                        ? "AI prediction recorded"
-                        : "Run AI automatically"}
-                  </button>
-                )}
-                {llmMode === "automatic" && (
-                  <button
-                    type="button"
-                    className="button subtle"
-                    onClick={() => {
-                      setLlmMode("manual");
-                      setLlm({
-                        pick: "A",
-                        confidence: 50,
-                        source: "Human",
-                        answer: "",
-                      });
-                    }}
-                  >
-                    Use a manual prediction instead
-                  </button>
-                )}
-                {llmMode === "automatic" && (
-                  <p>
-                    Recorded by{" "}
-                    {run.llmPrediction.provider === "replicate"
-                      ? "Replicate API"
-                      : "AI API"}{" "}
-                    · {llm.source} · {run.llmPrediction.recordedAt}
-                  </p>
-                )}
-                {llmMode === "automatic" ? (
-                  <div className="ai-api-summary" role="status">
-                    <p>
-                      <strong>
-                        AI pick: {llm.pick === "TIE" ? "Abstain" : llm.pick}
-                      </strong>{" "}
-                      · Confidence {llm.confidence}/100
-                    </p>
-                    <p>
-                      No manual input needed. The server will seal this API
-                      response with Qloo before revealing the outcome.
-                    </p>
-                  </div>
-                ) : (
-                  <>
-                    <fieldset disabled={busy}>
-                      <label>
-                        LLM pick
-                        <select
-                          aria-label="LLM pick"
-                          value={llm.pick}
-                          onChange={(e) => update("pick", e.target.value)}
-                        >
-                          <option>A</option>
-                          <option>B</option>
-                          <option value="TIE">Abstain / too close</option>
-                        </select>
-                      </label>
-                      <label>
-                        LLM confidence (0–100)
-                        <input
-                          type="number"
-                          required
-                          min="0"
-                          max="100"
-                          value={llm.confidence}
-                          onChange={(e) =>
-                            update("confidence", Number(e.target.value))
-                          }
-                        />
-                      </label>
-                      <label>
-                        Exact model/version or human
-                        <input
-                          required
-                          value={llm.source}
-                          maxLength={160}
-                          onChange={(e) => update("source", e.target.value)}
-                        />
-                      </label>
-                      <label>
-                        Paste original LLM answer (optional)
-                        <textarea
-                          maxLength={6000}
-                          rows={4}
-                          value={llm.answer}
-                          onChange={(e) => update("answer", e.target.value)}
-                        />
-                      </label>
-                    </fieldset>
-                    <label className="check-label">
-                      <input
-                        type="checkbox"
-                        required
-                        checked={beforeReveal}
-                        onChange={(e) => setBefore(e.target.checked)}
-                      />
-                      I have not viewed this segment's outcome before recording
-                      these predictions.
-                    </label>
-                  </>
-                )}
-                <button className="button primary" disabled={busy}>
-                  Freeze proxy predictions
-                </button>
-              </form>
+              <ProxyChoice
+                options={run.options}
+                busy={busy}
+                hasAi={!!run.llmPrediction}
+                aiAvailable={!!(catalog?.ai?.enabled && catalog.ai.configured)}
+                onComplete={complete}
+              />
             ) : (
               <p>
                 Open this run in its creating browser to record or reveal
@@ -532,7 +426,10 @@ export default function MusicCase({ caseId, runId }) {
               <div className="eyebrow">
                 REVEALED / HISTORICAL PREFERENCE OUTCOME
               </div>
-              <h2>Segment winner: Option {run.outcome.actual}</h2>
+              <h2>
+                Segment winner: Option {run.outcome.actual} ·{" "}
+                {run.options[run.outcome.actual === "A" ? 0 : 1].title}
+              </h2>
               <p>
                 {run.outcome.segmentUsers} users had all three seeds in their
                 top 20% of observed listening.

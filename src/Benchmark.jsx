@@ -34,10 +34,16 @@ export function BranchTable({ branches, result }) {
                   : labels[key]}
               </td>
               <td>
-                {branch.pick === "TIE" ? "Too close to call" : branch.pick}
+                {branch.pick == null
+                  ? "Not run"
+                  : branch.pick === "TIE"
+                    ? "Too close to call"
+                    : branch.pick}
                 {branch.lowSeparation && <small> · low separation</small>}
               </td>
-              <td>{branch.confidence}/100</td>
+              <td>
+                {branch.confidence == null ? "—" : `${branch.confidence}/100`}
+              </td>
               <td>
                 {branch.provider === "replicate" ? "Replicate · " : ""}
                 {branch.source}

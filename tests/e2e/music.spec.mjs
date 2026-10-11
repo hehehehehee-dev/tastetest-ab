@@ -58,20 +58,11 @@ test("music drawer and case support manual freeze, hidden outcome and isolated r
     page.getByRole("heading", { name: "Record the independent prediction" }),
   ).toBeVisible();
   await expect(page.locator(".proxy-outcome")).toHaveCount(0);
+  await expect(
+    page.locator("main input, main select, main textarea"),
+  ).toHaveCount(0);
   await page
-    .getByRole("textbox", { name: "Exact model/version or human" })
-    .fill("human — synthetic UI test fixture");
-  await page
-    .getByRole("textbox", { name: "Paste original LLM answer" })
-    .fill("Synthetic UI fixture selects A before reveal.");
-  await page.getByRole("checkbox", { name: /I have not viewed/ }).check();
-  await page
-    .getByRole("button", { name: "Freeze proxy predictions", exact: true })
-    .click();
-  await expect(page.getByText(/^SHA-256 /)).toBeVisible();
-  await expect(page.locator(".proxy-outcome")).toHaveCount(0);
-  await page
-    .getByRole("button", { name: "Reveal proxy outcome", exact: true })
+    .getByRole("button", { name: "Skip my guess → Show results", exact: true })
     .click();
   await expect(
     page.getByRole("heading", { name: "Segment winner: Option A" }),
