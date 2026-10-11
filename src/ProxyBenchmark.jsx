@@ -234,7 +234,7 @@ export default function ProxyCase({ caseId, runId }) {
       setBusy(false);
     }
   }
-  async function complete(visitorPick, model) {
+  async function complete(visitorPick) {
     setBusy(true);
     setError("");
     try {
@@ -245,7 +245,7 @@ export default function ProxyCase({ caseId, runId }) {
           catalog?.ai?.enabled &&
           catalog.ai.configured
         )
-          current = await call("ai", { model });
+          current = await call("ai", {});
         current = await call("freeze", {
           llmMode: current.llmPrediction ? "automatic" : "skip",
           beforeReveal: true,
@@ -433,8 +433,6 @@ export default function ProxyCase({ caseId, runId }) {
                 busy={busy}
                 hasAi={!!run.llmPrediction}
                 aiAvailable={!!(catalog?.ai?.enabled && catalog.ai.configured)}
-                models={catalog?.ai?.models}
-                defaultModel={catalog?.ai?.model}
                 onComplete={complete}
               />
             ) : (

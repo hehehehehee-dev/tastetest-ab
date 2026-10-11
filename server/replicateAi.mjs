@@ -2,11 +2,7 @@ const fail = (message, status = 503) => {
   throw Object.assign(Error(message), { status });
 };
 const versionPattern = /^[a-f0-9]{64}$/;
-export const replicateModels = [
-  "openai/gpt-5",
-  "openai/gpt-4.1",
-  "openai/gpt-4.1-mini",
-];
+export const replicateModels = ["openai/gpt-5"];
 const createGate = {
   tail: Promise.resolve(),
   lastStartedAt: 0,
@@ -34,20 +30,11 @@ export function createReplicatePredictor({
       );
     const input = JSON.stringify(context);
     const system = `${instructions}\nReturn only a JSON object with exactly these fields: choice (\"A\", \"B\", or \"TIE\"), confidence (an integer from 0 to 100), rationale (a short nonempty explanation, at most 1200 characters). Do not use Markdown fences or other text.`;
-    const settings =
-      model === "openai/gpt-5"
-        ? {
-            reasoning_effort: "minimal",
-            verbosity: "low",
-            max_completion_tokens: 1200,
-          }
-        : {
-            temperature: 0,
-            top_p: 1,
-            max_completion_tokens: 700,
-            presence_penalty: 0,
-            frequency_penalty: 0,
-          };
+    const settings = {
+      reasoning_effort: "minimal",
+      verbosity: "low",
+      max_completion_tokens: 1200,
+    };
     const startedAt = new Date().toISOString();
     const deadline = Date.now() + timeoutMs;
     let predictionId;
@@ -125,16 +112,10 @@ export function createReplicatePredictor({
       let prediction = await request("/predictions", "POST", {
         version,
         input: {
-          messages:
-            model === "openai/gpt-4.1"
-              ? JSON.stringify([
-                  { role: "system", content: system },
-                  { role: "user", content: input },
-                ])
-              : [
-                  { role: "system", content: system },
-                  { role: "user", content: input },
-                ],
+          messages: [
+            { role: "system", content: system },
+            { role: "user", content: input },
+          ],
           ...settings,
         },
       });

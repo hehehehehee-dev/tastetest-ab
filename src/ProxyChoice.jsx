@@ -6,29 +6,11 @@ export default function ProxyChoice({
   hasAi,
   aiAvailable,
   onComplete,
-  models = [],
-  defaultModel,
 }) {
   const [pick, setPick] = useState(null);
-  const [model, setModel] = useState(defaultModel);
   return (
     <div className="proxy-visitor-choice">
       <h3>Your guess · optional</h3>
-      {!hasAi && aiAvailable && models.length > 1 && (
-        <label className="proxy-model-selector">
-          AI model · Replicate
-          <select
-            value={model || defaultModel}
-            onChange={(e) => setModel(e.target.value)}
-          >
-            {models.map((option) => (
-              <option key={option.id} value={option.id}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </label>
-      )}
       <p>
         {hasAi
           ? "AI is already recorded."
@@ -58,7 +40,7 @@ export default function ProxyChoice({
         type="button"
         className="button primary"
         disabled={busy}
-        onClick={() => onComplete(pick, model || defaultModel)}
+        onClick={() => onComplete(pick)}
       >
         {busy
           ? "Preparing results…"

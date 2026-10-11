@@ -511,7 +511,7 @@ export function createProxyApi(
             (recorded.requestedModel || recorded.source.split(":")[0])
         )
           fail(
-            "This run already has a recorded AI model. Start a new run to compare another model.",
+            "This run already has a recorded AI prediction. Start a new run for a new immutable prediction.",
             409,
           );
         return { data: await snapshot(run, true) };

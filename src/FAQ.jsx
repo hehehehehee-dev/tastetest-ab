@@ -40,13 +40,11 @@ const questions = [
     </p>,
   ],
   [
-    "Can I choose GPT-5 or another model?",
+    "Which AI model does the proxy use?",
     <p>
-      Yes, when the server has configured it: use the AI model selector before
-      the prediction runs. GPT-5 is the default for proxy runs when configured.
-      A recorded or frozen prediction keeps its original model; start a new run
-      to use another one. A larger model does not automatically mean better
-      benchmark accuracy.
+      The only active Replicate model is GPT-5. A recorded or frozen prediction
+      keeps its exact pinned model version in the freeze receipt. Using GPT-5
+      does not automatically imply better measured benchmark accuracy.
     </p>,
   ],
   [

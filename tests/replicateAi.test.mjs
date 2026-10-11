@@ -1,11 +1,14 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { createReplicatePredictor } from "../server/replicateAi.mjs";
+import {
+  createReplicatePredictor,
+  replicateModels,
+} from "../server/replicateAi.mjs";
 const version = "a".repeat(64);
 const defaults = {
   minCreateIntervalMs: 0,
   token: "FAKE-REPLICATE-TOKEN",
-  model: "openai/gpt-4.1-mini",
+  model: "openai/gpt-5",
   version,
   instructions: "Shared test instructions",
   sleep: async () => {},
@@ -15,12 +18,28 @@ const completed = {
   id: "job_fixture_1",
   status: "succeeded",
   version,
-  model: "openai/gpt-4.1-mini",
+  model: "openai/gpt-5",
   output: [
     '{"choice":"A",',
     '"confidence":60,"rationale":"Synthetic transport fixture."}',
   ],
 };
+test("GPT-5 is the only active Replicate model", async () => {
+  assert.deepEqual(replicateModels, ["openai/gpt-5"]);
+  let called = false;
+  await assert.rejects(
+    createReplicatePredictor({
+      ...defaults,
+      model: "openai/gpt-4.1",
+      fetchImpl: async () => {
+        called = true;
+        return json(completed);
+      },
+    })({}),
+    /supported GPT model/,
+  );
+  assert.equal(called, false);
+});
 test("Replicate creation pacing waits before a new job and a quota cooldown prevents further paid creates", async () => {
   const gate = {
     tail: Promise.resolve(),
@@ -79,7 +98,7 @@ test("Replicate pins version and generation settings, polls the same job, and re
   const result = await predictor({ audience: { tastes: ["Fixture"] } });
   assert.equal(result.choice, "A");
   assert.equal(result.provider, "replicate");
-  assert.equal(result.model, `openai/gpt-4.1-mini:${version}`);
+  assert.equal(result.model, `openai/gpt-5:${version}`);
   assert.equal(requests.length, 3);
   assert.equal(requests.filter((x) => x.options.method === "POST").length, 1);
   assert.equal(
@@ -88,8 +107,9 @@ test("Replicate pins version and generation settings, polls the same job, and re
   );
   const body = JSON.parse(requests[0].options.body);
   assert.equal(body.version, version);
-  assert.equal(body.input.temperature, 0);
-  assert.equal(body.input.max_completion_tokens, 700);
+  assert.equal(body.input.reasoning_effort, "minimal");
+  assert.equal(body.input.verbosity, "low");
+  assert.equal(body.input.max_completion_tokens, 1200);
   assert.equal(body.input.messages[0].content, result.prompt.instructions);
   assert.equal(body.input.messages[1].content, result.prompt.input);
   assert.equal(requests[0].options.headers["Cancel-After"], "45s");
@@ -183,23 +203,6 @@ test("Replicate timeout cancels only its exact job; auth/quota/config errors are
     })({}),
     /REPLICATE_API_TOKEN/,
   );
-});
-
-test("larger GPT-4.1 uses its pinned version and verifies the returned model", async () => {
-  const predictor = createReplicatePredictor({
-    ...defaults,
-    model: "openai/gpt-4.1",
-    fetchImpl: async (url, options) => {
-      const body = JSON.parse(options.body);
-      assert.equal(body.version, version);
-      assert.equal(typeof body.input.messages, "string");
-      assert.equal(JSON.parse(body.input.messages)[0].role, "system");
-      return json({ ...completed, model: "openai/gpt-4.1" });
-    },
-  });
-  const result = await predictor({ audience: { tastes: ["Fixture"] } });
-  assert.equal(result.requestedModel, "openai/gpt-4.1");
-  assert.equal(result.model, "openai/gpt-4.1:" + version);
 });
 
 test("GPT-5 uses its reasoning schema without unsupported sampling parameters", async () => {

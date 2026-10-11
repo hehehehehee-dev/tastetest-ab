@@ -199,7 +199,7 @@ test("proxy UI hides ratings until an immutable freeze then reveals separate moc
   ).toBe(false);
 });
 
-test("selected Replicate model runs and reveals without manual prediction fields", async ({
+test("the fixed GPT-5 model runs and reveals without manual prediction fields", async ({
   page,
 }) => {
   const id = "00000000-0000-4000-8000-000000000222";
@@ -245,11 +245,7 @@ test("selected Replicate model runs and reveals without manual prediction fields
           configured: true,
           enabled: true,
           model: "openai/gpt-5",
-          models: [
-            { id: "openai/gpt-4.1-mini", label: "GPT-4.1 mini" },
-            { id: "openai/gpt-4.1", label: "GPT-4.1" },
-            { id: "openai/gpt-5", label: "GPT-5" },
-          ],
+          models: [{ id: "openai/gpt-5", label: "GPT-5" }],
         },
       },
     }),
@@ -258,7 +254,7 @@ test("selected Replicate model runs and reveals without manual prediction fields
     route.fulfill({ json: run }),
   );
   await page.route("**/api/proxy/runs/" + id + "/ai", (route) => {
-    expect(route.request().postDataJSON().model).toBe("openai/gpt-5");
+    expect(route.request().postDataJSON().model).toBeUndefined();
     return route.fulfill({ json: { ...run, llmPrediction } });
   });
   let frozen = false;
@@ -303,9 +299,7 @@ test("selected Replicate model runs and reveals without manual prediction fields
     }),
   );
   await page.goto("/benchmark/proxy/run/" + id);
-  await expect(page.getByLabel("AI model · Replicate")).toHaveValue(
-    "openai/gpt-5",
-  );
+  await expect(page.getByLabel("AI model · Replicate")).toHaveCount(0);
   await expect(page.locator("main input, main textarea")).toHaveCount(0);
   await page
     .getByRole("button", { name: "Skip my guess → Show results", exact: true })
