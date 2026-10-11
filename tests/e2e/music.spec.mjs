@@ -43,7 +43,9 @@ test("music drawer and case support manual freeze, hidden outcome and isolated r
     }),
   ).toBeVisible();
   await expect(page.getByText(/Music protocol v2:/)).toBeVisible();
-  await page.getByText("Browse 40 proxy cases", { exact: true }).last().click();
+  await page
+    .locator(".music-proxy-section details.proxy-case-list > summary")
+    .click();
   await page
     .locator(".music-proxy-section .proxy-case-list")
     .getByRole("link", { name: /MX-001/ })
@@ -68,6 +70,10 @@ test("music drawer and case support manual freeze, hidden outcome and isolated r
   await expect(page.locator(".proxy-outcome")).toContainText(
     "observed listens per segment user",
   );
+  await expect(page.locator(".proxy-verdict-tag")).toContainText("Proxy-music");
+  await expect(
+    page.locator(".proxy-outcome .verdict-report-section"),
+  ).toHaveCount(4);
   const overflow = await page.evaluate(
     () => document.documentElement.scrollWidth > innerWidth + 1,
   );

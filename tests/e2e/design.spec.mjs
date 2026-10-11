@@ -68,6 +68,10 @@ test("baseline verdict has one score set, exports a real PNG and prints only one
   await page.getByRole("checkbox", { name: "Keyword baseline" }).check();
   await page.getByRole("button", { name: "Verdict", exact: true }).click();
   const card = page.locator(".verdict-artefact");
+  await expect(card.locator(".verdict-report-section")).toHaveCount(4);
+  await expect(card).toContainText("Where we disagreed");
+  await expect(card).toContainText("What surprised us");
+  await expect(card).toContainText("How this verdict was built");
   await expect(card).toContainText("KEYWORD BASELINE VIEW");
   await expect(card.locator(".verdict-bar-label").first()).toContainText(
     sample.baseline

@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { mkdir } from "node:fs/promises";
+import { mkdir, readFile } from "node:fs/promises";
 import { predictProxy, scoreProxyFreeze } from "../../server/proxy.mjs";
 import { makeFreeze } from "../../server/benchmark.mjs";
 test("proxy UI hides ratings until an immutable freeze then reveals separate mock grades", async ({
@@ -155,6 +155,25 @@ test("proxy UI hides ratings until an immutable freeze then reveals separate moc
   await expect(
     page.getByRole("heading", { name: "Segment winner: Option A" }),
   ).toBeVisible();
+  const reportHeadings = await page
+    .locator(
+      ".proxy-outcome .verdict-report-section > div:last-child > h2, .proxy-outcome .verdict-report-section > div:last-child > h3",
+    )
+    .allTextContents();
+  expect(reportHeadings).toEqual([
+    "The Verdict",
+    "Where we disagreed",
+    "What surprised us",
+    "How this verdict was built",
+  ]);
+  await expect(page.locator(".proxy-outcome")).toContainText(
+    /Historical preferences, not business results/,
+  );
+  await expect(
+    page.getByRole("link", {
+      name: /Without Qloo \/ keyword baseline comparison/,
+    }),
+  ).toBeVisible();
   await expect(page.locator(".proxy-outcome")).toContainText("mean 4.300/5");
   expect(
     await page
@@ -173,6 +192,30 @@ test("proxy UI hides ratings until an immutable freeze then reveals separate moc
     page.getByRole("row").filter({ hasText: "LLM-only (manual paste)" }),
   ).toContainText("NOT RUN");
   await mkdir("artifacts", { recursive: true });
+  const downloadEvent = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Share verdict image" }).click();
+  const download = await downloadEvent;
+  const bytes = await readFile(await download.path());
+  expect([...bytes.subarray(0, 8)]).toEqual([137, 80, 78, 71, 13, 10, 26, 10]);
+  expect(bytes.length).toBeGreaterThan(10000);
+  await page.emulateMedia({ media: "print" });
+  await expect(page.locator(".proxy-verdict-actions")).toBeHidden();
+  await expect(
+    page.locator(".proxy-outcome .verdict-report-section"),
+  ).toHaveCount(4);
+  if (testInfo.project.name === "desktop") {
+    expect(
+      (await page.locator(".proxy-outcome").boundingBox()).height,
+    ).toBeLessThan(900);
+    const pdf = await page.pdf({
+      format: "A4",
+      preferCSSPageSize: true,
+      printBackground: true,
+      path: `artifacts/proxy-verdict-print-${testInfo.project.name}.pdf`,
+    });
+    expect(pdf.toString("latin1").match(/\/Type\s*\/Page\b/g)?.length).toBe(1);
+  }
+  await page.emulateMedia({ media: "screen" });
   await page.screenshot({
     path: `artifacts/proxy-reveal-${testInfo.project.name}.png`,
     fullPage: true,
@@ -314,6 +357,9 @@ test("the fixed GPT-5 model runs and reveals without manual prediction fields", 
   await expect(page.getByRole("table")).not.toContainText("a".repeat(64));
   await expect(page.getByRole("table")).not.toContainText("Agent");
   await expect(page.locator(".proxy-winner-letter")).toHaveText("B");
+  await expect(
+    page.locator(".proxy-outcome .verdict-report-section"),
+  ).toHaveCount(4);
   const grade = page
     .locator('.proxy-branch-table td[data-label="Result"]')
     .first();

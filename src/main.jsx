@@ -36,6 +36,8 @@ import FreezePanel from "./FreezePanel.jsx";
 import ProxyCase from "./ProxyBenchmark.jsx";
 import MusicCase from "./MusicProxy.jsx";
 import FAQ from "./FAQ.jsx";
+import VerdictInsights from "./VerdictInsights.jsx";
+import { normalizedOutcomeMargin } from "./verdictReport.mjs";
 import { predictionConfidence } from "../shared/confidence.mjs";
 import {
   PageSignalContext,
@@ -854,6 +856,50 @@ function Verdict({ test, without, setWithout }) {
       : null
     : verdict.predicted;
   const fitWinner = scores ? winnerFor(scores) : null;
+  const actualLetter = winner === null ? null : winner ? "B" : "A";
+  const voteMargin = normalizedOutcomeMargin(test.votes, test.totalVotes);
+  const fitGap = scores
+    ? Math.abs(scores[0].score - scores[1].score)
+    : (test.freeze?.payload?.branches?.qloo?.gap ?? null);
+  const pairedBranches = test.comparison?.payload
+    ? {
+        llm: {
+          pick: test.comparison.payload.aiOnly.choice,
+          confidence: test.comparison.payload.aiOnly.confidence,
+          source: test.comparison.payload.model || "Paired AI-only branch",
+        },
+        qloo: {},
+        agent: {
+          pick: test.comparison.payload.aiQloo.choice,
+          confidence: test.comparison.payload.aiQloo.confidence,
+          source: `${test.comparison.payload.model || "Paired model"} + Qloo`,
+        },
+      }
+    : null;
+  const branches = test.freeze?.payload?.branches || pairedBranches || {};
+  const grades =
+    test.benchmarkResult?.grades ||
+    (verdict.paired
+      ? {
+          llm: verdict.paired.aiOnly,
+          agent: verdict.paired.aiQloo,
+        }
+      : {});
+  const freezeAt =
+    test.freeze?.payload?.frozenAt ||
+    test.comparison?.payload?.committedAt ||
+    null;
+  const receiptHash = test.freeze?.sha256 || test.comparison?.sha256 || null;
+  const signalCount = Array.isArray(test.insights)
+    ? test.insights.filter((signal) => Number.isFinite(signal.affinity)).length
+    : 0;
+  const matchBadge =
+    winner === null || predicted === null
+      ? "No declared match"
+      : winner === predicted
+        ? "Matched"
+        : "Missed";
+  const grounding = `Verdict built from ${signalCount} Qloo affinity signals · ${test.totalVotes} votes · frozen ${freezeAt || "not recorded"} · SHA-256 ${receiptHash ? receiptHash.slice(0, 12) : "not recorded"}.`;
   async function exportImage() {
     setExporting(true);
     setNotice("");
@@ -896,7 +942,10 @@ function Verdict({ test, without, setWithout }) {
             Share verdict image
           </Button>
           {!test.isPairedComparison && (
-            <label className="toggle-label verdict-toggle">
+            <label
+              id="keyword-baseline"
+              className="toggle-label verdict-toggle"
+            >
               <span>Keyword baseline</span>
               <input
                 type="checkbox"
@@ -917,111 +966,156 @@ function Verdict({ test, without, setWithout }) {
           <span>
             {without
               ? "KEYWORD BASELINE VIEW"
-              : test.isPairedComparison
-                ? "PAIRED COMPARISON"
-                : test.mode === "real"
-                  ? "QLOO DATA + LOCAL FIT"
-                  : test.isSample
-                    ? "SYNTHETIC CAFE EXAMPLE"
-                    : "SYNTHETIC SIGNALS"}
+              : test.freeze?.payload?.metadata?.track === "track-b"
+                ? `TRACK B · ${test.mode === "real" ? "QLOO DATA + LOCAL FIT" : "SYNTHETIC SIGNALS"}`
+                : test.isPairedComparison
+                  ? "PAIRED COMPARISON"
+                  : test.mode === "real"
+                    ? "QLOO DATA + LOCAL FIT"
+                    : test.isSample
+                      ? "SYNTHETIC CAFE EXAMPLE"
+                      : "SYNTHETIC SIGNALS"}
           </span>
         </div>
-        <div className="verdict-hero">
-          <div className="verdict-main">
-            <span className="eyebrow">
-              {winner === null ? "NO CLEAR WINNER" : "AUDIENCE PICK"}
-            </span>
-            <div className="verdict-number">
-              {verdict.share !== null ? (
-                <AnimatedNumber value={verdict.share} suffix="%" />
-              ) : (
-                "—"
+        <section className="verdict-report-section verdict-report-headline">
+          <div className="verdict-section-label">01</div>
+          <div>
+            <h2>The Verdict</h2>
+            <div className="verdict-hero">
+              <div className="verdict-main">
+                <span className="eyebrow">
+                  {winner === null ? "NO CLEAR WINNER" : "AUDIENCE PICK"}
+                </span>
+                <div className="verdict-number">
+                  {verdict.share !== null ? (
+                    <AnimatedNumber value={verdict.share} suffix="%" />
+                  ) : (
+                    "—"
+                  )}
+                </div>
+                <h3>
+                  {winner === null
+                    ? test.totalVotes
+                      ? "An even split."
+                      : "No verdict yet."
+                    : test.options[winner].title}
+                </h3>
+                <p>
+                  {winner === null
+                    ? "More audience evidence needed."
+                    : `of voters chose Option ${winner ? "B" : "A"}`}{" "}
+                  · {test.totalVotes} votes
+                </p>
+                <div className="verdict-headline-meta">
+                  <span>
+                    {voteMargin === null
+                      ? "Margin unavailable"
+                      : `${Math.round(voteMargin)}-point vote margin`}
+                  </span>
+                  <strong
+                    className={`verdict-match is-${matchBadge
+                      .toLowerCase()
+                      .replaceAll(" ", "-")}`}
+                  >
+                    {matchBadge}
+                  </strong>
+                </div>
+              </div>
+              {winner !== null && (
+                <div className="verdict-poster">
+                  <OptionImage option={test.options[winner]} />
+                </div>
               )}
             </div>
-            <h3>
-              {winner === null
-                ? test.totalVotes
-                  ? "An even split."
-                  : "No verdict yet."
-                : test.options[winner].title}
-            </h3>
-            <p>
-              {winner === null
-                ? "More audience evidence needed."
-                : `of voters chose Option ${winner ? "B" : "A"}`}{" "}
-              · {test.totalVotes} votes
+            {!test.isPairedComparison && scores && (
+              <div className="verdict-bars">
+                <div className="verdict-bar">
+                  <div className="verdict-bar-label">
+                    <span>
+                      {without ? "Keyword baseline" : "Predicted fit"}
+                    </span>
+                    <strong>
+                      {scores
+                        .map((p, i) => `${i ? "B" : "A"} ${p.score}/100`)
+                        .join(" · ")}
+                    </strong>
+                  </div>
+                  <div className="paired-fit-bars">
+                    {scores.map((p, i) => (
+                      <div className="score-track" key={i}>
+                        <div
+                          className={`score-fill ${fitWinner === i ? "accent" : ""}`}
+                          style={{ width: `${p.score}%` }}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                  <small>
+                    Independent fit scores; not expected vote shares.
+                  </small>
+                </div>
+                <div className="verdict-bar">
+                  <div className="verdict-bar-label">
+                    <span>Actual vote</span>
+                    <strong>
+                      {test.options
+                        .map(
+                          (_, i) =>
+                            `${i ? "B" : "A"} ${test.totalVotes ? Math.round((test.votes[i] / test.totalVotes) * 100) : 0}%`,
+                        )
+                        .join(" · ")}
+                    </strong>
+                  </div>
+                  <div className="actual-split">
+                    {test.votes.map((v, i) => (
+                      <div
+                        key={i}
+                        className={winner === i ? "winning-bar" : ""}
+                        style={{
+                          width: `${test.totalVotes ? (v / test.totalVotes) * 100 : 0}%`,
+                        }}
+                      />
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+            <div className="recommendation">
+              <h3>Your next move</h3>
+              <p>
+                {without && !test.isPairedComparison
+                  ? winner === null
+                    ? "The poll has no clear winner. Refine the concepts and collect more responses before deciding."
+                    : `${test.options[winner].title} received ${verdict.share}% of ${test.totalVotes} votes. Use the observed preference for a small trial, then measure real outcomes. The keyword baseline is a separate comparison; this convenience poll is not a representative study.`
+                  : verdict.recommendation}
+              </p>
+            </div>
+            <p className="calibration-line">
+              {test.isPairedComparison
+                ? `Paired case: ${verdict.paired.status}. See the locked branch record in Prediction.`
+                : `${without ? "Baseline comparison" : "Prediction comparison"}: ${winner === null ? "more evidence needed" : predicted === null ? "too close to call" : winner === predicted ? "matched the poll" : "poll challenged the prediction"}. Fit scores are not calibrated probabilities.`}
             </p>
           </div>
-          {winner !== null && (
-            <div className="verdict-poster">
-              <OptionImage option={test.options[winner]} />
-            </div>
-          )}
-        </div>
-        {!test.isPairedComparison && scores && (
-          <div className="verdict-bars">
-            <div className="verdict-bar">
-              <div className="verdict-bar-label">
-                <span>{without ? "Keyword baseline" : "Predicted fit"}</span>
-                <strong>
-                  {scores
-                    .map((p, i) => `${i ? "B" : "A"} ${p.score}/100`)
-                    .join(" · ")}
-                </strong>
-              </div>
-              <div className="paired-fit-bars">
-                {scores.map((p, i) => (
-                  <div className="score-track" key={i}>
-                    <div
-                      className={`score-fill ${fitWinner === i ? "accent" : ""}`}
-                      style={{ width: `${p.score}%` }}
-                    />
-                  </div>
-                ))}
-              </div>
-              <small>Independent fit scores; not expected vote shares.</small>
-            </div>
-            <div className="verdict-bar">
-              <div className="verdict-bar-label">
-                <span>Actual vote</span>
-                <strong>
-                  {test.options
-                    .map(
-                      (_, i) =>
-                        `${i ? "B" : "A"} ${test.totalVotes ? Math.round((test.votes[i] / test.totalVotes) * 100) : 0}%`,
-                    )
-                    .join(" · ")}
-                </strong>
-              </div>
-              <div className="actual-split">
-                {test.votes.map((v, i) => (
-                  <div
-                    key={i}
-                    className={winner === i ? "winning-bar" : ""}
-                    style={{
-                      width: `${test.totalVotes ? (v / test.totalVotes) * 100 : 0}%`,
-                    }}
-                  />
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-        <div className="recommendation">
-          <h3>Your next move</h3>
-          <p>
-            {without && !test.isPairedComparison
-              ? winner === null
-                ? "The poll has no clear winner. Refine the concepts and collect more responses before deciding."
-                : `${test.options[winner].title} received ${verdict.share}% of ${test.totalVotes} votes. Use the observed preference for a small trial, then measure real outcomes. The keyword baseline is a separate comparison; this convenience poll is not a representative study.`
-              : verdict.recommendation}
-          </p>
-        </div>
-        <p className="calibration-line">
-          {test.isPairedComparison
-            ? `Paired case: ${verdict.paired.status}. See the locked branch record in Prediction.`
-            : `${without ? "Baseline comparison" : "Prediction comparison"}: ${winner === null ? "more evidence needed" : predicted === null ? "too close to call" : winner === predicted ? "matched the poll" : "poll challenged the prediction"}. Fit scores are not calibrated probabilities.`}
-        </p>
+        </section>
+        <VerdictInsights
+          branches={branches}
+          grades={grades}
+          actual={actualLetter}
+          actualMargin={voteMargin}
+          fitGap={fitGap}
+          marginName="Vote margin"
+          grounding={grounding}
+          baselineHref={
+            test.isPairedComparison
+              ? "/?view=verdict#keyword-baseline"
+              : "#keyword-baseline"
+          }
+          baselineNote={
+            without
+              ? "Locked branch records are unchanged; this view replaces only the headline predictor with the keyword baseline."
+              : null
+          }
+        />
         <div className="verdict-meta">
           <span>{test.title}</span>
           <span>
