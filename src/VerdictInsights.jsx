@@ -22,8 +22,13 @@ export default function VerdictInsights({
   grounding,
   baselineHref = "#keyword-baseline",
   baselineNote,
+  branchKeys,
+  branchLabels,
 }) {
-  const rows = verdictBranchRows(branches, grades, actual);
+  const rows = verdictBranchRows(branches, grades, actual, {
+    ...(branchKeys ? { keys: branchKeys } : {}),
+    ...(branchLabels ? { labels: branchLabels } : {}),
+  });
   const surprises = surpriseNotes({
     rows,
     actual,

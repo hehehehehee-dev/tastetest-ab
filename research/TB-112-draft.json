@@ -1,0 +1,117 @@
+{
+  "caseLabel": "TB-112",
+  "status": "predictions frozen — poll not opened; audience tastes unverified",
+  "preparedOn": "2026-10-09",
+  "business": "Vietnamese International Student Association",
+  "decision": "Choose the theme for its next social event.",
+  "audienceNote": "Vietnamese students who like V-pop, Vietnamese street food, K-dramas, and acoustic music nights.",
+  "tasteTopics": [
+    "V-pop",
+    "Vietnamese street food",
+    "K-dramas",
+    "acoustic music night"
+  ],
+  "seedEntityIds": [
+    "5E12D19E-1386-470C-B0AE-BE962F839FEF",
+    "A7BFA500-B91C-45D4-AD8E-4354CC858270",
+    "D0ECCEEB-23E7-4853-8DAD-663059C72732"
+  ],
+  "seedMappingStatus": "Assistant-selected illustrative assumptions authorized by owner; actual audience tastes not verified. Vietnamese street food and K-dramas remain audience topics, not substituted Qloo entity IDs.",
+  "options": [
+    {
+      "title": "Saigon Night Market",
+      "description": "Street-food stalls, neon signage, V-pop stage."
+    },
+    {
+      "title": "Hanoi Old Quarter",
+      "description": "Heritage crafts, quieter acoustic music corner."
+    }
+  ],
+  "pollChannel": null,
+  "llm": {
+    "pick": "A",
+    "confidence": 65,
+    "source": "Codex assistant — exact model/version not exposed in this session",
+    "answer": "Pick: A\nConfidence: 65\nReason: Street-food stalls and a V-pop stage fit the described social audience more broadly than a quieter crafts-and-acoustic theme.",
+    "recordedAt": "2026-10-09T21:32:31.850Z",
+    "independentOfQlooScoring": true,
+    "versionVerified": false,
+    "context": {
+      "audience": "Vietnamese students who like V-pop, Vietnamese street food, K-dramas, and acoustic music nights.",
+      "seeds": [
+        "Sơn Tùng M-TP",
+        "IU",
+        "Trịnh Công Sơn"
+      ],
+      "options": [
+        {
+          "title": "Saigon Night Market",
+          "description": "Street-food stalls, neon signage, V-pop stage."
+        },
+        {
+          "title": "Hanoi Old Quarter",
+          "description": "Heritage crafts, quieter acoustic music corner."
+        }
+      ]
+    }
+  },
+  "qloo": {
+    "pick": "A",
+    "confidence": 65,
+    "source": "TasteTest concept-tag-fit-v2",
+    "method": "Qloo-informed local heuristic",
+    "confidenceKind": "heuristic separation, not calibrated"
+  },
+  "agent": {
+    "pick": "A",
+    "confidence": 65,
+    "source": "TasteTest concept-tag-fit-v2",
+    "method": "Same Qloo-informed local heuristic; not an independent predictor",
+    "confidenceKind": "heuristic separation, not calibrated"
+  },
+  "frozenAt": "2026-10-09T21:33:49.306Z",
+  "receiptHash": "4fac97f6108456e4f2f7118bc86bdf48f48bb89c483507b62f276f1587155644",
+  "outcome": null,
+  "minVotes": 20,
+  "nonTiedRequired": true,
+  "workflow": [
+    "Confirm VSA channel and 3–5 audience-representative Qloo entities; retain original taste topics in audience note.",
+    "Record independent ChatGPT pick, confidence, reason and exact displayed model before any Qloo scoring.",
+    "Create live case with confirmed seeds and run real Qloo; retain actual returned Qloo/Agent methods and shared-predictor disclosure.",
+    "Freeze before opening poll; verify ISO timestamp and SHA-256 receipt.",
+    "Only then share poll with confirmed audience; collect at least 20 real votes without padding.",
+    "Close and copy scored row into TRACK-B-LEDGER.md."
+  ],
+  "llmPrompt": "You are making a blind prediction. Do not ask for more data and do not hedge.\n\nAudience: Vietnamese students who like V-pop, Vietnamese street food, K-dramas, and acoustic music nights.\nDecision: choosing the theme for a Vietnamese student association social event.\n\nOption A: \"Saigon Night Market\" — street-food stalls, neon signage, V-pop stage.\nOption B: \"Hanoi Old Quarter\" — heritage crafts, quieter acoustic music corner.\n\nAnswer in exactly this format:\nPick: A or B\nConfidence: [0-100]\nReason: [one sentence]",
+  "pollPostAfterFreeze": "Mọi người vote giúp mình theme cho sự kiện sinh viên Việt Nam nhé:\n\nA — Saigon Night Market: quầy street food, đèn neon, sân khấu V-pop\nB — Hanoi Old Quarter: đồ thủ công/phố cổ, góc nhạc acoustic nhẹ nhàng\n\nVote ở đây: [PASTE POLL LINK AFTER FREEZE]\nChỉ mất 5 giây, cảm ơn mọi người!",
+  "fallback": "TB-102 requires its own supplied audience, seeds and options. Do not invent them if VSA channel unavailable.",
+  "seeds": [
+    {
+      "name": "Sơn Tùng M-TP",
+      "entity_id": "5E12D19E-1386-470C-B0AE-BE962F839FEF",
+      "category": "Music"
+    },
+    {
+      "name": "IU",
+      "entity_id": "A7BFA500-B91C-45D4-AD8E-4354CC858270",
+      "category": "Music"
+    },
+    {
+      "name": "Trịnh Công Sơn",
+      "entity_id": "D0ECCEEB-23E7-4853-8DAD-663059C72732",
+      "category": "Music"
+    }
+  ],
+  "plannedPollChannel": "Vietnamese International Student Association group chat — exact channel and access unconfirmed",
+  "audienceVerified": false,
+  "liveCaseId": "fb7fe400-61fc-4f65-a317-698858fe8a68",
+  "caseUrl": "https://taste-test-ab.netlify.app/test/fb7fe400-61fc-4f65-a317-698858fe8a68?view=prediction",
+  "receiptVerification": "Timestamp and hash read from live owner UI; full payload download unavailable through browser tool. No independent digest verification claimed.",
+  "fitScores": {
+    "A": 23,
+    "B": 4
+  },
+  "pollOpened": false,
+  "totalVotes": 0,
+  "evidenceLimit": "Audience seed preferences were assumed, not verified. Frozen audienceVerified=false excludes this case from headline Track B accuracy, even if 20 votes are collected. A later verified audience case must be a separate fresh record."
+}

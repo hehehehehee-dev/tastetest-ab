@@ -3,6 +3,13 @@ import ProxyChoice from "./ProxyChoice.jsx";
 import React, { useEffect, useState } from "react";
 import { benchmarkApi, BranchTable } from "./Benchmark.jsx";
 import { usePageSignal } from "./PageSignal.jsx";
+import PredictionStepFeed from "./PredictionStepFeed.jsx";
+import {
+  beginPredictionStep,
+  clonePredictionWork,
+  createPredictionWork,
+  failPredictionStep,
+} from "../shared/predictionWork.mjs";
 const labels = { llm: "AI", qloo: "Qloo" };
 const ownerKey = (id) => `tastetest-music-proxy-owner-${id}`;
 export const musicHonesty =
@@ -172,7 +179,8 @@ export default function MusicCase({ caseId, runId }) {
   const [catalog, setCatalog] = useState(null),
     [run, setRun] = useState(null),
     [busy, setBusy] = useState(false),
-    [error, setError] = useState("");
+    [error, setError] = useState(""),
+    [predictionWork, setPredictionWork] = useState(null);
   usePageSignal(run);
   const [isOwner, setOwner] = useState(false);
   const callRun = (currentRun, action, body) =>
@@ -198,7 +206,10 @@ export default function MusicCase({ caseId, runId }) {
         headers: { "x-owner-token": token || "" },
       })
         .then((value) => {
-          if (active) setRun(value);
+          if (active) {
+            setRun(value);
+            setPredictionWork(value.predictionWork || null);
+          }
         })
         .catch((e) => setError(e.message));
     }
@@ -237,30 +248,66 @@ export default function MusicCase({ caseId, runId }) {
     window.history.replaceState({}, "", `/benchmark/music/run/${data.run.id}`);
     setOwner(true);
     setRun(data.run);
+    setPredictionWork(data.run.predictionWork || null);
     return data.run;
   }
   async function complete(visitorPick) {
     setBusy(true);
     setError("");
+    let activeWork = clonePredictionWork(run?.predictionWork);
+    if (!activeWork) {
+      activeWork = createPredictionWork({
+        mode: catalog?.mode || "real",
+        context: "proxy-music",
+      });
+      beginPredictionStep(activeWork, "resolve-seeds");
+      setPredictionWork(clonePredictionWork(activeWork));
+    }
     try {
       let current = run || (await startRun());
       if (!current.freeze) {
+        activeWork = clonePredictionWork(current.predictionWork || activeWork);
+        beginPredictionStep(activeWork, "record-branches");
+        setPredictionWork(clonePredictionWork(activeWork));
         if (
           !current.llmPrediction &&
           catalog?.ai?.enabled &&
           catalog.ai.configured
-        )
-          current = await callRun(current, "ai", {});
+        ) {
+          try {
+            current = await callRun(current, "ai", {});
+          } catch {
+            // The AI branch is optional. A provider rejection must not discard
+            // the already-computed Qloo prediction or block the sealed reveal.
+            // Freeze below records AI as Not run, without inventing a pick.
+          }
+        }
         current = await callRun(current, "freeze", {
           llmMode: current.llmPrediction ? "automatic" : "skip",
           beforeReveal: true,
           visitorPick,
         });
+        setPredictionWork(current.predictionWork || activeWork);
       }
       setRun(current);
       setRun(await callRun(current, "reveal", {}));
     } catch (e) {
       setError(e.message);
+      if (e.predictionWork) setPredictionWork(e.predictionWork);
+      else if (activeWork) {
+        const active = activeWork.steps.find(
+          (step) => step.status === "active",
+        );
+        if (active)
+          failPredictionStep(
+            activeWork,
+            active.id,
+            active.id === "record-branches"
+              ? "Couldn't record the branch predictions. Nothing was frozen."
+              : "Couldn't complete this prediction stage. No result was invented.",
+          );
+        setPredictionWork(clonePredictionWork(activeWork));
+      }
     } finally {
       setBusy(false);
     }
@@ -288,6 +335,7 @@ export default function MusicCase({ caseId, runId }) {
           {error}
         </p>
       )}
+      <PredictionStepFeed work={predictionWork || run?.predictionWork} />
       {input && !run?.result && (
         <>
           <section className="panel">

@@ -63,6 +63,7 @@ test("Track B freeze, same-tab poll, three-branch grading and excluded mock ledg
     page.getByRole("button", { name: "Freeze predictions" }),
   ).toHaveCount(0);
   await page.getByRole("button", { name: "Open live poll" }).click();
+  await expect(page.locator(".verdict-chat")).toHaveCount(0);
   await page.getByRole("button", { name: "Copy link" }).click();
   await expect(
     page.getByRole("button", { name: "Copied", exact: true }),
@@ -88,6 +89,7 @@ test("Track B freeze, same-tab poll, three-branch grading and excluded mock ledg
   await expect(page.locator(".vote-count")).toContainText("20 votes");
   await page.getByRole("button", { name: "Close test", exact: true }).click();
   await page.getByRole("button", { name: "Close & reveal verdict" }).click();
+  await expect(page.locator(".verdict-chat")).toBeVisible();
   await page.getByRole("button", { name: "Prediction", exact: true }).click();
   await expect(page.locator(".freeze-panel")).toContainText(
     "Excluded from the tally",

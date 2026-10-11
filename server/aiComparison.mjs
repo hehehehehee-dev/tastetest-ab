@@ -1,11 +1,12 @@
 import { createHash } from "node:crypto";
-import { createReplicatePredictor, replicateModels } from "./replicateAi.mjs";
+import {
+  createReplicateChatResponder,
+  createReplicatePredictor,
+  replicateModels,
+} from "./replicateAi.mjs";
 export const replicateModel = "openai/gpt-5";
-const modelVersion = (model) =>
-  model === replicateModel ? process.env.REPLICATE_GPT5_VERSION : null;
 export const comparisonModels = () =>
-  !!process.env.REPLICATE_API_TOKEN &&
-  /^[a-f0-9]{64}$/.test(process.env.REPLICATE_GPT5_VERSION || "")
+  !!process.env.REPLICATE_API_TOKEN
     ? [{ id: replicateModel, label: "GPT-5" }]
     : [];
 export const proxyDefaultModel = () => replicateModel;
@@ -18,13 +19,12 @@ export const comparisonConfig = () => {
     provider: "replicate",
     configured:
       !!process.env.REPLICATE_API_TOKEN &&
-      replicateModels.includes(replicateModel) &&
-      /^[a-f0-9]{64}$/.test(process.env.REPLICATE_GPT5_VERSION || ""),
+      replicateModels.includes(replicateModel),
     model: replicateModel,
   };
 };
 export const configurationMessage =
-  "AI comparison needs a server-side Replicate token and pinned GPT-5 version. No AI prediction was fabricated.";
+  "AI comparison needs a server-side Replicate token. No AI prediction was fabricated.";
 export function configuredPredictor(requestedModel) {
   if (!comparisonConfig().configured) fail(configurationMessage);
   if (requestedModel && requestedModel !== replicateModel)
@@ -32,8 +32,14 @@ export function configuredPredictor(requestedModel) {
   return createReplicatePredictor({
     token: process.env.REPLICATE_API_TOKEN,
     model: replicateModel,
-    version: modelVersion(replicateModel),
     instructions,
+  });
+}
+export function configuredVerdictChatResponder() {
+  if (!comparisonConfig().configured) fail(configurationMessage);
+  return createReplicateChatResponder({
+    token: process.env.REPLICATE_API_TOKEN,
+    model: replicateModel,
   });
 }
 export const promptVersion = "paired-taste-choice-v1";

@@ -10,8 +10,13 @@ const joinNames = (names) =>
     ? names[0] || ""
     : `${names.slice(0, -1).join(", ")} and ${names.at(-1)}`;
 
-export function verdictBranchRows(branches = {}, grades = {}, actual = null) {
-  return ["llm", "qloo", "agent"].map((key) => {
+export function verdictBranchRows(
+  branches = {},
+  grades = {},
+  actual = null,
+  { keys = ["llm", "qloo", "agent"], labels = branchLabels } = {},
+) {
+  return keys.map((key) => {
     const branch = branches[key] || {};
     const pick = branch.pick ?? null;
     const grade = grades[key];
@@ -29,7 +34,7 @@ export function verdictBranchRows(branches = {}, grades = {}, actual = null) {
               : "pending";
     return {
       key,
-      label: branchLabels[key],
+      label: labels[key] || branchLabels[key] || key,
       pick,
       confidence: Number.isFinite(branch.confidence) ? branch.confidence : null,
       gap: Number.isFinite(branch.gap)
@@ -53,7 +58,7 @@ export function disagreementLine(rows) {
     declared.length === rows.length &&
     new Set(declared.map((row) => row.pick)).size === 1
   )
-    return "All three branches agreed — this validates the pick, not Qloo's unique contribution.";
+    return `${rows.length === 3 ? "All three branches" : "Both branches"} agreed — this validates the pick, not Qloo's unique contribution.`;
 
   const groups = ["A", "B"]
     .map((pick) => ({
@@ -63,7 +68,9 @@ export function disagreementLine(rows) {
     .filter((group) => group.rows.length);
   const parts = groups.map((group) => {
     const names = joinNames(group.rows.map((row) => row.label));
-    return `${names} ${group.rows.length > 1 ? "agreed" : "picked"} on Option ${group.pick}`;
+    return group.rows.length > 1
+      ? `${names} agreed on Option ${group.pick}`
+      : `${names} picked Option ${group.pick}`;
   });
   if (abstained.length)
     parts.push(`${joinNames(abstained.map((row) => row.label))} abstained`);

@@ -36,28 +36,30 @@ export default function ProxyChoice({
           );
         })}
       </div>
-      <button
-        type="button"
-        className="button primary"
-        disabled={busy}
-        onClick={() => onComplete(pick)}
-      >
-        {busy
-          ? "Preparing results…"
-          : pick
-            ? "Show results"
-            : "Skip my guess → Show results"}
-      </button>
-      {pick && (
+      <div className="proxy-choice-actions">
         <button
           type="button"
-          className="button subtle"
+          className="button primary"
           disabled={busy}
-          onClick={() => setPick(null)}
+          onClick={() => onComplete(pick)}
         >
-          Skip my guess
+          {busy
+            ? "Preparing results…"
+            : pick
+              ? "Show results"
+              : "Skip my guess → Show results"}
         </button>
-      )}
+        {pick && (
+          <button
+            type="button"
+            className="button subtle"
+            disabled={busy}
+            onClick={() => setPick(null)}
+          >
+            Skip my guess
+          </button>
+        )}
+      </div>
     </div>
   );
 }

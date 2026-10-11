@@ -1,5 +1,11 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { benchmarkApi, BranchTable } from "./Benchmark.jsx";
+import PredictionStepFeed from "./PredictionStepFeed.jsx";
+import {
+  beginPredictionStep,
+  clonePredictionWork,
+  failPredictionStep,
+} from "../shared/predictionWork.mjs";
 const initial = () => ({ pick: "A", confidence: 50, source: "", answer: "" });
 function ManualFields({ name, value, update, tie = false }) {
   return (
@@ -66,6 +72,10 @@ export default function FreezePanel({ test, owner, onFrozen }) {
   const [metadata, setMetadata] = useState(
     test.benchmarkMetadata || { track: "rehearsal" },
   );
+  const [predictionWork, setPredictionWork] = useState(test.predictionWork);
+  useEffect(() => {
+    setPredictionWork(test.predictionWork);
+  }, [test.predictionWork]);
   const setMeta = (key, value) =>
     setMetadata((old) => ({ ...old, [key]: value }));
   if (test.freeze) {
@@ -86,6 +96,7 @@ export default function FreezePanel({ test, owner, onFrozen }) {
           </p>
         )}
         <p className="receipt-hash">SHA-256 {test.freeze.sha256}</p>
+        <PredictionStepFeed work={test.predictionWork || predictionWork} />
         <button
           className="button subtle"
           onClick={() => {
@@ -138,33 +149,45 @@ export default function FreezePanel({ test, owner, onFrozen }) {
     event.preventDefault();
     setBusy(true);
     setError("");
+    const work = clonePredictionWork(test.predictionWork || predictionWork);
+    if (work) {
+      beginPredictionStep(work, "record-branches");
+      setPredictionWork(clonePredictionWork(work));
+    }
     try {
-      onFrozen(
-        await benchmarkApi(`/tests/${test.id}/freeze`, {
-          method: "POST",
-          headers: {
-            "x-owner-token":
-              localStorage.getItem(`tastetest-owner-${test.id}`) || "",
-          },
-          body: JSON.stringify({
-            llm: branches.llm,
-            ...(manual
-              ? {
-                  mode: "manual",
-                  originalRecordedAt: new Date(
-                    originalRecordedAt,
-                  ).toISOString(),
-                  qloo: branches.qloo,
-                  agent: branches.agent,
-                }
-              : {}),
-            metadata,
-            beforeOutcome,
-          }),
+      const frozen = await benchmarkApi(`/tests/${test.id}/freeze`, {
+        method: "POST",
+        headers: {
+          "x-owner-token":
+            localStorage.getItem(`tastetest-owner-${test.id}`) || "",
+        },
+        body: JSON.stringify({
+          llm: branches.llm,
+          ...(manual
+            ? {
+                mode: "manual",
+                originalRecordedAt: new Date(originalRecordedAt).toISOString(),
+                qloo: branches.qloo,
+                agent: branches.agent,
+              }
+            : {}),
+          metadata,
+          beforeOutcome,
         }),
-      );
+      });
+      setPredictionWork(frozen.predictionWork);
+      onFrozen(frozen);
     } catch (e) {
       setError(e.message);
+      if (e.predictionWork) setPredictionWork(e.predictionWork);
+      else if (work) {
+        failPredictionStep(
+          work,
+          "record-branches",
+          "Couldn't record the branch predictions. Nothing was frozen.",
+        );
+        setPredictionWork(clonePredictionWork(work));
+      }
     } finally {
       setBusy(false);
     }
@@ -177,6 +200,7 @@ export default function FreezePanel({ test, owner, onFrozen }) {
         Paste an independently obtained LLM answer. No LLM API call is made by
         this app. Once frozen, all fields are locked.
       </p>
+      <PredictionStepFeed work={predictionWork || test.predictionWork} />
       <form onSubmit={freeze}>
         <label>
           Case track

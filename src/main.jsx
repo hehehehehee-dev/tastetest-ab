@@ -37,7 +37,15 @@ import ProxyCase from "./ProxyBenchmark.jsx";
 import MusicCase from "./MusicProxy.jsx";
 import FAQ from "./FAQ.jsx";
 import VerdictInsights from "./VerdictInsights.jsx";
+import VerdictChat from "./VerdictChat.jsx";
+import PredictionStepFeed from "./PredictionStepFeed.jsx";
 import { normalizedOutcomeMargin } from "./verdictReport.mjs";
+import {
+  beginPredictionStep,
+  clonePredictionWork,
+  createPredictionWork,
+  failPredictionStep,
+} from "../shared/predictionWork.mjs";
 import { predictionConfidence } from "../shared/confidence.mjs";
 import {
   PageSignalContext,
@@ -83,7 +91,11 @@ async function api(path, options = {}) {
     headers: { "Content-Type": "application/json", ...options.headers },
   });
   const data = await response.json();
-  if (!response.ok) throw new Error(data.error || "Please try again.");
+  if (!response.ok) {
+    const error = new Error(data.error || "Please try again.");
+    error.predictionWork = data.predictionWork;
+    throw error;
+  }
   return data;
 }
 function navigate(url) {
@@ -292,6 +304,7 @@ function CreateTest({ mode }) {
   const [searchError, setSearchError] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [predictionWork, setPredictionWork] = useState(null);
   const studioQuery =
     mode === "real" &&
     category === "Film/TV" &&
@@ -342,6 +355,9 @@ function CreateTest({ mode }) {
       return;
     }
     setBusy(true);
+    const work = createPredictionWork({ mode, context: "track-b" });
+    beginPredictionStep(work, "resolve-seeds");
+    setPredictionWork(clonePredictionWork(work));
     try {
       const data = await api("/tests", {
         method: "POST",
@@ -371,6 +387,15 @@ function CreateTest({ mode }) {
       navigate(`/test/${data.test.id}?view=prediction`);
     } catch (e) {
       setError(e.message);
+      if (e.predictionWork) setPredictionWork(e.predictionWork);
+      else {
+        failPredictionStep(
+          work,
+          "resolve-seeds",
+          "Couldn't start the prediction workflow. No prediction was recorded.",
+        );
+        setPredictionWork(clonePredictionWork(work));
+      }
     } finally {
       setBusy(false);
     }
@@ -629,6 +654,7 @@ function CreateTest({ mode }) {
           </p>
         </section>
         <ErrorMessage>{error}</ErrorMessage>
+        <PredictionStepFeed work={predictionWork} />
         <div className="form-footer">
           <p>
             <CircleHelp size={15} />
@@ -893,13 +919,21 @@ function Verdict({ test, without, setWithout }) {
   const signalCount = Array.isArray(test.insights)
     ? test.insights.filter((signal) => Number.isFinite(signal.affinity)).length
     : 0;
+  const visibleSignals = Array.isArray(test.insights)
+    ? [...test.insights]
+        .filter((signal) => signal.name && Number.isFinite(signal.affinity))
+        .sort((a, b) => b.affinity - a.affinity)
+        .slice(0, 3)
+        .map((signal) => signal.name)
+        .join(" · ")
+    : "";
   const matchBadge =
     winner === null || predicted === null
       ? "No declared match"
       : winner === predicted
         ? "Matched"
         : "Missed";
-  const grounding = `Verdict built from ${signalCount} Qloo affinity signals · ${test.totalVotes} votes · frozen ${freezeAt || "not recorded"} · SHA-256 ${receiptHash ? receiptHash.slice(0, 12) : "not recorded"}.`;
+  const grounding = `Verdict built from ${signalCount} Qloo affinity signals · ${test.totalVotes} votes · frozen ${freezeAt || "not recorded"} · SHA-256 ${receiptHash ? receiptHash.slice(0, 12) : "not recorded"}.${visibleSignals ? ` Top signals: ${visibleSignals}.` : ""}`;
   async function exportImage() {
     setExporting(true);
     setNotice("");
@@ -1125,6 +1159,12 @@ function Verdict({ test, without, setWithout }) {
           </span>
         </div>
       </div>
+      {test.freeze?.payload?.metadata?.track === "track-b" && (
+        <VerdictChat
+          endpoint={`/api/tests/${test.id}/chat`}
+          verdictKey={`track-b-${test.id}`}
+        />
+      )}
       {notice && (
         <p role="status" className="export-notice">
           {notice}

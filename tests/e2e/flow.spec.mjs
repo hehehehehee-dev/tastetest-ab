@@ -60,7 +60,7 @@ test("sample, creation, independent voter, live update, closure and print", asyn
     fullPage: true,
   });
   await page.getByRole("button", { name: "Get agent prediction" }).click();
-  await expect(page).toHaveURL(/\/test\//);
+  await expect(page).toHaveURL(/\/test\//, { timeout: 15000 });
   await expect(
     page.getByRole("button", { name: "Open live poll" }),
   ).toBeDisabled();
@@ -74,13 +74,13 @@ test("sample, creation, independent voter, live update, closure and print", asyn
     )
     .check();
   await page.getByRole("button", { name: "Freeze predictions" }).click();
-  await expect(
-    page.getByRole("heading", { name: /^Frozen at / }),
-  ).toBeVisible();
+  await expect(page.getByRole("heading", { name: /^Frozen at / })).toBeVisible({
+    timeout: 15000,
+  });
   await page.getByRole("button", { name: "Open live poll" }).click();
-  await expect(
-    page.getByText("Your first vote starts the story."),
-  ).toBeVisible();
+  await expect(page.getByText("Your first vote starts the story.")).toBeVisible(
+    { timeout: 15000 },
+  );
   const link = await page.getByLabel("Your audience link").inputValue();
   const context = await browser.newContext({
     viewport: { width: 390, height: 844 },

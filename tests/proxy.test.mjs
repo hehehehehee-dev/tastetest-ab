@@ -17,6 +17,7 @@ import {
   proxyTally,
   validateProxyOutcomes,
   predictProxy,
+  movieTitleAliases,
 } from "../server/proxy.mjs";
 const fixture = () => {
   const movies = Array.from({ length: 8 }, (_, i) => ({
@@ -384,6 +385,31 @@ test("verified Army of Darkness year exception remains narrow and rejects ambigu
   await assert.rejects(
     () => predictProxy(input, adapter, false),
     /Cannot unambiguously resolve/,
+  );
+});
+
+test("MovieLens alternate titles resolve explicit catalog aliases without fuzzy matching", () => {
+  assert.deepEqual(movieTitleAliases("Independence Day (ID4)"), [
+    "independencedayid4",
+    "independenceday",
+    "id4",
+  ]);
+  assert.deepEqual(movieTitleAliases("Boat, The (Das Boot)"), [
+    "boatthedasboot",
+    "boat",
+    "dasboot",
+  ]);
+  assert.deepEqual(
+    movieTitleAliases("Professional, The (a.k.a. Leon: The Professional)"),
+    [
+      "professionaltheakaleontheprofessional",
+      "professional",
+      "leontheprofessional",
+    ],
+  );
+  assert.equal(
+    movieTitleAliases("Boat, The (Das Boot)").includes("theboysinboat"),
+    false,
   );
 });
 

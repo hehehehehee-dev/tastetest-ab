@@ -1,6 +1,7 @@
 import { toPng } from "html-to-image";
 import React, { useRef, useState } from "react";
 import VerdictInsights from "./VerdictInsights.jsx";
+import VerdictChat from "./VerdictChat.jsx";
 import { normalizedOutcomeMargin } from "./verdictReport.mjs";
 
 export default function ProxyVerdict({ run, music = false }) {
@@ -28,6 +29,15 @@ export default function ProxyVerdict({ run, music = false }) {
   );
   const frozenAt = run.freeze?.payload?.frozenAt || run.frozenAt || null;
   const receiptHash = run.freeze?.sha256 || null;
+  const visibleSignals =
+    (run.freeze?.payload?.provenance?.affinities &&
+      [...run.freeze.payload.provenance.affinities]
+        ?.filter((signal) => signal.name && Number.isFinite(signal.affinity))
+        .sort((a, b) => b.affinity - a.affinity)
+        .slice(0, 3)
+        .map((signal) => signal.name)
+        .join(" · ")) ||
+    "";
   const qlooPick = branches.qloo?.pick;
   const matchBadge =
     qlooPick === "A" || qlooPick === "B"
@@ -36,7 +46,7 @@ export default function ProxyVerdict({ run, music = false }) {
         : "Qloo missed"
       : "Qloo abstained";
   const rawMargin = Math.abs(means[0] - means[1]);
-  const grounding = `Verdict built from ${affinitySignals} Qloo affinity signals · ${outcome.segmentUsers} segment users · ${observedRecords} ${music ? "listening records" : "ratings"} · frozen ${frozenAt || "not recorded"} · SHA-256 ${receiptHash ? receiptHash.slice(0, 12) : "not recorded"}.`;
+  const grounding = `Verdict built from ${affinitySignals} Qloo affinity signals · ${outcome.segmentUsers} segment users · ${observedRecords} ${music ? "listening records" : "ratings"} · frozen ${frozenAt || "not recorded"} · SHA-256 ${receiptHash ? receiptHash.slice(0, 12) : "not recorded"}.${visibleSignals ? ` Top signals: ${visibleSignals}.` : ""}`;
 
   async function exportImage() {
     setExporting(true);
@@ -165,6 +175,8 @@ export default function ProxyVerdict({ run, music = false }) {
           branches={branches}
           grades={grades}
           actual={outcome.actual}
+          branchKeys={["llm", "qloo"]}
+          branchLabels={{ llm: "AI (Replicate API)", qloo: "Qloo" }}
           actualMargin={actualMargin}
           fitGap={fitGap}
           marginName={music ? "Listening margin" : "Rating margin"}
@@ -179,6 +191,16 @@ export default function ProxyVerdict({ run, music = false }) {
           <a href="/benchmark">View separate proxy tally ↗</a>
         </div>
       </section>
+      <VerdictChat
+        endpoint={`/api/${music ? "music-proxy" : "proxy"}/runs/${run.id}/chat`}
+        verdictKey={`${music ? "music" : "film"}-${run.id}`}
+        headers={{
+          "x-owner-token":
+            localStorage.getItem(
+              `${music ? "tastetest-music-proxy-owner" : "tastetest-proxy-owner"}-${run.id}`,
+            ) || "",
+        }}
+      />
       {notice && (
         <p role="status" className="export-notice">
           {notice}

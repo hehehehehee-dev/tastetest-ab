@@ -7,6 +7,15 @@ import {
 } from "node:crypto";
 import { makeFreeze, decisionTally } from "./benchmark.mjs";
 import { qlooAdapter, isMockMode, mockQlooAdapter } from "./qlooAdapter.mjs";
+import {
+  beginPredictionStep,
+  clonePredictionWork,
+  completePredictionWork,
+  createPredictionWork,
+  failPredictionStep,
+  finishPredictionStep,
+  runPredictionStep,
+} from "../shared/predictionWork.mjs";
 import { typeUrns } from "./fixtures.mjs";
 import {
   comparisonConfig,
@@ -14,6 +23,7 @@ import {
   configuredPredictor,
   proxyDefaultModel,
 } from "./aiComparison.mjs";
+import { createVerdictChat, proxyChatContext } from "./verdictChat.mjs";
 
 const fail = (message, status = 400) => {
   throw Object.assign(Error(message), { status });
@@ -175,6 +185,17 @@ function normalizedTitle(title) {
     .replace(/^(the|a|an) /i, "")
     .replace(/[^\p{L}\p{N}]/gu, "");
 }
+export function movieTitleAliases(title) {
+  const aliases = [...String(title).matchAll(/\(([^()]*)\)/g)].map((match) =>
+    match[1].replace(/^a\.?k\.?a\.?\s+/i, "").trim(),
+  );
+  const primary = String(title)
+    .replace(/\s*\([^()]*\)/g, "")
+    .trim();
+  return [String(title), primary, ...aliases]
+    .map(normalizedTitle)
+    .filter((value, index, values) => value && values.indexOf(value) === index);
+}
 // Verified catalog-year discrepancy; never relax year matching globally.
 const filmYearExceptions = {
   1215: {
@@ -191,6 +212,10 @@ export async function predictProxy(
   domain = "film",
 ) {
   const music = domain === "music";
+  const work = createPredictionWork({
+    mode: mock ? "mock" : "real",
+    context: music ? "proxy-music" : "proxy-film",
+  });
   const entityType = music ? "Music" : "Film/TV";
   const resolutionNotes = [];
   async function resolve(movie) {
@@ -210,6 +235,7 @@ export async function predictProxy(
       movie.title.replace(/, (The|A|An)$/, ""),
       entityType,
     );
+    const acceptedTitles = movieTitleAliases(movie.title);
     const matches = result.results.entities.filter((entity) => {
       const year =
         entity.releaseYear || Number(entity.name.match(/\((\d{4})\)\s*$/)?.[1]);
@@ -217,7 +243,7 @@ export async function predictProxy(
         (music
           ? entity.name.normalize("NFC").toLowerCase() ===
             movie.title.normalize("NFC").toLowerCase()
-          : normalizedTitle(entity.name) === normalizedTitle(movie.title)) &&
+          : acceptedTitles.includes(normalizedTitle(entity.name))) &&
         (music || !year || year === lookupYear)
       );
     });
@@ -232,6 +258,7 @@ export async function predictProxy(
         `Cannot unambiguously resolve ${movieName(movie)} in Qloo. No prediction was invented.`,
         422,
       );
+    const resolved = candidates[0];
     if (verifiedException)
       resolutionNotes.push({
         movieId: movie.movieId,
@@ -241,37 +268,69 @@ export async function predictProxy(
         source: exception.source,
         note: "Verified catalog-year discrepancy; original dataset inputs unchanged.",
       });
-    return candidates[0];
+    if (
+      !music &&
+      normalizedTitle(resolved.name) !== normalizedTitle(movie.title)
+    )
+      resolutionNotes.push({
+        movieId: movie.movieId,
+        datasetTitle: movie.title,
+        qlooTitle: resolved.name,
+        lookupYear,
+        note: "Resolved through an explicit alternate title embedded in the MovieLens catalog name; year matching remained required.",
+      });
+    return resolved;
   }
-  const seeds = await Promise.all(input.seeds.map(resolve)),
-    candidates = await Promise.all(input.options.map(resolve));
-  const insights = mock
-    ? {
-        mode: "mock",
-        results: {
-          entities: candidates.map((entity) => ({
-            ...entity,
-            query: {
-              affinity: Math.min(
-                0.95,
-                0.1 +
-                  (0.7 *
-                    entity.tags.filter((tag) =>
-                      seeds.some((seed) =>
-                        seed.tags.some((t) => t.name === tag.name),
-                      ),
-                    ).length) /
-                    Math.max(1, entity.tags.length),
-              ),
+  const seeds = await runPredictionStep(
+    work,
+    "resolve-seeds",
+    () => Promise.all(input.seeds.map(resolve)),
+    (value) => `${value.length} of ${input.seeds.length} seeds resolved.`,
+    "Couldn't resolve the taste seeds in Qloo. No prediction was recorded.",
+  );
+  const candidates = await runPredictionStep(
+    work,
+    "resolve-candidates",
+    () => Promise.all(input.options.map(resolve)),
+    (value) =>
+      `${value.length} of ${input.options.length} candidates resolved.`,
+    "Couldn't resolve both candidates in Qloo. No prediction was recorded.",
+  );
+  const insights = await runPredictionStep(
+    work,
+    "fetch-affinities",
+    async () =>
+      mock
+        ? {
+            mode: "mock",
+            results: {
+              entities: candidates.map((entity) => ({
+                ...entity,
+                query: {
+                  affinity: Math.min(
+                    0.95,
+                    0.1 +
+                      (0.7 *
+                        entity.tags.filter((tag) =>
+                          seeds.some((seed) =>
+                            seed.tags.some((t) => t.name === tag.name),
+                          ),
+                        ).length) /
+                        Math.max(1, entity.tags.length),
+                  ),
+                },
+              })),
             },
-          })),
-        },
-      }
-    : await adapter.getInsights(
-        seeds.map((s) => s.entity_id),
-        [typeUrns[entityType]],
-        candidates.map((c) => c.entity_id),
-      );
+          }
+        : adapter.getInsights(
+            seeds.map((s) => s.entity_id),
+            [typeUrns[entityType]],
+            candidates.map((c) => c.entity_id),
+          ),
+    (value) =>
+      `${value.results.entities.length} candidate affinities returned from the combined ${seeds.length}-seed query.`,
+    "Couldn't reach Qloo for candidate affinities. No prediction was recorded.",
+  );
   const options = input.options.map((movie) => ({
     title: movieName(movie),
     description: music
@@ -279,47 +338,56 @@ export async function predictProxy(
       : `${movie.genres.join(", ")} movie released in ${movie.year || "unknown year"}.`,
   }));
   const scoringAdapter = mock ? mockQlooAdapter : adapter;
-  const prediction = mock
-    ? await Promise.all(
-        options.map((option) =>
-          scoringAdapter.scoreOption(option, {
-            seeds,
-            insights,
-            note: input.audienceDefinition,
+  const prediction = await runPredictionStep(
+    work,
+    "score-fit",
+    async () =>
+      mock
+        ? Promise.all(
+            options.map((option) =>
+              scoringAdapter.scoreOption(option, {
+                seeds,
+                insights,
+                note: input.audienceDefinition,
+              }),
+            ),
+          )
+        : candidates.map((candidate) => {
+            const result = insights.results.entities.find(
+              (e) =>
+                e.entity_id.toLowerCase() === candidate.entity_id.toLowerCase(),
+            );
+            if (
+              !result ||
+              !Number.isFinite(result.query?.affinity) ||
+              result.query.affinity < 0 ||
+              result.query.affinity > 1
+            )
+              fail(
+                `Qloo did not return a valid affinity for ${candidate.name}. No substitute score was used.`,
+                422,
+              );
+            return {
+              score: result.query.affinity * 100,
+              components: {
+                baseline: 0,
+                affinity: result.query.affinity * 100,
+                tagOverlap: 0,
+                segmentWarning: 0,
+                affinitySum: result.query.affinity,
+              },
+              matchedTags: [],
+              reasons: [
+                "Score = 100 × this candidate's Qloo affinity to the three seed entities. No keyword/tag mapping.",
+              ],
+              warning: null,
+            };
           }),
-        ),
-      )
-    : candidates.map((candidate) => {
-        const result = insights.results.entities.find(
-          (e) =>
-            e.entity_id.toLowerCase() === candidate.entity_id.toLowerCase(),
-        );
-        if (
-          !result ||
-          !Number.isFinite(result.query?.affinity) ||
-          result.query.affinity < 0 ||
-          result.query.affinity > 1
-        )
-          fail(
-            `Qloo did not return a valid affinity for ${candidate.name}. No substitute score was used.`,
-            422,
-          );
-        return {
-          score: result.query.affinity * 100,
-          components: {
-            baseline: 0,
-            affinity: result.query.affinity * 100,
-            tagOverlap: 0,
-            segmentWarning: 0,
-            affinitySum: result.query.affinity,
-          },
-          matchedTags: [],
-          reasons: [
-            "Score = 100 × this candidate's Qloo affinity to the three seed entities. No keyword/tag mapping.",
-          ],
-          warning: null,
-        };
-      });
+    mock
+      ? "Two candidates scored with synthetic tag overlap; workflow demonstration only."
+      : "Two candidates scored directly from Qloo affinity; no concept-tag mapping applied.",
+    "Couldn't score audience fit. No prediction was recorded.",
+  );
   return {
     seeds,
     options,
@@ -356,6 +424,7 @@ export async function predictProxy(
     scoringNote: mock
       ? "Synthetic genre overlap; Qloo and Agent share one mock predictor. MovieLens outcomes are never supplied."
       : "Qloo and Agent use the same direct candidate affinity, not independent predictors. Higher score always wins; exact ties choose A. Gaps <10 are low separation, not an abstention. MovieLens outcomes are never supplied to Qloo. Confidence is not calibrated.",
+    predictionWork: work,
   };
 }
 export function createProxyApi(
@@ -370,18 +439,26 @@ export function createProxyApi(
     casePattern = "PX-\\d{3}",
     aiEnabled = false,
     aiPredictor,
+    chatResponder,
   } = {},
 ) {
   const aiInFlight = new Set();
+  const verdictChat = createVerdictChat({
+    store,
+    responder: chatResponder,
+  });
   const owns = (run, request) =>
     safeEqual(run.ownerHash, hash(request.headers.get("x-owner-token") || ""));
   async function snapshot(run, owner = false) {
     const freeze = await store.get(`freezes/${run.id}`),
-      result = await store.get(`proxy-results/${run.id}`);
+      result = await store.get(`proxy-results/${run.id}`),
+      recordedWork = await store.get(`proxy-work/${run.id}`);
     const { ownerHash, ...safe } = run;
+    if (recordedWork) safe.predictionWork = recordedWork;
     if (!owner) {
       delete safe.prediction;
       delete safe.provenance;
+      delete safe.predictionWork;
       safe.seeds = safe.seeds.map(({ entity_id, name, category }) => ({
         entity_id,
         name,
@@ -450,6 +527,7 @@ export function createProxyApi(
             `proxy-outcomes/${catalog.caseSetHash}`,
           )),
           tally: proxyTally(rows),
+          mode: mockMode() ? "mock" : "real",
         },
       };
     }
@@ -481,7 +559,7 @@ export function createProxyApi(
       };
     }
     const match = pathname.match(
-      /^\/api\/proxy\/runs\/([a-f0-9-]{36})(?:\/(freeze|reveal|ai))?$/,
+      /^\/api\/proxy\/runs\/([a-f0-9-]{36})(?:\/(freeze|reveal|ai|chat))?$/,
     );
     if (!match) fail("Proxy route not found.", 404);
     const [, id, action] = match,
@@ -494,6 +572,25 @@ export function createProxyApi(
         "Only the creating browser can freeze or reveal this proxy run.",
         403,
       );
+    if (action === "chat" && request.method === "POST") {
+      const freeze = await store.get(`freezes/${id}`);
+      const recorded = await store.get(`proxy-results/${id}`);
+      const context = proxyChatContext(
+        run,
+        freeze,
+        recorded?.result,
+        recorded?.outcome,
+      );
+      const body = await readBody(request);
+      return {
+        data: await verdictChat({
+          verdictKey: `${context.kind}:${id}:${context.freeze.hash}`,
+          sessionId: body.sessionId,
+          question: body.question,
+          context,
+        }),
+      };
+    }
     if (action === "ai" && request.method === "POST") {
       if (!aiEnabled)
         fail(
@@ -599,21 +696,61 @@ export function createProxyApi(
           manual?.answer?.trim() ||
           `Pick: ${manual?.pick}; confidence: ${manual?.confidence}. No explanation recorded.`,
       };
-      const freeze = makeFreeze(
-        {
-          ...run,
-          proxyLlmPrediction: automated,
-          proxySkipLlm: body.llmMode === "skip",
-          proxyVisitorPick: body.visitorPick ?? null,
-        },
-        {
-          ...body,
-          llm,
-          metadata: run.benchmarkMetadata,
-        },
-      );
-      if (!(await store.set(`freezes/${id}`, freeze, { onlyIfNew: true })))
-        fail("Frozen predictions cannot be edited.", 409);
+      const work = clonePredictionWork(run.predictionWork);
+      if (work) beginPredictionStep(work, "record-branches");
+      let freeze;
+      try {
+        freeze = makeFreeze(
+          {
+            ...run,
+            proxyLlmPrediction: automated,
+            proxySkipLlm: body.llmMode === "skip",
+            proxyVisitorPick: body.visitorPick ?? null,
+          },
+          {
+            ...body,
+            llm,
+            metadata: run.benchmarkMetadata,
+          },
+          undefined,
+          {
+            branchesRecorded: () => {
+              if (!work) return;
+              finishPredictionStep(
+                work,
+                "record-branches",
+                `${automated ? "AI" : "LLM-only marked Not run"}; Qloo and Agent branches recorded from the existing predictor.`,
+              );
+              beginPredictionStep(work, "freeze");
+            },
+          },
+        );
+        if (!(await store.set(`freezes/${id}`, freeze, { onlyIfNew: true })))
+          fail("Frozen predictions cannot be edited.", 409);
+        if (work) {
+          finishPredictionStep(
+            work,
+            "freeze",
+            `Frozen at ${freeze.payload.frozenAt} · SHA-256 ${freeze.sha256.slice(0, 12)}.`,
+          );
+          completePredictionWork(work, freeze);
+          await store.set(`proxy-work/${id}`, work);
+        }
+      } catch (error) {
+        if (work) {
+          const active = work.steps.find((step) => step.status === "active");
+          if (active)
+            failPredictionStep(
+              work,
+              active.id,
+              active.id === "freeze"
+                ? "Couldn't freeze the prediction. Nothing was revealed."
+                : "Couldn't record the branch predictions. Nothing was frozen.",
+            );
+          error.predictionWork = work;
+        }
+        throw error;
+      }
       return { data: await snapshot(run, true), status: 201 };
     }
     if (action === "reveal" && request.method === "POST") {

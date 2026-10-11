@@ -43,7 +43,8 @@ const questions = [
     "Which AI model does the proxy use?",
     <p>
       The only active Replicate model is GPT-5. A recorded or frozen prediction
-      keeps its exact pinned model version in the freeze receipt. Using GPT-5
+      records the official model name, response ID and Replicate's honest
+      provider-managed version disclosure in the freeze receipt. Using GPT-5
       does not automatically imply better measured benchmark accuracy.
     </p>,
   ],

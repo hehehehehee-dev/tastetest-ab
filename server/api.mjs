@@ -19,14 +19,28 @@ import {
   scoreFreeze,
   benchmarkTally,
 } from "./benchmark.mjs";
-import { createComparison, scoreComparison } from "./aiComparison.mjs";
+import {
+  configuredVerdictChatResponder,
+  createComparison,
+  scoreComparison,
+} from "./aiComparison.mjs";
 import { createProxyApi } from "./proxy.mjs";
 import { createMusicProxyApi } from "./musicProxy.mjs";
+import { createVerdictChat, trackBChatContext } from "./verdictChat.mjs";
 import {
   pendingTrackB,
   excludedTrackBNotes,
   ledgerCsv,
 } from "./benchmarkLedger.mjs";
+import {
+  beginPredictionStep,
+  clonePredictionWork,
+  completePredictionWork,
+  createPredictionWork,
+  failPredictionStep,
+  finishPredictionStep,
+  runPredictionStep,
+} from "../shared/predictionWork.mjs";
 const fail = (message, status = 400) => {
   throw Object.assign(new Error(message), { status });
 };
@@ -41,11 +55,52 @@ const json = (data, status = 200) =>
 const hash = (value) => createHash("sha256").update(value).digest("hex");
 
 async function predict(input, adapter = qlooAdapter, aiPredictor) {
-  const seeds = await adapter.resolveEntities(input.seedEntityIds);
-  const insights = await adapter.getInsights(input.seedEntityIds, [
-    input.insightType || typeUrns.Dining,
-  ]);
+  const work = createPredictionWork({
+    mode: isMockMode() ? "mock" : "real",
+    context: "track-b",
+  });
+  const seeds = await runPredictionStep(
+    work,
+    "resolve-seeds",
+    () => adapter.resolveEntities(input.seedEntityIds),
+    (value) =>
+      `${value.length} of ${input.seedEntityIds.length} seeds resolved.`,
+    "Couldn't resolve the taste seeds in Qloo. No prediction was recorded.",
+  );
+  await runPredictionStep(
+    work,
+    "resolve-candidates",
+    async () => input.options,
+    "0 of 2 candidates resolved as entities; Track B keeps custom concepts as text inputs.",
+    "Couldn't prepare the two candidate concepts. No prediction was recorded.",
+  );
+  const insights = await runPredictionStep(
+    work,
+    "fetch-affinities",
+    () =>
+      adapter.getInsights(input.seedEntityIds, [
+        input.insightType || typeUrns.Dining,
+      ]),
+    (value) =>
+      `${value.results.entities.length} audience affinity signals returned from one combined-seed query.`,
+    "Couldn't reach Qloo for audience affinity signals. No prediction was recorded.",
+  );
+  work.mode = insights.mode || work.mode;
   const profile = { seeds, insights, note: input.audienceNote };
+  const scored = await runPredictionStep(
+    work,
+    "score-fit",
+    async () => ({
+      prediction: await Promise.all(
+        input.options.map((o) => adapter.scoreOption(o, profile)),
+      ),
+      baseline: input.options.map((o) =>
+        scoreWithoutQloo(o, seeds, input.audienceNote),
+      ),
+    }),
+    "Two text concepts scored with the declared concept-tag fit heuristic.",
+    "Couldn't score audience fit. No prediction was recorded.",
+  );
   return {
     seeds,
     ...(input.compareAi
@@ -58,12 +113,8 @@ async function predict(input, adapter = qlooAdapter, aiPredictor) {
           ),
         }
       : {}),
-    prediction: await Promise.all(
-      input.options.map((o) => adapter.scoreOption(o, profile)),
-    ),
-    baseline: input.options.map((o) =>
-      scoreWithoutQloo(o, seeds, input.audienceNote),
-    ),
+    prediction: scored.prediction,
+    baseline: scored.baseline,
     insights: insights.results.entities
       .slice(0, 3)
       .map((e) => ({ name: e.name, affinity: e.query.affinity })),
@@ -76,6 +127,7 @@ async function predict(input, adapter = qlooAdapter, aiPredictor) {
       mapping:
         "Local concept/tag overlap heuristic; Qloo affinity is not a prediction of votes.",
     },
+    predictionWork: work,
   };
 }
 function validateInput(body) {
@@ -187,12 +239,24 @@ export function createApi(
   {
     adapter = qlooAdapter,
     aiPredictor,
+    chatResponder,
     proxyOptions = {},
     musicOptions = {},
   } = {},
 ) {
-  const proxyApi = createProxyApi(store, { adapter, ...proxyOptions });
-  const musicApi = createMusicProxyApi(store, { adapter, ...musicOptions });
+  const answerChat =
+    chatResponder || ((input) => configuredVerdictChatResponder()(input));
+  const verdictChat = createVerdictChat({ store, responder: answerChat });
+  const proxyApi = createProxyApi(store, {
+    adapter,
+    chatResponder: answerChat,
+    ...proxyOptions,
+  });
+  const musicApi = createMusicProxyApi(store, {
+    adapter,
+    chatResponder: answerChat,
+    ...musicOptions,
+  });
   const owns = (test, request) =>
     !!test.ownerHash &&
     timingSafeEqual(
@@ -231,6 +295,8 @@ export function createApi(
             : ""),
       }));
     const freeze = await store.get(`freezes/${test.id}`);
+    const recordedWork = await store.get(`prediction-work/${test.id}`);
+    if (recordedWork) publicTest.predictionWork = recordedWork;
     const opened = await store.get(`opened/${test.id}`);
     if (
       (test.comparison || test.freezeRequired) &&
@@ -242,6 +308,7 @@ export function createApi(
       delete publicTest.baseline;
       delete publicTest.insights;
       delete publicTest.provenance;
+      delete publicTest.predictionWork;
       publicTest.seeds = test.seeds.map(({ entity_id, name, category }) => ({
         entity_id,
         name,
@@ -517,7 +584,7 @@ export function createApi(
         return json({ test: await snapshot(test, true), ownerToken }, 201);
       }
       const match = pathname.match(
-        /^\/api\/tests\/([a-f0-9-]{36})(?:\/(vote|close|open|freeze))?$/,
+        /^\/api\/tests\/([a-f0-9-]{36})(?:\/(vote|close|open|freeze|chat))?$/,
       );
       if (!match) return json({ error: "This page could not be found." }, 404);
       const [, id, action] = match;
@@ -527,6 +594,21 @@ export function createApi(
       test.closedAt = (await store.get(`closed/${id}`))?.at || null;
       if (!action && request.method === "GET")
         return json(await snapshot(test, owns(test, request)));
+      if (action === "chat" && request.method === "POST") {
+        if (!test.closedAt)
+          fail("Chat is available after the verdict is revealed.", 409);
+        const closedSnapshot = await snapshot(test, true);
+        const context = trackBChatContext(test, closedSnapshot);
+        const body = await readBody(request);
+        return json(
+          await verdictChat({
+            verdictKey: `track-b:${id}:${context.freeze.hash}`,
+            sessionId: body.sessionId,
+            question: body.question,
+            context,
+          }),
+        );
+      }
       if (action === "freeze") {
         if (!owns(test, request))
           fail("Only the creating browser can freeze predictions.", 403);
@@ -540,9 +622,47 @@ export function createApi(
           (await store.list(`votes/${id}/`)).length
         )
           fail("Freeze must precede poll opening and every vote.", 409);
-        const freeze = makeFreeze(test, await readBody(request));
-        if (!(await store.set(`freezes/${id}`, freeze, { onlyIfNew: true })))
-          fail("Frozen predictions cannot be edited.", 409);
+        const work = clonePredictionWork(test.predictionWork);
+        if (work) beginPredictionStep(work, "record-branches");
+        let freeze;
+        try {
+          freeze = makeFreeze(test, await readBody(request), undefined, {
+            branchesRecorded: () => {
+              if (!work) return;
+              finishPredictionStep(
+                work,
+                "record-branches",
+                "LLM-only, Qloo and Agent branches validated and recorded.",
+              );
+              beginPredictionStep(work, "freeze");
+            },
+          });
+          if (!(await store.set(`freezes/${id}`, freeze, { onlyIfNew: true })))
+            fail("Frozen predictions cannot be edited.", 409);
+          if (work) {
+            finishPredictionStep(
+              work,
+              "freeze",
+              `Frozen at ${freeze.payload.frozenAt} · SHA-256 ${freeze.sha256.slice(0, 12)}.`,
+            );
+            completePredictionWork(work, freeze);
+            await store.set(`prediction-work/${id}`, work);
+          }
+        } catch (error) {
+          if (work) {
+            const active = work.steps.find((step) => step.status === "active");
+            if (active)
+              failPredictionStep(
+                work,
+                active.id,
+                active.id === "freeze"
+                  ? "Couldn't freeze the prediction. Nothing was revealed."
+                  : "Couldn't record the branch predictions. Nothing was frozen.",
+              );
+            error.predictionWork = work;
+          }
+          throw error;
+        }
         return json(await snapshot(test, true), 201);
       }
       if (action === "open" && request.method === "POST") {
@@ -647,6 +767,9 @@ export function createApi(
           error: error.status
             ? error.message
             : "Something went wrong. Please try again.",
+          ...(error.predictionWork
+            ? { predictionWork: error.predictionWork }
+            : {}),
         },
         error.status || 500,
       );

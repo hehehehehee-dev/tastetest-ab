@@ -72,6 +72,15 @@ test("proxy UI hides ratings until an immutable freeze then reveals separate moc
     route.fulfill({ status: 201, json: { run, ownerToken } }),
   );
   await page.route(`**/api/proxy/runs/${id}**`, async (route) => {
+    if (route.request().url().endsWith("/chat"))
+      return route.fulfill({
+        json: {
+          answer:
+            "The strongest recorded affinity signal was Fixture candidate A. This does not prove future accuracy.",
+          count: 1,
+          capped: false,
+        },
+      });
     if (route.request().url().endsWith("/freeze")) {
       const body = route.request().postDataJSON();
       run = {
@@ -137,6 +146,7 @@ test("proxy UI hides ratings until an immutable freeze then reveals separate moc
     .getByRole("link", { name: /PX-001 · Fixture candidate A/ })
     .click();
   await expect(page.locator(".proxy-outcome")).toHaveCount(0);
+  await expect(page.locator(".verdict-chat")).toHaveCount(0);
   await expect(
     page.getByRole("heading", { name: "Your guess · optional" }),
   ).toBeVisible();
@@ -155,6 +165,16 @@ test("proxy UI hides ratings until an immutable freeze then reveals separate moc
   await expect(
     page.getByRole("heading", { name: "Segment winner: Option A" }),
   ).toBeVisible();
+  await expect(page.locator(".verdict-chat")).toBeVisible();
+  await expect(page.locator(".verdict-chat")).not.toHaveAttribute("open", "");
+  await page.locator(".verdict-chat > summary").click();
+  await page
+    .locator(".verdict-chat")
+    .getByRole("button", { name: "Why did you pick A?" })
+    .click();
+  await expect(page.locator(".verdict-chat")).toContainText(
+    "Fixture candidate A",
+  );
   const reportHeadings = await page
     .locator(
       ".proxy-outcome .verdict-report-section > div:last-child > h2, .proxy-outcome .verdict-report-section > div:last-child > h3",
@@ -168,6 +188,12 @@ test("proxy UI hides ratings until an immutable freeze then reveals separate moc
   ]);
   await expect(page.locator(".proxy-outcome")).toContainText(
     /Historical preferences, not business results/,
+  );
+  await expect(page.locator(".verdict-disagreement")).toContainText(
+    "AI (Replicate API)",
+  );
+  await expect(page.locator(".verdict-disagreement")).not.toContainText(
+    "Agent",
   );
   await expect(
     page.getByRole("link", {
@@ -189,7 +215,7 @@ test("proxy UI hides ratings until an immutable freeze then reveals separate moc
       ),
   ).toBe(true);
   await expect(
-    page.getByRole("row").filter({ hasText: "LLM-only (manual paste)" }),
+    page.getByRole("row").filter({ hasText: "AI (Replicate API)" }),
   ).toContainText("NOT RUN");
   await mkdir("artifacts", { recursive: true });
   const downloadEvent = page.waitForEvent("download");
@@ -354,6 +380,8 @@ test("the fixed GPT-5 model runs and reveals without manual prediction fields", 
   ).toBeVisible();
   await expect(page.getByRole("table")).toContainText("Replicate");
   await expect(page.getByRole("table")).toContainText("GPT-5");
+  await expect(page.getByRole("table")).toContainText("AI (Replicate API)");
+  await expect(page.getByRole("table")).not.toContainText("manual paste");
   await expect(page.getByRole("table")).not.toContainText("a".repeat(64));
   await expect(page.getByRole("table")).not.toContainText("Agent");
   await expect(page.locator(".proxy-winner-letter")).toHaveText("B");

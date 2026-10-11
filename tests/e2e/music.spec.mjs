@@ -56,7 +56,17 @@ test("music drawer and case support manual freeze, hidden outcome and isolated r
   await expect(
     page.getByRole("heading", { name: "Your guess · optional" }),
   ).toBeVisible();
+  const choiceGroup = await page
+    .locator(".proxy-visitor-choice .case-navigation-links")
+    .boundingBox();
+  const resultActions = await page
+    .locator(".proxy-visitor-choice .proxy-choice-actions")
+    .boundingBox();
+  expect(
+    resultActions.y - (choiceGroup.y + choiceGroup.height),
+  ).toBeGreaterThanOrEqual(8);
   await expect(page.locator(".proxy-outcome")).toHaveCount(0);
+  await expect(page.locator(".verdict-chat")).toHaveCount(0);
   await expect(
     page.locator("main input, main select, main textarea"),
   ).toHaveCount(0);
@@ -67,6 +77,7 @@ test("music drawer and case support manual freeze, hidden outcome and isolated r
   await expect(
     page.getByRole("heading", { name: "Segment winner: Option A" }),
   ).toBeVisible();
+  await expect(page.locator(".verdict-chat")).toBeVisible();
   await expect(page.locator(".proxy-outcome")).toContainText(
     "observed listens per segment user",
   );

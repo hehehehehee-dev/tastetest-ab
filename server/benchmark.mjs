@@ -71,7 +71,12 @@ export function heuristicBranch(scores) {
     method: "Qloo-informed local heuristic",
   };
 }
-export function makeFreeze(test, body, now = new Date().toISOString()) {
+export function makeFreeze(
+  test,
+  body,
+  now = new Date().toISOString(),
+  hooks = {},
+) {
   if (!body || typeof body !== "object" || Array.isArray(body))
     fail("Provide a valid freeze record.");
   const llm = {
@@ -135,6 +140,7 @@ export function makeFreeze(test, body, now = new Date().toISOString()) {
   const agent = manual
     ? validateManual(body.agent, "Agent", true)
     : { ...automatic };
+  hooks.branchesRecorded?.({ llm, qloo, agent });
   const payload = {
     schemaVersion: 1,
     testId: test.id,

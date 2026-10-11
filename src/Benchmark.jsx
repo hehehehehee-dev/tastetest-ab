@@ -8,7 +8,11 @@ export async function benchmarkApi(path, options = {}) {
     headers: { "Content-Type": "application/json", ...options.headers },
   });
   const data = await response.json();
-  if (!response.ok) throw Error(data.error || "Please try again.");
+  if (!response.ok) {
+    const error = Error(data.error || "Please try again.");
+    error.predictionWork = data.predictionWork;
+    throw error;
+  }
   return data;
 }
 const labels = { llm: "LLM-only (manual paste)", qloo: "Qloo", agent: "Agent" };
@@ -37,13 +41,13 @@ export function BranchTable({ branches, result, proxy = false }) {
             .map(([key, branch]) => (
               <tr key={key}>
                 <td data-label="Branch">
-                  {key === "llm" && branch.method === "automatic blind API"
-                    ? proxy
-                      ? "AI (API)"
-                      : "LLM-only (API)"
-                    : key === "agent"
-                      ? "Agent (same Qloo predictor)"
-                      : labels[key]}
+                  {key === "llm" && proxy
+                    ? "AI (Replicate API)"
+                    : key === "llm" && branch.method === "automatic blind API"
+                      ? "LLM-only (API)"
+                      : key === "agent"
+                        ? "Agent (same Qloo predictor)"
+                        : labels[key]}
                 </td>
                 <td data-label="Pick">
                   {branch.pick == null

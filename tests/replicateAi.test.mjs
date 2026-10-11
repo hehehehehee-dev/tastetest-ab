@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
+  createReplicateChatResponder,
   createReplicatePredictor,
   replicateModels,
 } from "../server/replicateAi.mjs";
@@ -9,7 +10,6 @@ const defaults = {
   minCreateIntervalMs: 0,
   token: "FAKE-REPLICATE-TOKEN",
   model: "openai/gpt-5",
-  version,
   instructions: "Shared test instructions",
   sleep: async () => {},
 };
@@ -77,7 +77,7 @@ test("Replicate creation pacing waits before a new job and a quota cooldown prev
   await assert.rejects(limited({}), /cooling down/);
   assert.equal(creates, 1);
 });
-test("Replicate pins version and generation settings, polls the same job, and records exact messages", async () => {
+test("Replicate uses the official model endpoint and fixed generation settings, polls the same job, and records exact messages", async () => {
   const requests = [];
   const predictor = createReplicatePredictor({
     ...defaults,
@@ -98,15 +98,19 @@ test("Replicate pins version and generation settings, polls the same job, and re
   const result = await predictor({ audience: { tastes: ["Fixture"] } });
   assert.equal(result.choice, "A");
   assert.equal(result.provider, "replicate");
-  assert.equal(result.model, `openai/gpt-5:${version}`);
+  assert.equal(result.model, "openai/gpt-5");
   assert.equal(requests.length, 3);
   assert.equal(requests.filter((x) => x.options.method === "POST").length, 1);
+  assert.equal(
+    requests[0].url,
+    "https://api.replicate.com/v1/models/openai/gpt-5/predictions",
+  );
   assert.equal(
     requests[1].url,
     "https://api.replicate.com/v1/predictions/job_fixture_1",
   );
   const body = JSON.parse(requests[0].options.body);
-  assert.equal(body.version, version);
+  assert.equal("version" in body, false);
   assert.equal(body.input.reasoning_effort, "minimal");
   assert.equal(body.input.verbosity, "low");
   assert.equal(body.input.max_completion_tokens, 1200);
@@ -116,9 +120,8 @@ test("Replicate pins version and generation settings, polls the same job, and re
   assert.equal(requests[0].options.redirect, "error");
   assert.equal(JSON.stringify(result).includes(defaults.token), false);
 });
-test("Replicate rejects malformed output and mismatched model versions without creating another prediction", async () => {
+test("Replicate rejects malformed output and failed jobs without creating another prediction", async () => {
   for (const response of [
-    { ...completed, version: "b".repeat(64) },
     { ...completed, output: "```json\n{}\n```" },
     {
       ...completed,
@@ -155,13 +158,14 @@ test("Replicate hidden official version is recorded honestly, and only accepted 
   })({});
   assert.equal(result.returnedVersion, "hidden");
   assert.match(result.versionVerification, /not attested/);
+  assert.equal(result.model, "openai/gpt-5");
   await assert.rejects(
     createReplicatePredictor({
       ...defaults,
       fetchImpl: async () =>
         json({ ...completed, version: "hidden", model: "another/model" }),
     })({}),
-    /pinned model/,
+    /official-model prediction/,
   );
 });
 test("Replicate timeout cancels only its exact job; auth/quota/config errors are sanitized with no fallback", async () => {
@@ -176,7 +180,7 @@ test("Replicate timeout cancels only its exact job; auth/quota/config errors are
   });
   await assert.rejects(predictor({}), /timed out/);
   assert.deepEqual(urls, [
-    "https://api.replicate.com/v1/predictions",
+    "https://api.replicate.com/v1/models/openai/gpt-5/predictions",
     "https://api.replicate.com/v1/predictions/job_fixture_1/cancel",
   ]);
   for (const status of [401, 402, 429]) {
@@ -196,6 +200,13 @@ test("Replicate timeout cancels only its exact job; auth/quota/config errors are
   await assert.rejects(
     createReplicatePredictor({
       ...defaults,
+      fetchImpl: async () => new Response("private details", { status: 401 }),
+    })({}),
+    /authentication failed/,
+  );
+  await assert.rejects(
+    createReplicatePredictor({
+      ...defaults,
       token: "",
       fetchImpl: async () => {
         throw Error("Never call");
@@ -211,7 +222,7 @@ test("GPT-5 uses its reasoning schema without unsupported sampling parameters", 
     model: "openai/gpt-5",
     fetchImpl: async (url, options) => {
       const body = JSON.parse(options.body);
-      assert.equal(body.version, version);
+      assert.equal("version" in body, false);
       assert.ok(Array.isArray(body.input.messages));
       assert.equal(body.input.reasoning_effort, "minimal");
       assert.equal(body.input.verbosity, "low");
@@ -222,5 +233,30 @@ test("GPT-5 uses its reasoning schema without unsupported sampling parameters", 
     },
   })({ audience: { tastes: ["Synthetic fixture"] } });
   assert.equal(result.requestedModel, "openai/gpt-5");
-  assert.equal(result.model, "openai/gpt-5:" + version);
+  assert.equal(result.model, "openai/gpt-5");
+});
+
+test("verdict chat reuses official GPT-5 only to classify intent from frozen facts", async () => {
+  let requestBody;
+  const responder = createReplicateChatResponder({
+    ...defaults,
+    fetchImpl: async (_url, options) => {
+      requestBody = JSON.parse(options.body);
+      return json({
+        ...completed,
+        output: '{"scope":"in-scope","intent":"why"}',
+      });
+    },
+  });
+  const result = await responder({
+    question: "Why did you pick A?",
+    facts: { signals: [{ name: "Fixture affinity", affinity: 0.9 }] },
+  });
+  assert.deepEqual(result, { scope: "in-scope", intent: "why" });
+  assert.equal("version" in requestBody, false);
+  assert.equal(requestBody.input.reasoning_effort, "minimal");
+  assert.equal(requestBody.input.max_completion_tokens, 300);
+  assert.match(requestBody.input.messages[0].content, /untrusted data/);
+  assert.match(requestBody.input.messages[1].content, /Fixture affinity/);
+  assert.equal(JSON.stringify(requestBody).includes(defaults.token), false);
 });
