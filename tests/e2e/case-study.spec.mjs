@@ -82,6 +82,26 @@ test("home stays a completed cafe example with a separate always-open live twin"
   ).toBeVisible();
 });
 
+test("brand always resets the sample homepage, even from another home view", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "Verdict", exact: true }).click();
+  await expect(
+    page.getByRole("heading", { name: "The audience has spoken." }),
+  ).toBeVisible();
+
+  await page.getByRole("link", { name: "TasteTest A/B — Home" }).click();
+
+  await expect(page).toHaveURL(/\/$/);
+  await expect(
+    page.getByRole("heading", { name: "What the taste signals suggest" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "The audience has spoken." }),
+  ).toHaveCount(0);
+});
+
 test("homepage live sample records a vote without leaving the hero", async ({
   page,
 }) => {

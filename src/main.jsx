@@ -120,18 +120,32 @@ async function api(path, options = {}) {
   return data;
 }
 function navigate(url) {
-  window.history.pushState({}, "", url);
+  const target = new URL(url, window.location.origin);
+  const current = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+  const next = `${target.pathname}${target.search}${target.hash}`;
+  if (current === next) {
+    window.history.replaceState({}, "", next);
+  } else {
+    window.history.pushState({}, "", next);
+  }
   window.scrollTo({ top: 0, left: 0, behavior: "instant" });
   window.dispatchEvent(new Event("popstate"));
 }
 function useRoute() {
-  const [route, setRoute] = useState(window.location.pathname);
+  const [routeState, setRouteState] = useState(() => ({
+    path: window.location.pathname,
+    navigationId: 0,
+  }));
   useEffect(() => {
-    const update = () => setRoute(window.location.pathname);
+    const update = () =>
+      setRouteState((current) => ({
+        path: window.location.pathname,
+        navigationId: current.navigationId + 1,
+      }));
     window.addEventListener("popstate", update);
     return () => window.removeEventListener("popstate", update);
   }, []);
-  return route;
+  return routeState;
 }
 function getLocal(key, fallback = null) {
   try {
@@ -2061,7 +2075,7 @@ function App() {
       .then(setConfig)
       .catch(() => setConfig({ mode: "unavailable", configured: false }));
   }, []);
-  const route = useRoute();
+  const { path: route, navigationId } = useRoute();
   const [pageSignal, setPageSignal] = useState(null);
   const publishSignal = useCallback(
     (record) => setPageSignal({ route, record }),
@@ -2109,7 +2123,7 @@ function App() {
           <TestView key={route} id={match[2]} />
         )
       ) : route === "/" ? (
-        <TestView sample id="sample" />
+        <TestView key={`sample-${navigationId}`} sample id="sample" />
       ) : (
         <main className="container not-found-page">
           <div className="eyebrow">404 / OFF THE MAP</div>
