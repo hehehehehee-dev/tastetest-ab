@@ -39,3 +39,16 @@ test("taste network reacts to pointer movement without pressing and rests on exi
   await expect(firstNode).toHaveAttribute("style", initial);
   await expect(page.locator(".map-hover-halo")).toBeHidden();
 });
+
+test("taste network exposes grounded affinity values on hover and focus", async ({
+  page,
+}) => {
+  await page.goto("/");
+  const signal = page.locator(".map-node.is-affinity").first();
+  await signal.scrollIntoViewIfNeeded();
+  await signal.focus();
+  await expect(page.locator(".map-readout")).toContainText(/Affinity 0\.\d{3}/);
+  await expect(page.locator(".map-readout")).toContainText(
+    "Qloo audience signal",
+  );
+});

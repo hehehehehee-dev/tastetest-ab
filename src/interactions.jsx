@@ -22,6 +22,9 @@ const locations = [
   [20, 76],
   [79, 74],
   [50, 12],
+  [50, 85],
+  [12, 50],
+  [88, 50],
 ];
 // Spring the whole diagram from ordinary pointer movement. No press is needed.
 function useHoverField() {
@@ -101,13 +104,31 @@ function useHoverField() {
   };
   return { motion, move, leave };
 }
-export function TasteMap({ seeds }) {
+export function TasteMap({ seeds, signals = [] }) {
   const board = useRef(null);
   const dragging = useRef(null);
   const [positions, setPositions] = useState({});
   const [active, setActive] = useState(null);
   const { motion, move, leave } = useHoverField();
-  const activeSeed = seeds.find((seed) => seed.entity_id === active);
+  const nodes = [
+    ...seeds.map((seed) => ({ ...seed, nodeType: "seed" })),
+    ...signals
+      .filter(
+        (signal) =>
+          signal.name &&
+          Number.isFinite(signal.affinity) &&
+          !seeds.some(
+            (seed) => seed.name.toLowerCase() === signal.name.toLowerCase(),
+          ),
+      )
+      .map((signal, index) => ({
+        ...signal,
+        entity_id: `affinity-${index}-${signal.name}`,
+        category: "Affinity signal",
+        nodeType: "signal",
+      })),
+  ];
+  const activeNode = nodes.find((node) => node.entity_id === active);
   const point = (seed, index) => {
     const [x, y] =
       positions[seed.entity_id] || locations[index % locations.length];
@@ -150,7 +171,10 @@ export function TasteMap({ seeds }) {
           <Crosshair size={13} />
           TASTE NETWORK
         </span>
-        <span>{String(seeds.length).padStart(2, "0")} SIGNALS</span>
+        <span>
+          {String(seeds.length).padStart(2, "0")} SEEDS ·{" "}
+          {String(nodes.length - seeds.length).padStart(2, "0")} AFFINITIES
+        </span>
       </figcaption>
       <div
         className="map-board"
@@ -193,12 +217,12 @@ export function TasteMap({ seeds }) {
           />
           <line x1="0" y1="50" x2="100" y2="50" className="map-guide" />
           <line x1="50" y1="0" x2="50" y2="100" className="map-guide" />
-          {seeds.map((seed, i) => {
-            const [x, y] = point(seed, i);
+          {nodes.map((node, i) => {
+            const [x, y] = point(node, i);
             return (
               <g
-                key={seed.entity_id}
-                className={active === seed.entity_id ? "lit" : ""}
+                key={node.entity_id}
+                className={active === node.entity_id ? "lit" : ""}
               >
                 <line
                   x1={coreX}
@@ -243,33 +267,33 @@ export function TasteMap({ seeds }) {
           <span>YOUR AUDIENCE</span>
           <strong>{seeds.length} tastes</strong>
         </div>
-        {seeds.map((seed, i) => {
-          const Icon = icons[seed.category] || Tag;
-          const [x, y] = point(seed, i);
+        {nodes.map((node, i) => {
+          const Icon = icons[node.category] || Crosshair;
+          const [x, y] = point(node, i);
           return (
             <button
               type="button"
-              key={seed.entity_id}
-              className={`map-node ${active === seed.entity_id ? "lit" : ""}`}
+              key={node.entity_id}
+              className={`map-node ${node.nodeType === "signal" ? "is-affinity" : ""} ${active === node.entity_id ? "lit" : ""}`}
               style={{ left: `${x}%`, top: `${y}%` }}
-              aria-label={`Explore ${seed.name}`}
-              aria-pressed={active === seed.entity_id}
-              onMouseEnter={() => setActive(seed.entity_id)}
-              onFocus={() => setActive(seed.entity_id)}
-              onClick={() => setActive(seed.entity_id)}
+              aria-label={`Explore ${node.name}${Number.isFinite(node.affinity) ? `, affinity ${node.affinity.toFixed(3)}` : ""}`}
+              aria-pressed={active === node.entity_id}
+              onMouseEnter={() => setActive(node.entity_id)}
+              onFocus={() => setActive(node.entity_id)}
+              onClick={() => setActive(node.entity_id)}
               onPointerDown={(event) => {
                 if (event.pointerType !== "mouse") return;
-                dragging.current = seed.entity_id;
-                setActive(seed.entity_id);
+                dragging.current = node.entity_id;
+                setActive(node.entity_id);
                 event.currentTarget.setPointerCapture(event.pointerId);
               }}
               onPointerMove={(event) => {
-                if (dragging.current !== seed.entity_id || !board.current)
+                if (dragging.current !== node.entity_id || !board.current)
                   return;
                 const rect = board.current.getBoundingClientRect();
                 setPositions((old) => ({
                   ...old,
-                  [seed.entity_id]: [
+                  [node.entity_id]: [
                     Math.min(
                       80,
                       Math.max(
@@ -293,18 +317,19 @@ export function TasteMap({ seeds }) {
               <span className="map-node-icon">
                 <Icon size={17} />
               </span>
-              <span className="map-node-name">{seed.name}</span>
+              <span className="map-node-name">{node.name}</span>
             </button>
           );
         })}
       </div>
       <div className="map-readout" aria-live="polite">
-        {activeSeed ? (
+        {activeNode ? (
           <>
-            <span>{activeSeed.category}</span>
+            <span>{activeNode.name}</span>
             <strong>
-              {activeSeed.tags?.map((t) => t.name).join(" · ") ||
-                "Taste evidence stays private until the poll closes."}
+              {Number.isFinite(activeNode.affinity)
+                ? `Affinity ${activeNode.affinity.toFixed(3)} · Qloo audience signal`
+                : `Audience seed · ${activeNode.category}`}
             </strong>
           </>
         ) : (

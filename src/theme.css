@@ -263,6 +263,12 @@ html[data-theme="light"] .experiment-page .sample-hero-heading::before {
 html[data-theme="light"] .hero-prompt-label {
   color: #655870;
 }
+html[data-theme="light"] .hero-prompt-label kbd {
+  color: #3a3342;
+  background: #fff;
+  border-color: #cfc7d7;
+  box-shadow: inset 0 -1px #d7d0dd;
+}
 html[data-theme="light"]
   .experiment-page
   .experiment-title

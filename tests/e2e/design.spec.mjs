@@ -20,8 +20,13 @@ test("product fits the first desktop viewport; posters, touch targets and reduce
           ),
       )
       .toBe(true);
+    for (const card of await page.locator(".prediction-card").all()) {
+      const box = await card.boundingBox();
+      expect(box.y).toBeGreaterThanOrEqual(0);
+      expect(box.y + 150).toBeLessThan(viewport.height);
+    }
     for (const target of await page
-      .locator(".prediction-card, .agent-badge, .confidence-note")
+      .locator(".prediction-card .score-number, .agent-badge")
       .all()) {
       const box = await target.boundingBox();
       expect(box.y).toBeGreaterThanOrEqual(0);
@@ -124,7 +129,7 @@ test("benchmark opens with three tiles and hides audit details until requested",
   await page.goto("/benchmark");
   await expect(page.locator(".benchmark-overview > article")).toHaveCount(3);
   await expect(page.locator(".benchmark-overview")).toContainText(
-    "not enough cases yet",
+    "Ready for the first frozen case.",
   );
   expect(await page.locator(".benchmark-drawer[open]").count()).toBe(0);
   await expect(

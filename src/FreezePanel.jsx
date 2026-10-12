@@ -82,11 +82,26 @@ export default function FreezePanel({ test, owner, onFrozen }) {
     const p = test.freeze.payload;
     return (
       <section className="panel freeze-panel">
-        <div className="eyebrow">IMMUTABLE PREDICTION RECEIPT</div>
-        <h2>Frozen at {p.frozenAt}</h2>
-        <p>
-          {p.caseLabel} · {p.mode} · {test.lifecycle}
-        </p>
+        <div className="freeze-certificate">
+          <div className="freeze-certificate-seal" aria-hidden="true">
+            <span>SHA</span>
+            <strong>256</strong>
+          </div>
+          <div>
+            <div className="eyebrow">IMMUTABLE PREDICTION RECEIPT</div>
+            <h2>Prediction frozen</h2>
+            <p>
+              {new Date(p.frozenAt).toLocaleString([], {
+                dateStyle: "medium",
+                timeStyle: "short",
+              })}{" "}
+              · <strong>#{test.freeze.sha256.slice(0, 12)}</strong>
+            </p>
+            <small>
+              {p.caseLabel} · {p.mode} · {test.lifecycle}
+            </small>
+          </div>
+        </div>
         <BranchTable branches={p.branches} result={test.benchmarkResult} />
         <p>{p.note}</p>
         {p.originalRecordedAt && (

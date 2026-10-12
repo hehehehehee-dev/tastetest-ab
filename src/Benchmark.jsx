@@ -155,7 +155,11 @@ export default function Benchmark() {
                   .join(" · ")
               : "Loading…"}
           </strong>
-          <small>{data?.tally.message || "not enough cases yet"}</small>
+          <small>
+            {data?.tally.evaluableCases
+              ? data.tally.message
+              : "Ready for the first frozen case."}
+          </small>
         </article>
         <article>
           <span>Proxy tally · real Qloo</span>
@@ -191,6 +195,27 @@ export default function Benchmark() {
           </small>
         </article>
       </div>
+      {data && data.tally.evaluableCases === 0 && (
+        <section className="benchmark-empty-state">
+          <div className="benchmark-empty-orbit" aria-hidden="true">
+            <span />
+            <span />
+            <span />
+          </div>
+          <div>
+            <div className="eyebrow">THE FIRST DATAPOINT STARTS HERE</div>
+            <h2>Turn 0/0 into evidence.</h2>
+            <p>
+              Freeze one blind prediction, share its poll, and collect 20 real
+              audience votes. The tally will update only when the case
+              qualifies.
+            </p>
+          </div>
+          <a className="button primary" href="/benchmark/new">
+            Run the first case
+          </a>
+        </section>
+      )}
       {error && (
         <p role="alert" className="error">
           {error}

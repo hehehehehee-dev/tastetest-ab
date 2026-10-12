@@ -10,7 +10,10 @@ test("Track B freeze, same-tab poll, three-branch grading and excluded mock ledg
   await page.goto("/benchmark");
   await expect(
     page.locator(".benchmark-overview article").first().locator("small"),
-  ).toHaveText("not enough cases yet");
+  ).toHaveText("Ready for the first frozen case.");
+  await expect(
+    page.getByRole("link", { name: "Run the first case" }),
+  ).toBeVisible();
   await page.getByRole("link", { name: "Create a new case" }).click();
   await page.getByLabel("Give it a name").nth(0).fill("Quiet vinyl cafe");
   await page
@@ -52,18 +55,26 @@ test("Track B freeze, same-tab poll, three-branch grading and excluded mock ledg
     .check();
   await page.getByRole("button", { name: "Freeze predictions" }).click();
   await expect(
-    page.getByRole("heading", { name: /^Frozen at / }),
+    page.getByRole("heading", { name: "Prediction frozen" }),
   ).toBeVisible();
+  await expect(page.locator(".freeze-certificate")).toContainText("SHA256");
   const id = page.url().match(/test\/([^?]+)/)[1];
   await page.reload();
   await expect(
-    page.getByRole("heading", { name: /^Frozen at / }),
+    page.getByRole("heading", { name: "Prediction frozen" }),
   ).toBeVisible();
   await expect(
     page.getByRole("button", { name: "Freeze predictions" }),
   ).toHaveCount(0);
   await page.getByRole("button", { name: "Open live poll" }).click();
   await expect(page.locator(".verdict-chat")).toHaveCount(0);
+  await expect(
+    page.getByRole("region", { name: "Poll QR code" }),
+  ).toBeVisible();
+  await expect(page.locator(".poll-share-qr canvas")).toBeVisible();
+  await expect(
+    page.getByRole("progressbar", { name: "Track B vote progress" }),
+  ).toHaveAttribute("aria-valuenow", "0");
   await page.getByRole("button", { name: "Copy link" }).click();
   await expect(
     page.getByRole("button", { name: "Copied", exact: true }),
@@ -75,7 +86,7 @@ test("Track B freeze, same-tab poll, three-branch grading and excluded mock ledg
   await page.getByRole("link", { name: "Open poll", exact: true }).click();
   await expect(page).toHaveURL(new RegExp(`/poll/${id}`));
   expect(context.pages()).toHaveLength(1);
-  await page.getByRole("button", { name: /Quiet vinyl cafe/ }).click();
+  await page.keyboard.press("a");
   await expect(
     page.getByText("Vote recorded. Thanks for weighing in."),
   ).toBeVisible();
@@ -104,7 +115,7 @@ test("Track B freeze, same-tab poll, three-branch grading and excluded mock ledg
   await page.getByRole("link", { name: "View benchmark ledger" }).click();
   await expect(
     page.locator(".benchmark-overview article").first().locator("small"),
-  ).toHaveText("not enough cases yet");
+  ).toHaveText("Ready for the first frozen case.");
   await page
     .locator(".benchmark-drawer > summary")
     .filter({ hasText: "Closed case ledger" })

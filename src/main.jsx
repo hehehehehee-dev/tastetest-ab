@@ -44,6 +44,7 @@ import VerdictInsights from "./VerdictInsights.jsx";
 import VerdictChat from "./VerdictChat.jsx";
 import PredictionStepFeed from "./PredictionStepFeed.jsx";
 import HeroQuestionRotator from "./HeroQuestionRotator.jsx";
+import PollShareCard, { VoteGoal } from "./PollShareCard.jsx";
 import { normalizedOutcomeMargin } from "./verdictReport.mjs";
 import {
   beginPredictionStep,
@@ -366,6 +367,24 @@ function HeroPromptInput() {
   const [emptySubmit, setEmptySubmit] = useState(false);
   const inputRef = useRef(null);
 
+  useEffect(() => {
+    const focusPrompt = (event) => {
+      if (
+        event.key !== "/" ||
+        event.metaKey ||
+        event.ctrlKey ||
+        event.altKey ||
+        /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName) ||
+        document.activeElement?.isContentEditable
+      )
+        return;
+      event.preventDefault();
+      inputRef.current?.focus();
+    };
+    window.addEventListener("keydown", focusPrompt);
+    return () => window.removeEventListener("keydown", focusPrompt);
+  }, []);
+
   function submit(event) {
     event.preventDefault();
     const prompt = value.trim();
@@ -384,7 +403,8 @@ function HeroPromptInput() {
       onAnimationEnd={() => setEmptySubmit(false)}
     >
       <label className="hero-prompt-label" htmlFor="hero-decision">
-        Start with your decision
+        <span>Start with your decision</span>
+        <kbd>/</kbd>
       </label>
       <div className="hero-prompt-field">
         <input
@@ -1605,6 +1625,9 @@ function TestView({ id, sample = false }) {
       ? !test.pollOpenedAt
       : view === "prediction" ||
         (test.isPairedComparison && !test.pollOpenedAt));
+  const isTrackB =
+    test.benchmarkMetadata?.track === "track-b" ||
+    test.freeze?.payload?.metadata?.track === "track-b";
   return (
     <main
       className={`container experiment-page ${activePrediction || view === "prediction" ? "prediction-view" : ""} ${test.closedAt && view === "verdict" ? "verdict-view" : ""}`}
@@ -1756,7 +1779,7 @@ function TestView({ id, sample = false }) {
                   "Defined by the selected cultural tastes."}
               </p>
             </div>
-            <TasteMap seeds={test.seeds} />
+            <TasteMap seeds={test.seeds} signals={test.insights || []} />
           </section>
           <FreezePanel test={test} owner={owner} onFrozen={setTest} />
           {activePrediction ? (
@@ -1837,6 +1860,13 @@ function TestView({ id, sample = false }) {
                           ? "This live demo stays open. Visitor votes are separate from the completed synthetic example."
                           : "Anyone with the link can vote. Only the creating browser can close this test."}
                       </p>
+                      {isTrackB && (
+                        <PollShareCard
+                          url={shareUrl}
+                          title={test.title}
+                          total={test.totalVotes}
+                        />
+                      )}
                     </div>
                   )}
                 </div>
@@ -1915,6 +1945,7 @@ function PollPage({ id }) {
   const [error, setError] = useState("");
   const [voting, setVoting] = useState(null);
   const [voted, setVoted] = useState(getLocal(`tastetest-vote-${id}`));
+  const shortcutState = useRef(null);
   useEffect(() => {
     let current = true;
     const refresh = () =>
@@ -1962,6 +1993,29 @@ function PollPage({ id }) {
       setVoting(null);
     }
   }
+  shortcutState.current = { test, voted, voting, vote };
+  useEffect(() => {
+    const voteByKeyboard = (event) => {
+      const current = shortcutState.current;
+      if (
+        !current?.test ||
+        current.voted !== null ||
+        current.test.closedAt ||
+        current.voting !== null ||
+        ((current.test.isPairedComparison || current.test.freezeRequired) &&
+          !current.test.pollOpenedAt) ||
+        /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName) ||
+        document.activeElement?.isContentEditable
+      )
+        return;
+      const key = event.key.toLowerCase();
+      if (key !== "a" && key !== "b") return;
+      event.preventDefault();
+      current.vote(key === "a" ? 0 : 1);
+    };
+    window.addEventListener("keydown", voteByKeyboard);
+    return () => window.removeEventListener("keydown", voteByKeyboard);
+  }, []);
   if (!test)
     return (
       <main className="poll-container loading-state">
@@ -1991,6 +2045,9 @@ function PollPage({ id }) {
             ? "Your vote is in. Here’s where the audience stands."
             : "Pick the idea you’d be more likely to try. No signup needed."}
       </p>
+      {test.benchmarkMetadata?.track === "track-b" &&
+        !test.closedAt &&
+        test.pollOpenedAt && <VoteGoal total={test.totalVotes} />}
       <ErrorMessage>{error}</ErrorMessage>
       {(test.isPairedComparison || test.freezeRequired) &&
         !test.pollOpenedAt &&
@@ -2037,7 +2094,7 @@ function PollPage({ id }) {
                 {voting === i ? (
                   <Loader2 size={15} className="spin" />
                 ) : (
-                  "Choose this idea"
+                  `Press ${i ? "B" : "A"} or choose this idea`
                 )}
               </span>
             )}

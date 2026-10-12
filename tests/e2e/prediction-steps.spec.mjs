@@ -61,7 +61,7 @@ test("mock Track B feed follows all six stages and collapses after freeze", asyn
     .check();
   await page.getByRole("button", { name: "Freeze predictions" }).click();
   await expect(
-    page.getByRole("heading", { name: /^Frozen at / }),
+    page.getByRole("heading", { name: "Prediction frozen" }),
   ).toBeVisible();
   await expect(feed.locator("summary")).toContainText(
     /6 steps · (?:<0\.1s|\d+\.\d+s) · frozen #[a-f0-9]{6}/,

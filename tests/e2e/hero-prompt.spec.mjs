@@ -51,6 +51,18 @@ test("empty hero submit stays on the homepage and returns focus", async ({
   await expect(input).toBeFocused();
 });
 
+test("slash focuses the hero decision input", async ({ page }, testInfo) => {
+  test.skip(
+    testInfo.project.name === "mobile",
+    "The slash shortcut targets physical keyboards.",
+  );
+  await page.goto("/");
+  const input = page.getByLabel("Start with your decision");
+  await page.locator("body").click({ position: { x: 8, y: 8 } });
+  await page.keyboard.press("/");
+  await expect(input).toBeFocused();
+});
+
 test("direct create route stays empty and prompt controls remain touch sized", async ({
   page,
 }) => {

@@ -74,7 +74,9 @@ test("sample, creation, independent voter, live update, closure and print", asyn
     )
     .check();
   await page.getByRole("button", { name: "Freeze predictions" }).click();
-  await expect(page.getByRole("heading", { name: /^Frozen at / })).toBeVisible({
+  await expect(
+    page.getByRole("heading", { name: "Prediction frozen" }),
+  ).toBeVisible({
     timeout: 15000,
   });
   await page.getByRole("button", { name: "Open live poll" }).click();
