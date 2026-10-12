@@ -1160,7 +1160,7 @@ function VoteBars({ test }) {
                 {option.title}
               </span>
               <strong>
-                <AnimatedNumber value={percentage} suffix="%" />{" "}
+                {percentage}%{" "}
                 <small>
                   {test.votes[i]} {test.votes[i] === 1 ? "vote" : "votes"}
                 </small>

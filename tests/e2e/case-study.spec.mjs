@@ -58,6 +58,9 @@ test("home stays a completed cafe example with a separate always-open live twin"
     "Branch comparison was not recorded for this illustrative sample.",
   );
   await page.getByRole("button", { name: "Prediction", exact: true }).click();
+  await expect(page.locator(".vote-bar-label strong").first()).toContainText(
+    "71%",
+  );
   await expect(page.locator(".mock-pill")).toHaveText(
     "Cafe demo · synthetic signals",
   );
