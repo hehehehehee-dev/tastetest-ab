@@ -46,6 +46,13 @@ test("header toggles light and dark themes and remembers the choice", async ({
   await page.reload();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
 
+  await page.getByRole("link", { name: "Explore cases", exact: true }).click();
+  await expect(page).toHaveURL(/\/benchmark$/);
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+  await page.getByRole("link", { name: "TasteTest A/B — Home" }).click();
+  await expect(page).toHaveURL(/\/$/);
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+
   await page.getByRole("button", { name: "Switch to dark mode" }).click();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
 });

@@ -66,6 +66,7 @@ const categoryIcons = {
   Books: BookOpen,
 };
 const THEME_KEY = "tastetest-theme";
+const REMIX_DRAFT_KEY = "tastetest-remix-draft";
 function readTheme() {
   try {
     const saved = localStorage.getItem(THEME_KEY);
@@ -266,6 +267,10 @@ function Header({ label }) {
           href="/"
           aria-label="TasteTest A/B — Home"
           title="Back to home"
+          onClick={(event) => {
+            event.preventDefault();
+            navigate("/");
+          }}
         >
           <span className="brand-mark">
             <BarChart3 size={20} />
@@ -287,7 +292,14 @@ function Header({ label }) {
           >
             {theme === "dark" ? <Sun size={17} /> : <Moon size={17} />}
           </button>
-          <a className="header-cases" href="/benchmark">
+          <a
+            className="header-cases"
+            href="/benchmark"
+            onClick={(event) => {
+              event.preventDefault();
+              navigate("/benchmark");
+            }}
+          >
             Explore cases
           </a>
           <a
@@ -395,21 +407,119 @@ function HeroPromptInput() {
   );
 }
 
+function HeroLivePoll({ test, onUpdate }) {
+  const [voted, setVoted] = useState(null);
+  const [voting, setVoting] = useState(null);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    setVoted(test ? getLocal(`tastetest-vote-${test.id}`) : null);
+  }, [test?.id]);
+
+  if (!test) return null;
+
+  async function vote(option) {
+    setVoting(option);
+    setError("");
+    try {
+      let voterId = getLocal("tastetest-voter");
+      if (!voterId) {
+        voterId = crypto.randomUUID();
+        if (!saveLocal("tastetest-voter", voterId))
+          throw new Error("Allow browser storage to cast one vote.");
+      }
+      const data = await api(`/tests/${test.id}/vote`, {
+        method: "POST",
+        body: JSON.stringify({ option, voterId }),
+      });
+      saveLocal(`tastetest-vote-${test.id}`, String(option));
+      setVoted(String(option));
+      onUpdate(data);
+    } catch (caught) {
+      setError(caught.message);
+      if (caught.message.includes("already voted")) {
+        setVoted("recorded");
+        saveLocal(`tastetest-vote-${test.id}`, "recorded");
+      }
+    } finally {
+      setVoting(null);
+    }
+  }
+
+  return (
+    <section className="hero-live-poll" aria-label="Live sample poll">
+      <div className="hero-live-poll-heading">
+        <span>LIVE SAMPLE · {test.totalVotes} VOTES</span>
+        <a
+          href={`/poll/${test.id}`}
+          onClick={(event) => {
+            event.preventDefault();
+            navigate(`/poll/${test.id}`);
+          }}
+        >
+          See results →
+        </a>
+      </div>
+      <p>
+        {voted === null
+          ? "Which poster would pull you in?"
+          : "Your vote is in."}
+      </p>
+      <div className="hero-live-poll-options">
+        {test.options.map((option, index) => (
+          <button
+            type="button"
+            key={option.title}
+            disabled={voted !== null || voting !== null}
+            className={voted === String(index) ? "is-picked" : ""}
+            onClick={() => vote(index)}
+          >
+            <span>{index ? "B" : "A"}</span>
+            {option.title}
+            {voting === index && <Loader2 size={14} className="spin" />}
+          </button>
+        ))}
+      </div>
+      {error && <small role="alert">{error}</small>}
+    </section>
+  );
+}
+
+function readRemixDraft() {
+  if (new URLSearchParams(window.location.search).get("remix") !== "sample")
+    return null;
+  try {
+    const draft = JSON.parse(sessionStorage.getItem(REMIX_DRAFT_KEY));
+    return draft?.options?.length === 2 && Array.isArray(draft.seeds)
+      ? draft
+      : null;
+  } catch {
+    return null;
+  }
+}
+
 function CreateTest({ mode }) {
   const promptPrefill = new URLSearchParams(window.location.search)
     .get("prompt")
     ?.trim()
     .slice(0, 100);
-  const [insightCategory, setInsightCategory] = useState("Dining");
-  const [options, setOptions] = useState([
-    { title: promptPrefill || "", description: "", imageUrl: "" },
-    { title: "", description: "", imageUrl: "" },
-  ]);
+  const remixDraft = useRef(readRemixDraft()).current;
+  const [insightCategory, setInsightCategory] = useState(
+    remixDraft?.insightCategory || "Dining",
+  );
+  const [options, setOptions] = useState(
+    remixDraft?.options || [
+      { title: promptPrefill || "", description: "", imageUrl: "" },
+      { title: "", description: "", imageUrl: "" },
+    ],
+  );
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("Music");
   const [results, setResults] = useState([]);
-  const [selected, setSelected] = useState([]);
-  const [note, setNote] = useState("");
+  const [selected, setSelected] = useState(
+    remixDraft?.seeds?.slice(0, 5) || [],
+  );
+  const [note, setNote] = useState(remixDraft?.audienceNote || "");
   const [searching, setSearching] = useState(true);
   const [searchError, setSearchError] = useState("");
   const [error, setError] = useState("");
@@ -521,6 +631,23 @@ function CreateTest({ mode }) {
         </div>
       </div>
       <form onSubmit={submit}>
+        {(promptPrefill || remixDraft) && (
+          <div className="prefill-note" role="status">
+            <CheckCircle2 size={18} aria-hidden="true" />
+            <div>
+              <strong>
+                {remixDraft
+                  ? "The demo is ready to remix."
+                  : "Your decision is ready to edit."}
+              </strong>
+              <span>
+                {remixDraft
+                  ? "Both options and the demo audience are copied into this draft."
+                  : "We carried it into Option A. Add the competing option and audience below."}
+              </span>
+            </div>
+          </div>
+        )}
         <div className="option-grid form-options">
           {options.map((option, i) => (
             <section className="panel option-form" key={i}>
@@ -995,11 +1122,11 @@ function VoteBars({ test }) {
           <div key={i}>
             <div className="vote-bar-label">
               <span>
-                <span className="tiny-letter">{i ? "B" : "A"}</span>
+                <span className="tiny-letter">{i ? "B" : "A"}</span>{" "}
                 {option.title}
               </span>
               <strong>
-                <AnimatedNumber value={percentage} suffix="%" />
+                <AnimatedNumber value={percentage} suffix="%" />{" "}
                 <small>
                   {test.votes[i]} {test.votes[i] === 1 ? "vote" : "votes"}
                 </small>
@@ -1520,7 +1647,15 @@ function TestView({ id, sample = false }) {
           ) : (
             <h1 title={test.title}>{test.title}</h1>
           )}
+          {sample && (
+            <p className="hero-product-subhead">
+              Freeze a prediction. Poll the audience. Get a verdict.
+            </p>
+          )}
           {sample && <HeroPromptInput />}
+          {sample && (
+            <HeroLivePoll test={liveSample} onUpdate={setLiveSample} />
+          )}
           <p>
             {sample
               ? "Two creative directions. One taste-defined audience. A decision backed by votes."
@@ -1571,26 +1706,31 @@ function TestView({ id, sample = false }) {
             <div className="hero-actions">
               <Button
                 className="primary"
-                disabled={!liveSample}
-                onClick={() => navigate(`/poll/${liveSample.id}`)}
+                onClick={() => {
+                  sessionStorage.setItem(
+                    REMIX_DRAFT_KEY,
+                    JSON.stringify({
+                      options: test.options.map((option) => ({
+                        title: option.title,
+                        description: option.description,
+                        imageUrl: option.imageUrl || "",
+                      })),
+                      seeds: test.seeds,
+                      audienceNote: test.audienceNote,
+                      insightCategory: test.insightCategory || "Dining",
+                    }),
+                  );
+                  navigate("/create?remix=sample");
+                }}
               >
-                Sample — live, vote here
-              </Button>
-              <Button className="primary" onClick={() => navigate("/create")}>
                 <Plus size={16} />
-                Create a test
+                Remix this demo
               </Button>
-            </div>
-          )}
-          {sample && (
-            <div className="live-sample-note">
-              <strong>
-                Live twin · {liveSample?.totalVotes ?? "…"} visitor votes
-              </strong>
-              <span>
-                Try the same A/B poll. It stays open; its visitor votes are
-                separate from the completed 52-vote synthetic example below.
-              </span>
+              {liveSample && (
+                <Button onClick={() => navigate(`/poll/${liveSample.id}`)}>
+                  Open the live poll
+                </Button>
+              )}
             </div>
           )}
           <section className="supporting-evidence">
@@ -1739,16 +1879,17 @@ function TestView({ id, sample = false }) {
       <footer className="report-footer">
         <span>TasteTest A/B</span>
         <p>
-          {test.isPairedComparison
-            ? `Two locked AI predictions · same model · ${test.mode === "real" ? "real Qloo context" : "synthetic Qloo context"}`
-            : test.mode === "real"
-              ? "Real Qloo API affinities · local heuristic fit"
-              : "Synthetic Qloo-style signals"}{" "}
-          · {sample ? "Illustrative sample votes" : "Anonymous audience votes"}{" "}
-          ·
-          {test.mode === "real"
-            ? "Not a calibrated vote prediction"
-            : "No real Qloo API calls for this example"}
+          {[
+            test.isPairedComparison
+              ? `Two locked AI predictions · same model · ${test.mode === "real" ? "real Qloo context" : "synthetic Qloo context"}`
+              : test.mode === "real"
+                ? "Real Qloo API affinities · local heuristic fit"
+                : "Synthetic Qloo-style signals",
+            sample ? "Illustrative sample votes" : "Anonymous audience votes",
+            test.mode === "real"
+              ? "Not a calibrated vote prediction"
+              : "No real Qloo API calls for this example",
+          ].join(" · ")}
         </p>
       </footer>
     </main>
@@ -1931,7 +2072,7 @@ function App() {
     /^\/benchmark\/music\/(?:run\/([a-f0-9-]{36})|(MX-\d{3}))$/,
   );
   const proxyMatch = route.match(
-    /^\/benchmark\/proxy\/(?:run\/([a-f0-9-]{36})|(PX-\d{3}))$/,
+    /^\/benchmark\/(?:film|proxy)\/(?:run\/([a-f0-9-]{36})|(PX-\d{3}))$/,
   );
   return (
     <PageSignalContext.Provider value={publishSignal}>
@@ -1970,9 +2111,16 @@ function App() {
       ) : route === "/" ? (
         <TestView sample id="sample" />
       ) : (
-        <main className="container loading-state">
+        <main className="container not-found-page">
+          <div className="eyebrow">404 / OFF THE MAP</div>
           <h1>That page isn’t here.</h1>
-          <Button onClick={() => navigate("/")}>Back to TasteTest</Button>
+          <p>Explore a benchmark case or return to the TasteTest sample.</p>
+          <div className="not-found-actions">
+            <Button className="primary" onClick={() => navigate("/benchmark")}>
+              Back to benchmark
+            </Button>
+            <Button onClick={() => navigate("/")}>Back to TasteTest</Button>
+          </div>
         </main>
       )}
       {route !== "/faq" && <FAQ key={route} compact />}

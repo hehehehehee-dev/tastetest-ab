@@ -53,6 +53,10 @@ test("home stays a completed cafe example with a separate always-open live twin"
     page.getByRole("heading", { name: "The audience has spoken." }),
   ).toBeVisible();
   await expect(page.locator(".verdict-main")).toContainText("52 votes");
+  await expect(page.locator(".verdict-branch")).toHaveCount(0);
+  await expect(page.locator(".verdict-empty-branches")).toHaveText(
+    "Branch comparison was not recorded for this illustrative sample.",
+  );
   await page.getByRole("button", { name: "Prediction", exact: true }).click();
   await expect(page.locator(".mock-pill")).toHaveText(
     "Cafe demo · synthetic signals",
@@ -64,7 +68,7 @@ test("home stays a completed cafe example with a separate always-open live twin"
     page.getByText("Too close to call", { exact: true }),
   ).toBeVisible();
   await expect(page.locator(".agent-badge")).toHaveCount(0);
-  await page.getByRole("button", { name: "Sample — live, vote here" }).click();
+  await page.getByRole("button", { name: "Open the live poll" }).click();
   await expect(
     page.getByRole("heading", { name: "Which one speaks to you?" }),
   ).toBeVisible();
@@ -76,6 +80,17 @@ test("home stays a completed cafe example with a separate always-open live twin"
   await expect(
     page.getByRole("heading", { name: "Historical case 01" }),
   ).toBeVisible();
+});
+
+test("homepage live sample records a vote without leaving the hero", async ({
+  page,
+}) => {
+  await page.goto("/");
+  const poll = page.getByRole("region", { name: "Live sample poll" });
+  await expect(poll).toBeVisible();
+  await poll.getByRole("button", { name: /Slow mornings club/ }).click();
+  await expect(poll).toContainText("Your vote is in.");
+  await expect(page).toHaveURL(/\/$/);
 });
 
 test("visible case navigation opens film and music catalogues from historical page", async ({
@@ -90,6 +105,9 @@ test("visible case navigation opens film and music catalogues from historical pa
     nav.getByRole("link", { name: "Film · start PX-001 ↗", exact: true }),
   ).toBeVisible();
   await expect(
+    nav.getByRole("link", { name: "Film · start PX-001 ↗", exact: true }),
+  ).toHaveAttribute("href", "/benchmark/film/PX-001");
+  await expect(
     nav.getByRole("link", { name: "Music · start MX-001 ↗", exact: true }),
   ).toBeVisible();
   await nav
@@ -101,6 +119,9 @@ test("visible case navigation opens film and music catalogues from historical pa
     "",
   );
   await expect(page.locator("#film-cases .proxy-case-entry a")).toHaveCount(40);
+  await expect(
+    page.locator("#film-cases .proxy-case-entry a").first(),
+  ).toHaveAttribute("href", /\/benchmark\/film\/PX-\d{3}/);
   await page
     .getByRole("navigation", { name: "Explore benchmark cases" })
     .getByRole("link", { name: "Browse 40 music cases", exact: true })
@@ -118,4 +139,18 @@ test("visible case navigation opens film and music catalogues from historical pa
       () => document.documentElement.scrollWidth > innerWidth,
     ),
   ).toBe(false);
+});
+
+test("unknown routes offer a direct path back to benchmark", async ({
+  page,
+}) => {
+  await page.goto("/this-page-does-not-exist");
+  await expect(
+    page.getByRole("heading", { name: "That page isn’t here." }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Back to benchmark" }).click();
+  await expect(page).toHaveURL(/\/benchmark$/);
+  await expect(
+    page.getByRole("heading", { name: "Evidence before claims." }),
+  ).toBeVisible();
 });

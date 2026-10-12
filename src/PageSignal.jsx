@@ -21,11 +21,11 @@ export function pageSignalLabel(route, config, record) {
   )
     return "Historical case · observed data only";
   if (route === "/benchmark") return "Benchmark · see each case’s data source";
-  if (/^\/benchmark\/proxy\/PX-\d{3}$/.test(route))
+  if (/^\/benchmark\/(?:film|proxy)\/PX-\d{3}$/.test(route))
     return "Proxy case · prediction not started";
   if (
     /^\/(test|poll)\//.test(route) ||
-    /^\/benchmark\/proxy\/run\//.test(route)
+    /^\/benchmark\/(?:film|proxy)\/run\//.test(route)
   ) {
     if (!record) return "Loading this case’s data source…";
     if (record.sample) return "Cafe demo · synthetic signals";

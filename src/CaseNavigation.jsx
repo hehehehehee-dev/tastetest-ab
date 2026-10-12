@@ -11,7 +11,7 @@ export default function CaseNavigation() {
         </p>
       </div>
       <div className="case-navigation-primary">
-        <a href="/benchmark/proxy/PX-001" aria-label="Film · start PX-001 ↗">
+        <a href="/benchmark/film/PX-001" aria-label="Film · start PX-001 ↗">
           <span>
             <small>Film proxy</small>
             <b>Start PX-001</b>

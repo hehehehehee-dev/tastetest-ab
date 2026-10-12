@@ -123,7 +123,7 @@ export function ProxySection({ browseOpen = false }) {
             <summary>Browse {data.cases.length} proxy cases</summary>
             {data.cases.map((input) => (
               <div key={input.id} className="proxy-case-entry">
-                <a href={`/benchmark/proxy/${input.id}`}>
+                <a href={`/benchmark/film/${input.id}`}>
                   {input.id} ·{" "}
                   {input.options
                     .map((m) => `${m.title} (${m.year})`)
@@ -140,7 +140,7 @@ export function ProxySection({ browseOpen = false }) {
           <h3>Your proxy runs</h3>
           {runs.map((run) => (
             <p key={run.id}>
-              <a href={`/benchmark/proxy/run/${run.id}`}>
+              <a href={`/benchmark/film/run/${run.id}`}>
                 {run.proxyCaseId} · {run.lifecycle} · {run.mode}
               </a>
             </p>
@@ -243,7 +243,7 @@ export default function ProxyCase({ caseId, runId }) {
       "tastetest-proxy-runs",
       JSON.stringify([...new Set([...ids, data.run.id])]),
     );
-    window.history.replaceState({}, "", `/benchmark/proxy/run/${data.run.id}`);
+    window.history.replaceState({}, "", `/benchmark/film/run/${data.run.id}`);
     setOwner(true);
     setRun(data.run);
     setPredictionWork(data.run.predictionWork || null);

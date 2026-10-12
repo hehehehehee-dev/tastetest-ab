@@ -230,6 +230,11 @@ html[data-theme="light"] .benchmark-drawer > summary,
 html[data-theme="light"] .case-navigation-copy > strong {
   color: #28232d;
 }
+html[data-theme="light"] .verdict-empty-branches {
+  border-color: #d8d2dc;
+  color: #57505d;
+  background: #f4f1f6;
+}
 html[data-theme="light"] .prediction-step-body,
 html[data-theme="light"] .benchmark-drawer > .panel,
 html[data-theme="light"] .benchmark-methodology,
@@ -257,6 +262,12 @@ html[data-theme="light"] .experiment-page .sample-hero-heading::before {
 }
 html[data-theme="light"] .hero-prompt-label {
   color: #655870;
+}
+html[data-theme="light"]
+  .experiment-page
+  .experiment-title
+  > .hero-product-subhead {
+  color: #554d5e;
 }
 html[data-theme="light"] .hero-prompt-field {
   border-color: #c9c1d0;
@@ -286,6 +297,47 @@ html[data-theme="light"] .hero-prompt-examples button:focus-visible {
   border-color: #806c98;
   color: #211b27;
   background: #eee8f3;
+}
+html[data-theme="light"] .hero-live-poll {
+  border-color: #d0c7d8;
+  background: rgba(247, 243, 250, 0.9);
+}
+html[data-theme="light"] .hero-live-poll-heading span {
+  color: #694f8c;
+}
+html[data-theme="light"] .hero-live-poll-heading a {
+  color: #504458;
+}
+html[data-theme="light"]
+  .experiment-page
+  .experiment-title
+  > .hero-live-poll
+  > p {
+  color: #29222e;
+}
+html[data-theme="light"] .hero-live-poll-options button {
+  border-color: #cec5d5;
+  color: #39313f;
+  background: #fff;
+}
+html[data-theme="light"] .hero-live-poll-options button:hover:not(:disabled),
+html[data-theme="light"] .hero-live-poll-options button:focus-visible {
+  border-color: #846a9e;
+  background: #f0eaf4;
+}
+html[data-theme="light"] .hero-live-poll-options button.is-picked {
+  border-color: #73578f;
+  color: #2b2032;
+  background: #eadff1;
+}
+html[data-theme="light"] .prefill-note {
+  border-color: #cabfd3;
+  color: #28222e;
+  background: #f0ebf4;
+}
+html[data-theme="light"] .prefill-note span,
+html[data-theme="light"] .not-found-page p {
+  color: #625b68;
 }
 html[data-theme="light"] .option-description,
 html[data-theme="light"] .case-study p,

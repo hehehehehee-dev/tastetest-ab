@@ -36,6 +36,14 @@ export default function VerdictInsights({
     fitGap,
     marginName,
   });
+  const hasRecordedBranch = rows.some((row) =>
+    ["A", "B", "TIE"].includes(row.pick),
+  );
+  const displayedSurprises = hasRecordedBranch
+    ? surprises
+    : [
+        "No branch-level surprise can be assessed for this illustrative sample.",
+      ];
   return (
     <>
       <section className="verdict-report-section verdict-disagreement">
@@ -45,30 +53,38 @@ export default function VerdictInsights({
           {baselineNote && (
             <p className="verdict-context-note">{baselineNote}</p>
           )}
-          <div className="verdict-branch-grid">
-            {rows.map((row) => (
-              <article className="verdict-branch" key={row.key}>
-                <span>{row.label}</span>
-                <strong>{pickLabel(row.pick)}</strong>
-                <small>
-                  {row.confidence === null
-                    ? "Confidence not recorded"
-                    : `${row.confidence}/100 confidence`}
-                  {row.gap === null
-                    ? ""
-                    : ` · ${Math.round(row.gap)}-point fit gap`}
-                </small>
-                <em className={`verdict-branch-status is-${row.status}`}>
-                  {row.status}
-                </em>
-              </article>
-            ))}
-          </div>
-          <p className="verdict-rule-note">{disagreementLine(rows)}</p>
-          <p className="calibration-line">
-            Confidence and fit gaps describe signal separation; they are not
-            calibrated probabilities.
-          </p>
+          {hasRecordedBranch ? (
+            <>
+              <div className="verdict-branch-grid">
+                {rows.map((row) => (
+                  <article className="verdict-branch" key={row.key}>
+                    <span>{row.label}</span>
+                    <strong>{pickLabel(row.pick)}</strong>
+                    <small>
+                      {row.confidence === null
+                        ? "Confidence not recorded"
+                        : `${row.confidence}/100 confidence`}
+                      {row.gap === null
+                        ? ""
+                        : ` · ${Math.round(row.gap)}-point fit gap`}
+                    </small>
+                    <em className={`verdict-branch-status is-${row.status}`}>
+                      {row.status}
+                    </em>
+                  </article>
+                ))}
+              </div>
+              <p className="verdict-rule-note">{disagreementLine(rows)}</p>
+              <p className="calibration-line">
+                Confidence and fit gaps describe signal separation; they are not
+                calibrated probabilities.
+              </p>
+            </>
+          ) : (
+            <p className="verdict-empty-branches">
+              Branch comparison was not recorded for this illustrative sample.
+            </p>
+          )}
         </div>
       </section>
       <section className="verdict-report-section verdict-surprises">
@@ -76,7 +92,7 @@ export default function VerdictInsights({
         <div>
           <h3>What surprised us</h3>
           <ul>
-            {surprises.map((note) => (
+            {displayedSurprises.map((note) => (
               <li key={note}>{note}</li>
             ))}
           </ul>
