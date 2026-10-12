@@ -136,7 +136,7 @@ test("studio lookup changes category explicitly; a broad cafe preference never b
   ).toBe(false);
 });
 
-test("question stays one line and the header action is a 44px target", async ({
+test("rotating question reserves stable space and the header action is a 44px target", async ({
   page,
 }) => {
   for (const viewport of [
@@ -149,11 +149,15 @@ test("question stays one line and the header action is a 44px target", async ({
     await expect(heading).toBeVisible();
     const size = await heading.evaluate((n) => ({
       height: n.getBoundingClientRect().height,
-      line: parseFloat(getComputedStyle(n).lineHeight),
+      minHeight: parseFloat(getComputedStyle(n).minHeight),
       font: parseFloat(getComputedStyle(n).fontSize),
+      clientWidth: n.clientWidth,
+      scrollWidth: n.scrollWidth,
     }));
-    expect(size.height).toBeLessThanOrEqual(size.line + 1);
-    expect(size.font).toBeLessThanOrEqual(24);
+    expect(Math.abs(size.height - size.minHeight)).toBeLessThanOrEqual(1);
+    expect(size.font).toBeGreaterThanOrEqual(34);
+    expect(size.font).toBeLessThanOrEqual(58);
+    expect(size.scrollWidth).toBeLessThanOrEqual(size.clientWidth);
     const action = await page.locator(".header-new").boundingBox();
     expect(action.height).toBeGreaterThanOrEqual(44);
     expect(action.width).toBeGreaterThanOrEqual(44);

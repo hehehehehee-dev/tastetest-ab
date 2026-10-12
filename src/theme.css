@@ -1,0 +1,307 @@
+.theme-toggle {
+  display: inline-grid;
+  width: 44px;
+  height: 44px;
+  flex: 0 0 44px;
+  place-items: center;
+  padding: 0;
+  border: 1px solid #444;
+  border-radius: 8px;
+  color: #d8d5de;
+  background: transparent;
+  transition:
+    color 160ms ease,
+    border-color 160ms ease,
+    background 160ms ease,
+    transform 160ms ease;
+}
+.theme-toggle:hover {
+  transform: translateY(-1px);
+  border-color: #888;
+  color: #fff;
+  background: #242426;
+}
+
+html[data-theme="light"] {
+  color: #24222a;
+  background: #f4f3f6;
+  --surface: #fff;
+  --border: #d9d6df;
+  --muted: #66616e;
+  --dim: #817b88;
+  --lab: #25222a;
+}
+html[data-theme="light"] body,
+html[data-theme="light"] #root {
+  color: #24222a;
+  background: #f4f3f6;
+}
+html[data-theme="light"] body::before {
+  background-image: radial-gradient(circle, #6b647018 1px, transparent 1px);
+}
+html[data-theme="light"] #root::before {
+  background: radial-gradient(
+    650px circle at var(--beam-x) var(--beam-y),
+    rgba(142, 120, 255, 0.08),
+    transparent 75%
+  );
+}
+html[data-theme="light"] .container {
+  border-color: #29242e0d;
+}
+html[data-theme="light"] .topbar {
+  border-color: #d9d6df;
+  background: rgba(248, 247, 250, 0.9);
+}
+html[data-theme="light"] .brand-ab,
+html[data-theme="light"] .eyebrow,
+html[data-theme="light"] .score-caption,
+html[data-theme="light"] .test-meta,
+html[data-theme="light"] .comparison-note,
+html[data-theme="light"] .confidence-note,
+html[data-theme="light"] .live-sample-note,
+html[data-theme="light"] .muted,
+html[data-theme="light"] .optional,
+html[data-theme="light"] .form-footer p,
+html[data-theme="light"] .evidence-footer,
+html[data-theme="light"] .prediction-step-honesty,
+html[data-theme="light"] .sample-score-context {
+  color: #686270;
+}
+html[data-theme="light"] .mock-pill {
+  border-color: #312b38;
+  color: #f8f6fb;
+  background: #312b38;
+}
+html[data-theme="light"] .faq-drawer {
+  border-color: #343139;
+  color: #f8f6fb;
+  background: #17161a;
+}
+html[data-theme="light"] .faq-drawer > summary span:last-child,
+html[data-theme="light"] .faq-answer,
+html[data-theme="light"] .faq-question > summary::after {
+  color: #cbc6d1;
+}
+html[data-theme="light"] .faq-questions,
+html[data-theme="light"] .faq-question {
+  border-color: #3f3b44;
+}
+html[data-theme="light"] .faq-answer a,
+html[data-theme="light"] .faq-page-link {
+  color: #f8f6fb;
+}
+html[data-theme="light"] .brand-ab,
+html[data-theme="light"] .header-cases,
+html[data-theme="light"] .theme-toggle {
+  border-color: #cbc6d2;
+  color: #3f3a46;
+}
+html[data-theme="light"] .header-cases:hover,
+html[data-theme="light"] .theme-toggle:hover {
+  border-color: #8c8298;
+  color: #211e26;
+  background: #ece8f0;
+}
+html[data-theme="light"] .topbar .brand-mark,
+html[data-theme="light"] .header-new,
+html[data-theme="light"] .button.primary {
+  border-color: #29252e;
+  color: #fff;
+  background: #29252e;
+}
+html[data-theme="light"] .header-new:hover,
+html[data-theme="light"] .button.primary:hover:not(:disabled) {
+  color: #fff;
+  background: #17141b;
+}
+html[data-theme="light"] .button,
+html[data-theme="light"] .report-tabs button,
+html[data-theme="light"] .category-tabs button,
+html[data-theme="light"] .source-selector span {
+  border-color: #d3ced9;
+  color: #393440;
+  background: #eeebf1;
+}
+html[data-theme="light"] .button:hover:not(:disabled),
+html[data-theme="light"] .report-tabs button:hover,
+html[data-theme="light"] .category-tabs button:hover {
+  background: #e4dfe8;
+}
+html[data-theme="light"] .report-tabs button.selected,
+html[data-theme="light"] .category-tabs button.selected {
+  border-color: #5c5366;
+  color: #fff;
+  background: #302b36;
+}
+html[data-theme="light"] input,
+html[data-theme="light"] textarea,
+html[data-theme="light"] select,
+html[data-theme="light"] .case-form input,
+html[data-theme="light"] .case-form textarea,
+html[data-theme="light"] .case-form select {
+  border-color: #d2cdd8;
+  color: #24212a;
+  background: #fff;
+}
+html[data-theme="light"] label {
+  color: #4b4652;
+}
+html[data-theme="light"] input::placeholder,
+html[data-theme="light"] textarea::placeholder {
+  color: #918a98;
+}
+html[data-theme="light"] .panel,
+html[data-theme="light"] .prediction-card,
+html[data-theme="light"] .poll-choice,
+html[data-theme="light"] .option-form,
+html[data-theme="light"] .audience-panel,
+html[data-theme="light"] .next-panel,
+html[data-theme="light"] .share-panel,
+html[data-theme="light"] .taste-map,
+html[data-theme="light"] .case-panel,
+html[data-theme="light"] .case-option,
+html[data-theme="light"] .freeze-panel,
+html[data-theme="light"] .proxy-section,
+html[data-theme="light"] .music-proxy-section,
+html[data-theme="light"] .benchmark-overview article,
+html[data-theme="light"] .benchmark-drawer,
+html[data-theme="light"] .case-navigation,
+html[data-theme="light"] .proxy-outcome,
+html[data-theme="light"] .proxy-branch-card,
+html[data-theme="light"] .verdict-chat,
+html[data-theme="light"] .prediction-step-feed {
+  border-color: #d8d4de;
+  color: #28242d;
+  background: #fff;
+  box-shadow: 0 14px 42px rgba(42, 34, 50, 0.06);
+}
+html[data-theme="light"] .prediction-card.agent-winner,
+html[data-theme="light"] .case-option:has(input:checked),
+html[data-theme="light"] .case-option.locked-selected {
+  border-color: #756786;
+  box-shadow: 0 0 0 1px rgba(117, 103, 134, 0.15);
+}
+html[data-theme="light"] .case-navigation {
+  background:
+    radial-gradient(
+      circle at 8% 0%,
+      rgba(142, 120, 255, 0.12),
+      transparent 40%
+    ),
+    #fff;
+}
+html[data-theme="light"] .case-navigation-primary > a {
+  border-color: #c9c0d6;
+  color: #29232f;
+  background: #f1edf6;
+}
+html[data-theme="light"] .case-navigation-primary > a:hover {
+  border-color: #826da0;
+  background: #e9e2f1;
+}
+html[data-theme="light"] .case-navigation-links a {
+  border-color: #d6d1dc;
+  color: #4a4450;
+}
+html[data-theme="light"] .score-track,
+html[data-theme="light"] .vote-track,
+html[data-theme="light"] .toggle-track {
+  background: #d9d5de;
+}
+html[data-theme="light"] .score-fill:not(.accent),
+html[data-theme="light"] .vote-track > div:not(.winning-bar) {
+  background: #8d8792;
+}
+html[data-theme="light"] .option-letter,
+html[data-theme="light"] .tiny-letter,
+html[data-theme="light"] .chip,
+html[data-theme="light"] .status-tag,
+html[data-theme="light"] .sample-tag,
+html[data-theme="light"] .prediction-mock-label {
+  border-color: #cbc6d1;
+  color: #48424f;
+  background: #f0edf2;
+}
+html[data-theme="light"] .prediction-step-feed > summary,
+html[data-theme="light"] .prediction-step-feed li.is-active,
+html[data-theme="light"] .prediction-step-feed li.is-done,
+html[data-theme="light"] .benchmark-drawer > summary,
+html[data-theme="light"] .case-navigation-copy > strong {
+  color: #28232d;
+}
+html[data-theme="light"] .prediction-step-body,
+html[data-theme="light"] .benchmark-drawer > .panel,
+html[data-theme="light"] .benchmark-methodology,
+html[data-theme="light"] .sample-score-context {
+  border-color: #ded9e2;
+}
+html[data-theme="light"]
+  .experiment-page
+  .sample-hero-heading
+  .hero-question-rotator {
+  color: #25202b;
+  text-shadow: 0 0 28px rgba(142, 120, 255, 0.1);
+}
+html[data-theme="light"] .experiment-page .sample-hero-heading {
+  border-left-color: rgba(112, 85, 147, 0.48);
+  background: radial-gradient(
+    circle at 4% 42%,
+    rgba(142, 120, 255, 0.1),
+    transparent 32%
+  );
+  box-shadow: inset 0 1px rgba(46, 38, 54, 0.05);
+}
+html[data-theme="light"] .experiment-page .sample-hero-heading::before {
+  color: #705993;
+}
+html[data-theme="light"] .hero-prompt-label {
+  color: #655870;
+}
+html[data-theme="light"] .hero-prompt-field {
+  border-color: #c9c1d0;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 14px 38px rgba(47, 38, 56, 0.08);
+}
+html[data-theme="light"] .hero-prompt-field:focus-within {
+  border-color: #715a92;
+  box-shadow:
+    0 0 0 3px rgba(113, 90, 146, 0.13),
+    0 18px 42px rgba(47, 38, 56, 0.1);
+}
+html[data-theme="light"] .hero-prompt-field input {
+  color: #241f29;
+  background: transparent;
+}
+html[data-theme="light"] .hero-prompt-field input::placeholder {
+  color: #77707d;
+}
+html[data-theme="light"] .hero-prompt-examples button {
+  border-color: #cec7d5;
+  color: #4d4555;
+  background: rgba(255, 255, 255, 0.72);
+}
+html[data-theme="light"] .hero-prompt-examples button:hover,
+html[data-theme="light"] .hero-prompt-examples button:focus-visible {
+  border-color: #806c98;
+  color: #211b27;
+  background: #eee8f3;
+}
+html[data-theme="light"] .option-description,
+html[data-theme="light"] .case-study p,
+html[data-theme="light"] .benchmark-overview small,
+html[data-theme="light"] .benchmark-overview span,
+html[data-theme="light"] .case-navigation p,
+html[data-theme="light"] .prediction-step-feed li small {
+  color: #69636f;
+}
+html[data-theme="light"] .sample-score-context > summary,
+html[data-theme="light"] .evidence-footer a {
+  color: #534b5e;
+}
+
+@media (max-width: 700px) {
+  .theme-toggle {
+    order: 2;
+  }
+}

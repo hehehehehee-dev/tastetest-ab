@@ -57,6 +57,7 @@ test("home stays a completed cafe example with a separate always-open live twin"
   await expect(page.locator(".mock-pill")).toHaveText(
     "Cafe demo · synthetic signals",
   );
+  await page.getByText("How to read these scores", { exact: true }).click();
   await expect(page.getByText("High heuristic confidence")).toBeVisible();
   await page.getByRole("checkbox", { name: "Keyword baseline" }).check();
   await expect(

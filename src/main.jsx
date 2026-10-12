@@ -22,11 +22,15 @@ import {
   AlertTriangle,
   Loader2,
   ArrowLeft,
+  ArrowRight,
   Link2,
+  Moon,
+  Sun,
 } from "lucide-react";
 import "./styles.css";
 import "./lab.css";
 import "./finish.css";
+import "./theme.css";
 import { toPng } from "html-to-image";
 import { TasteMap } from "./interactions.jsx";
 import CaseStudy from "./CaseStudy.jsx";
@@ -39,6 +43,7 @@ import FAQ from "./FAQ.jsx";
 import VerdictInsights from "./VerdictInsights.jsx";
 import VerdictChat from "./VerdictChat.jsx";
 import PredictionStepFeed from "./PredictionStepFeed.jsx";
+import HeroQuestionRotator from "./HeroQuestionRotator.jsx";
 import { normalizedOutcomeMargin } from "./verdictReport.mjs";
 import {
   beginPredictionStep,
@@ -60,6 +65,21 @@ const categoryIcons = {
   Brands: Tag,
   Books: BookOpen,
 };
+const THEME_KEY = "tastetest-theme";
+function readTheme() {
+  try {
+    const saved = localStorage.getItem(THEME_KEY);
+    if (saved === "light" || saved === "dark") return saved;
+  } catch {
+    // Storage can be unavailable in privacy modes; the dark product theme remains.
+  }
+  return "dark";
+}
+function applyTheme(theme) {
+  document.documentElement.dataset.theme = theme;
+  document.documentElement.style.colorScheme = theme;
+}
+applyTheme(readTheme());
 const seedGuidance = {
   Music: "Search for an artist your audience actually likes.",
   "Film/TV":
@@ -229,16 +249,23 @@ function OptionImage({ option }) {
   ) : null;
 }
 function Header({ label }) {
+  const [theme, setTheme] = useState(readTheme);
+  useEffect(() => {
+    applyTheme(theme);
+    try {
+      localStorage.setItem(THEME_KEY, theme);
+    } catch {
+      // The toggle still works for the current page when storage is unavailable.
+    }
+  }, [theme]);
   return (
     <header className="topbar">
       <div className="topbar-inner">
         <a
           className="brand"
           href="/"
-          onClick={(e) => {
-            e.preventDefault();
-            navigate("/");
-          }}
+          aria-label="TasteTest A/B — Home"
+          title="Back to home"
         >
           <span className="brand-mark">
             <BarChart3 size={20} />
@@ -247,6 +274,19 @@ function Header({ label }) {
         </a>
         <div className="header-right">
           {label && <span className="mock-pill">{label}</span>}
+          <button
+            className="theme-toggle"
+            type="button"
+            aria-label={
+              theme === "dark" ? "Switch to light mode" : "Switch to dark mode"
+            }
+            title={theme === "dark" ? "Light mode" : "Dark mode"}
+            onClick={() =>
+              setTheme((current) => (current === "dark" ? "light" : "dark"))
+            }
+          >
+            {theme === "dark" ? <Sun size={17} /> : <Moon size={17} />}
+          </button>
           <a className="header-cases" href="/benchmark">
             Explore cases
           </a>
@@ -289,10 +329,80 @@ function Steps({ active }) {
   );
 }
 
+const heroPromptExamples = [
+  ["Two poster designs", "Two poster designs — which one gets people in?"],
+  ["Two menu specials", "Two menu specials — which one sells out first?"],
+  ["Two event themes", "Two event themes — which one fills the room?"],
+];
+
+function HeroPromptInput() {
+  const [value, setValue] = useState("");
+  const [emptySubmit, setEmptySubmit] = useState(false);
+  const inputRef = useRef(null);
+
+  function submit(event) {
+    event.preventDefault();
+    const prompt = value.trim();
+    if (!prompt) {
+      setEmptySubmit(true);
+      inputRef.current?.focus();
+      return;
+    }
+    navigate(`/create?prompt=${encodeURIComponent(prompt)}`);
+  }
+
+  return (
+    <form
+      className={`hero-prompt${emptySubmit ? " is-empty" : ""}`}
+      onSubmit={submit}
+      onAnimationEnd={() => setEmptySubmit(false)}
+    >
+      <label className="hero-prompt-label" htmlFor="hero-decision">
+        Start with your decision
+      </label>
+      <div className="hero-prompt-field">
+        <input
+          id="hero-decision"
+          ref={inputRef}
+          value={value}
+          onChange={(event) => {
+            setValue(event.target.value);
+            setEmptySubmit(false);
+          }}
+          placeholder="Describe your A/B decision…"
+          maxLength={100}
+        />
+        <button type="submit" aria-label="Create a test from this decision">
+          <ArrowRight size={20} aria-hidden="true" />
+        </button>
+      </div>
+      <div className="hero-prompt-examples" aria-label="Example decisions">
+        {heroPromptExamples.map(([label, example]) => (
+          <button
+            type="button"
+            key={label}
+            onClick={() => {
+              setValue(example);
+              setEmptySubmit(false);
+              inputRef.current?.focus();
+            }}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+    </form>
+  );
+}
+
 function CreateTest({ mode }) {
+  const promptPrefill = new URLSearchParams(window.location.search)
+    .get("prompt")
+    ?.trim()
+    .slice(0, 100);
   const [insightCategory, setInsightCategory] = useState("Dining");
   const [options, setOptions] = useState([
-    { title: "", description: "", imageUrl: "" },
+    { title: promptPrefill || "", description: "", imageUrl: "" },
     { title: "", description: "", imageUrl: "" },
   ]);
   const [query, setQuery] = useState("");
@@ -671,7 +781,34 @@ function CreateTest({ mode }) {
     </main>
   );
 }
-function Prediction({ test, compact = false, without, setWithout }) {
+function ConfidenceNote({ confidence, without, mode }) {
+  return (
+    <div className="confidence-note" role="status">
+      <strong>
+        {confidence.tooClose
+          ? "Too close to call"
+          : `${confidence.level} heuristic confidence`}
+      </strong>
+      <span>
+        Fit gap: {confidence.gap} points · affinity contribution gap:{" "}
+        {confidence.affinityGap} points.{" "}
+        {without
+          ? "Keyword baseline separation."
+          : mode === "real"
+            ? "Real API signals; locally scored."
+            : "Synthetic signals only."}{" "}
+        Not a calibrated likelihood of being correct.
+      </span>
+    </div>
+  );
+}
+function Prediction({
+  test,
+  compact = false,
+  without,
+  setWithout,
+  showAudience = false,
+}) {
   const scores = without ? test.baseline : test.prediction;
   const winner = winnerFor(scores);
   const confidence = predictionConfidence(scores);
@@ -692,31 +829,28 @@ function Prediction({ test, compact = false, without, setWithout }) {
           <span className="toggle-track" aria-hidden="true" />
         </label>
       </div>
-      <p className="comparison-note">
-        {without
-          ? "Keyword baseline · exact word overlap only"
-          : test.mode === "real"
-            ? "Real Qloo affinities · local concept/tag-fit heuristic"
-            : "Mock cultural model · synthetic affinity + shared taste tags"}
-        <span>Scores indicate fit, not vote probability.</span>
-      </p>
-      <div className="confidence-note" role="status">
-        <strong>
-          {confidence.tooClose
-            ? "Too close to call"
-            : `${confidence.level} heuristic confidence`}
-        </strong>
-        <span>
-          Fit gap: {confidence.gap} points · affinity contribution gap:{" "}
-          {confidence.affinityGap} points.{" "}
-          {without
-            ? "Keyword baseline separation."
-            : test.mode === "real"
-              ? "Real API signals; locally scored."
-              : "Synthetic signals only."}{" "}
-          Not a calibrated likelihood of being correct.
-        </span>
-      </div>
+      {showAudience && (
+        <div className="prediction-audience">
+          <Audience test={test} />
+        </div>
+      )}
+      {!showAudience && (
+        <>
+          <p className="comparison-note">
+            {without
+              ? "Keyword baseline · exact word overlap only"
+              : test.mode === "real"
+                ? "Real Qloo affinities · local concept/tag-fit heuristic"
+                : "Mock cultural model · synthetic affinity + shared taste tags"}
+            <span>Scores indicate fit, not vote probability.</span>
+          </p>
+          <ConfidenceNote
+            confidence={confidence}
+            without={without}
+            mode={test.mode}
+          />
+        </>
+      )}
       <div className="option-grid">
         {test.options.map((option, i) => (
           <article
@@ -786,6 +920,22 @@ function Prediction({ test, compact = false, without, setWithout }) {
           </article>
         ))}
       </div>
+      {showAudience && (
+        <details className="sample-score-context">
+          <summary>How to read these scores</summary>
+          <p className="comparison-note">
+            {without
+              ? "Keyword baseline · exact word overlap only"
+              : "Mock cultural model · synthetic affinity + shared taste tags"}
+            <span>Scores indicate fit, not vote probability.</span>
+          </p>
+          <ConfidenceNote
+            confidence={confidence}
+            without={without}
+            mode={test.mode}
+          />
+        </details>
+      )}
       {test.mode === "real" && !without && (
         <details className="qloo-provenance panel">
           <summary>Real Qloo signals used</summary>
@@ -1336,35 +1486,41 @@ function TestView({ id, sample = false }) {
           </a>
         </div>
       )}
-      <div className="page-heading experiment-heading">
+      <div
+        className={`page-heading experiment-heading${sample ? " sample-hero-heading" : ""}`}
+      >
         <div className="experiment-title">
-          <div className="test-meta">
-            <span className={`status-tag ${test.closedAt ? "" : "live"}`}>
-              {test.closedAt ? <CheckCircle2 size={12} /> : <Radio size={12} />}
-              {test.closedAt
-                ? "Completed"
-                : test.isPairedComparison && !test.pollOpenedAt
-                  ? "Predictions locked"
-                  : test.freezeRequired
-                    ? test.lifecycle
-                    : "Live test"}
-            </span>
-            <span>
-              {sample
-                ? "Bloomington, IN · Independent cafe"
-                : `${test.seeds.length} taste seeds · Created ${new Date(test.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`}
-            </span>
-          </div>
-          <h1 title={test.title}>
-            {sample ? (
-              <>
-                Which poster{" "}
-                <span className="heading-muted">gets them in?</span>
-              </>
-            ) : (
-              test.title
-            )}
-          </h1>
+          {!sample && (
+            <div className="test-meta">
+              <span className={`status-tag ${test.closedAt ? "" : "live"}`}>
+                {test.closedAt ? (
+                  <CheckCircle2 size={12} />
+                ) : (
+                  <Radio size={12} />
+                )}
+                {test.closedAt
+                  ? "Completed"
+                  : test.isPairedComparison && !test.pollOpenedAt
+                    ? "Predictions locked"
+                    : test.freezeRequired
+                      ? test.lifecycle
+                      : "Live test"}
+              </span>
+              <span>
+                {test.seeds.length} taste seeds · Created{" "}
+                {new Date(test.createdAt).toLocaleDateString("en-US", {
+                  month: "short",
+                  day: "numeric",
+                })}
+              </span>
+            </div>
+          )}
+          {sample ? (
+            <HeroQuestionRotator />
+          ) : (
+            <h1 title={test.title}>{test.title}</h1>
+          )}
+          {sample && <HeroPromptInput />}
           <p>
             {sample
               ? "Two creative directions. One taste-defined audience. A decision backed by votes."
@@ -1373,7 +1529,7 @@ function TestView({ id, sample = false }) {
                 : "See what your audience chooses, then make the call."}
           </p>
         </div>
-        <Audience test={test} />
+        {!sample && <Audience test={test} />}
       </div>
       {test.closedAt && (
         <nav className="report-tabs" aria-label="Report view">
@@ -1400,7 +1556,12 @@ function TestView({ id, sample = false }) {
           {test.isPairedComparison ? (
             <AiComparison test={test} />
           ) : test.prediction ? (
-            <Prediction test={test} without={without} setWithout={setWithout} />
+            <Prediction
+              test={test}
+              without={without}
+              setWithout={setWithout}
+              showAudience={sample}
+            />
           ) : (
             <p className="panel">
               Predictions remain private until the poll closes.
