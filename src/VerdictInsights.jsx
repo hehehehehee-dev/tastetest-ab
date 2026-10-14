@@ -24,6 +24,7 @@ export default function VerdictInsights({
   baselineNote,
   branchKeys,
   branchLabels,
+  illustrativePick = null,
 }) {
   const rows = verdictBranchRows(branches, grades, actual, {
     ...(branchKeys ? { keys: branchKeys } : {}),
@@ -42,14 +43,20 @@ export default function VerdictInsights({
   const displayedSurprises = hasRecordedBranch
     ? surprises
     : [
-        "No branch-level surprise can be assessed for this illustrative sample.",
+        illustrativePick === actual
+          ? `The illustrative concept-fit prediction matched the sample outcome: Option ${actual}.`
+          : `The illustrative concept-fit prediction and sample outcome selected different options.`,
       ];
   return (
     <>
       <section className="verdict-report-section verdict-disagreement">
         <div className="verdict-section-label">02</div>
         <div>
-          <h3>Where we disagreed</h3>
+          <h3>
+            {hasRecordedBranch
+              ? "Where we disagreed"
+              : "How the sample prediction compared"}
+          </h3>
           {baselineNote && (
             <p className="verdict-context-note">{baselineNote}</p>
           )}
@@ -82,7 +89,13 @@ export default function VerdictInsights({
             </>
           ) : (
             <p className="verdict-empty-branches">
-              Branch comparison was not recorded for this illustrative sample.
+              This demo records one concept-fit prediction: Option{" "}
+              {illustrativePick}
+              {fitGap == null
+                ? ""
+                : ` with a ${Math.round(fitGap)}-point fit gap`}
+              . AI-only and Qloo were not run as separate branches for this
+              illustrative sample.
             </p>
           )}
         </div>
@@ -90,7 +103,9 @@ export default function VerdictInsights({
       <section className="verdict-report-section verdict-surprises">
         <div className="verdict-section-label">03</div>
         <div>
-          <h3>What surprised us</h3>
+          <h3>
+            {hasRecordedBranch ? "What surprised us" : "What the sample shows"}
+          </h3>
           <ul>
             {displayedSurprises.map((note) => (
               <li key={note}>{note}</li>
@@ -103,9 +118,7 @@ export default function VerdictInsights({
         <div>
           <h3>How this verdict was built</h3>
           <p>{grounding}</p>
-          <a href={baselineHref}>
-            Without Qloo / keyword baseline comparison ↗
-          </a>
+          <a href={baselineHref}>Without Qloo / keyword baseline comparison</a>
         </div>
       </section>
     </>

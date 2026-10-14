@@ -1,4 +1,44 @@
 import React, { useState } from "react";
+import QlooEvidence from "./QlooEvidence.jsx";
+import PredictionStepFeed from "./PredictionStepFeed.jsx";
+
+function QlooSeparation({ branch }) {
+  const direct = branch.method === "direct-entity-affinity";
+  const recordedAffinities = branch.affinities;
+  const gap = Number.isFinite(branch.scoreGap)
+    ? branch.scoreGap
+    : direct &&
+        recordedAffinities?.length === 2 &&
+        recordedAffinities.every((item) => Number.isFinite(item.affinity))
+      ? Math.abs(
+          recordedAffinities[0].affinity - recordedAffinities[1].affinity,
+        ) * 100
+      : null;
+  if (gap === null)
+    return (
+      <p className="muted qloo-separation-summary">
+        Score gap was not recorded in this receipt. The legacy separation rating
+        was assigned by TasteTest, not reported by Qloo.
+      </p>
+    );
+  const value = direct ? gap / 100 : gap;
+  const decimals = direct ? 6 : 3;
+  const displayed =
+    value > 0 && value < 10 ** -decimals
+      ? `<${(10 ** -decimals).toFixed(decimals)}`
+      : value.toFixed(decimals);
+  return (
+    <p className="muted qloo-separation-summary">
+      {direct ? "Affinity gap" : "Text-score gap"}: {displayed}
+      {direct ? "" : " points"} ·{" "}
+      {gap < 10 ? "Low" : gap < 25 ? "Moderate" : "High"} separation.
+      <br />
+      Calculated by TasteTest
+      {direct ? " from Qloo affinity" : " from local text scores"}; not
+      Qloo-reported prediction confidence.
+    </p>
+  );
+}
 
 export default function AiComparison({ test }) {
   const [downloaded, setDownloaded] = useState(false);
@@ -12,6 +52,23 @@ export default function AiComparison({ test }) {
     );
   const { payload } = receipt;
   const result = test.verdict?.paired;
+  const threeBranches = !!payload.qloo;
+  const branches = threeBranches
+    ? [
+        ["aiOnly", "LLM-only", "Concepts + audience tastes"],
+        [
+          "qloo",
+          "Qloo",
+          payload.qloo.method === "direct-entity-affinity"
+            ? "Direct affinity for confirmed entities"
+            : "Local concept fit · declared fallback",
+        ],
+        ["aiQloo", "Agent", "LLM + available Qloo audience context"],
+      ]
+    : [
+        ["aiOnly", "AI only", "Concepts + audience tastes"],
+        ["aiQloo", "AI + Qloo", "Same input + real Qloo tags and affinities"],
+      ];
   function download() {
     const url = URL.createObjectURL(
       new Blob(
@@ -39,26 +96,29 @@ export default function AiComparison({ test }) {
   }
   return (
     <section className="ai-comparison" aria-label="Paired AI comparison">
+      <QlooEvidence test={test} />
+      {test.predictionWork?.steps?.every((step) => step.status === "done") && (
+        <PredictionStepFeed work={test.predictionWork} />
+      )}
       <div className="section-heading">
         <div>
           <div className="eyebrow">LOCKED BEFORE VOTING</div>
-          <h2>AI only vs. AI + Qloo</h2>
+          <h2>
+            {threeBranches ? "Three frozen branches" : "AI only vs. AI + Qloo"}
+          </h2>
         </div>
         <button className="button subtle" onClick={download}>
           Download prediction receipt
         </button>
       </div>
       <p className="comparison-note">
-        Provider: {payload.provider || "openai"} · Same model:{" "}
+        AI branches: {payload.provider || "openai"} · Same model:{" "}
         <strong>{payload.requestedModel || payload.model}</strong> · Same
-        concepts, audience and instructions. Only the Qloo context changes. Text
-        descriptions only; images are not evaluated.
+        concepts, audience and instructions. Only the Agent receives Qloo
+        context. Text descriptions only; images are not evaluated.
       </p>
-      <div className="option-grid">
-        {[
-          ["aiOnly", "AI only", "Concepts + audience tastes"],
-          ["aiQloo", "AI + Qloo", "Same input + real Qloo tags and affinities"],
-        ].map(([key, title, description]) => (
+      <div className={`option-grid${threeBranches ? " three-branches" : ""}`}>
+        {branches.map(([key, title, description]) => (
           <article className="panel ai-choice" key={key}>
             <span className="eyebrow">{description}</span>
             <h3>{title}</h3>
@@ -67,17 +127,54 @@ export default function AiComparison({ test }) {
                 ? "No clear pick"
                 : `Option ${payload[key].choice}`}
             </div>
-            <p>{payload[key].rationale}</p>
-            <p className="muted">
-              Self-reported confidence: {payload[key].confidence}/100 · Not
-              calibrated.
+            <p>
+              {key === "qloo" &&
+              payload[key].method === "direct-entity-affinity"
+                ? payload[key].choice === "TIE"
+                  ? "Qloo abstained in this frozen prediction. See the receipt for the recorded decision rule."
+                  : `${test.options[payload[key].choice === "A" ? 0 : 1].title} has the higher recorded affinity.`
+                : payload[key].rationale}
             </p>
+            {key === "qloo" && payload[key].fallback && (
+              <span className="qloo-fallback-badge">
+                Qloo: no data for these options — heuristic fallback
+              </span>
+            )}
+            {key === "qloo" &&
+              payload[key].fallback &&
+              test.mode === "real" &&
+              test.insights?.length > 0 && (
+                <p className="muted qloo-signal-explanation">
+                  Qloo returned audience signals. These custom options have no
+                  direct entity affinity; this branch uses local text scoring.
+                  The Agent also receives the Qloo audience context.
+                </p>
+              )}
+            {key === "qloo" ? (
+              <QlooSeparation branch={payload[key]} />
+            ) : (
+              <p className="muted">
+                Self-reported confidence: {payload[key].confidence}/100 · Not
+                calibrated.
+              </p>
+            )}
             <span className="ai-grade">
-              {result ? result[key] : "LOCKED · Awaiting audience votes"}
+              {result
+                ? key === "aiQloo" && threeBranches
+                  ? result.agent || result.aiQloo
+                  : result[key]
+                : "LOCKED · Awaiting audience votes"}
             </span>
           </article>
         ))}
       </div>
+      {payload.qloo?.noSignalTie && (
+        <div className="segment-note no-signal-note" role="status">
+          <strong>
+            No affinity signal for either option — prediction abstains.
+          </strong>
+        </div>
+      )}
       {result && (
         <div className="panel paired-result">
           <h3>Locked choices / audience result</h3>
@@ -85,14 +182,16 @@ export default function AiComparison({ test }) {
             <table>
               <thead>
                 <tr>
-                  <th>AI only</th>
-                  <th>AI + Qloo</th>
+                  <th>{threeBranches ? "LLM-only" : "AI only"}</th>
+                  {threeBranches && <th>Qloo</th>}
+                  <th>{threeBranches ? "Agent" : "AI + Qloo"}</th>
                   <th>Audience</th>
                 </tr>
               </thead>
               <tbody>
                 <tr>
                   <td>{payload.aiOnly.choice}</td>
+                  {threeBranches && <td>{payload.qloo.choice}</td>}
                   <td>{payload.aiQloo.choice}</td>
                   <td>
                     {result.actual || "No winner"} · {result.total} votes
@@ -100,7 +199,8 @@ export default function AiComparison({ test }) {
                 </tr>
                 <tr>
                   <td>{result.aiOnly}</td>
-                  <td>{result.aiQloo}</td>
+                  {threeBranches && <td>{result.qloo}</td>}
+                  <td>{threeBranches ? result.agent : result.aiQloo}</td>
                   <td>{result.status}</td>
                 </tr>
               </tbody>
@@ -128,8 +228,14 @@ export default function AiComparison({ test }) {
           <p>
             Returned versions: {payload.aiOnly.returnedVersion} /{" "}
             {payload.aiQloo.returnedVersion}.{" "}
-            {payload.aiOnly.versionVerification}{" "}
-            {payload.aiQloo.versionVerification}
+            {[
+              ...new Set(
+                [
+                  payload.aiOnly.versionVerification,
+                  payload.aiQloo.versionVerification,
+                ].filter(Boolean),
+              ),
+            ].join(" ")}
           </p>
         )}
         <p>

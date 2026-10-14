@@ -1,5 +1,5 @@
 export const branchLabels = {
-  llm: "LLM-only",
+  llm: "AI-only",
   qloo: "Qloo",
   agent: "Agent",
 };

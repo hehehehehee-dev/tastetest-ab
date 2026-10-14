@@ -4,8 +4,15 @@ const fail = (message, status = 502) => {
   throw Object.assign(Error(message), { status });
 };
 const uuid = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
-const list = (body) =>
-  Array.isArray(body.results) ? body.results : body.results?.entities;
+const list = (body, resultKey = "entities") =>
+  Array.isArray(body.results) ? body.results : body.results?.[resultKey];
+const profileTagTypes = {
+  [typeUrns.Music]: "urn:tag:genre:music",
+  [typeUrns["Film/TV"]]: "urn:tag:genre:media",
+  [typeUrns.Dining]: "urn:tag:cuisine:qloo",
+  [typeUrns.Brands]: "urn:tag:genre:brand",
+  [typeUrns.Books]: "urn:tag:genre:media",
+};
 export function normalizeEntity(entity, type = "") {
   const id = entity.entity_id || entity.id;
   if (!uuid.test(id || "") || typeof entity.name !== "string")
@@ -61,7 +68,7 @@ export function createQlooClient({
   let queue = Promise.resolve(),
     lastRequest = 0,
     blockedUntil = 0;
-  async function request(path, params) {
+  async function request(path, params, resultKey = "entities") {
     if (!key) fail("Qloo real mode needs a server-side QLOO_API_KEY.", 503);
     const url = new URL(path, baseUrl);
     if (
@@ -128,7 +135,7 @@ export function createQlooClient({
       } catch {
         fail("Qloo returned invalid JSON.");
       }
-      if (body.success === false || !Array.isArray(list(body)))
+      if (body.success === false || !Array.isArray(list(body, resultKey)))
         fail("Qloo returned an unsupported response.");
       if (cache.size >= 200) cache.delete(cache.keys().next().value);
       const captured = { ...body, _fetchedAt: new Date().toISOString() };
@@ -144,6 +151,67 @@ export function createQlooClient({
     }
   }
   return {
+    async getTasteProfile(ids, targetType) {
+      const tagType = profileTagTypes[targetType];
+      if (
+        !tagType ||
+        !Array.isArray(ids) ||
+        !ids.length ||
+        ids.length > 5 ||
+        ids.some((id) => !uuid.test(id))
+      )
+        fail(
+          "Taste Analysis needs valid audience IDs and a supported category.",
+          400,
+        );
+      const body = await request(
+        "/v2/insights",
+        {
+          "filter.type": "urn:tag",
+          "signal.interests.entities": ids.join(","),
+          "filter.parents.types": targetType,
+          "filter.tag.types": tagType,
+          "feature.explainability": true,
+          take: 5,
+        },
+        "tags",
+      );
+      const seen = new Set();
+      const tags = list(body, "tags")
+        .map((tag) => {
+          const id = tag.tag_id || tag.id;
+          if (
+            typeof id !== "string" ||
+            !id.startsWith(`${tagType}:`) ||
+            seen.has(id) ||
+            typeof tag.name !== "string" ||
+            !tag.name.trim() ||
+            !Number.isFinite(tag.query?.affinity) ||
+            tag.query.affinity < 0 ||
+            tag.query.affinity > 1
+          )
+            fail(
+              "Qloo returned an unsupported or incorrectly scoped taste profile.",
+            );
+          seen.add(id);
+          return {
+            tag_id: id,
+            name: tag.name.trim(),
+            type: tagType,
+            affinity: tag.query.affinity,
+          };
+        })
+        .sort((a, b) => b.affinity - a.affinity)
+        .slice(0, 5);
+      return {
+        mode: "real",
+        status: tags.length ? "available" : "empty",
+        fetchedAt: body._fetchedAt,
+        targetType,
+        tagType,
+        tags,
+      };
+    },
     async searchEntities(query = "", type = "") {
       if (!query.trim()) return { results: { entities: [] }, mode: "real" };
       const urn = typeUrns[type] || type;

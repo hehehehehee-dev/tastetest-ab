@@ -11,7 +11,9 @@ const questions = [
 test("homepage hero rotates all four questions in order without shifting", async ({
   page,
 }) => {
-  await page.clock.install();
+  const testTime = new Date("2026-10-13T12:00:00Z");
+  await page.clock.install({ time: testTime });
+  await page.clock.pauseAt(testTime);
   await page.goto("/");
   const rotator = page.locator(".hero-question-rotator");
   await expect(page.locator(".sample-hero-heading .status-tag")).toHaveCount(0);
@@ -38,7 +40,7 @@ test("homepage hero rotates all four questions in order without shifting", async
         (element) => element.getBoundingClientRect().height,
       ),
     ).toBe(initialHeight);
-    if (index < questions.length - 1) await page.clock.fastForward(3300);
+    if (index < questions.length - 1) await page.clock.fastForward(4300);
   }
 });
 
@@ -46,7 +48,9 @@ test("reduced motion keeps one static first question and starts no rotation", as
   page,
 }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
-  await page.clock.install();
+  const testTime = new Date("2026-10-13T12:00:00Z");
+  await page.clock.install({ time: testTime });
+  await page.clock.pauseAt(testTime);
   await page.goto("/");
   const rotator = page.locator(".hero-question-rotator");
 

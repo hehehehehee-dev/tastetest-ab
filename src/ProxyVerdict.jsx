@@ -4,7 +4,7 @@ import VerdictInsights from "./VerdictInsights.jsx";
 import VerdictChat from "./VerdictChat.jsx";
 import { normalizedOutcomeMargin } from "./verdictReport.mjs";
 
-export default function ProxyVerdict({ run, music = false }) {
+export default function ProxyVerdict({ run, music = false, canChat = false }) {
   const card = useRef(null);
   const [exporting, setExporting] = useState(false);
   const [notice, setNotice] = useState("");
@@ -89,6 +89,24 @@ export default function ProxyVerdict({ run, music = false }) {
         >
           {exporting ? "Exporting…" : "Share verdict image"}
         </button>
+        {canChat && (
+          <button
+            type="button"
+            className="button subtle"
+            onClick={() => {
+              const chat = document.getElementById(
+                `verdict-chat-${music ? "music" : "film"}-${run.id}`,
+              );
+              if (chat) {
+                chat.open = true;
+                chat.querySelector("summary")?.focus();
+                chat.scrollIntoView({ block: "center" });
+              }
+            }}
+          >
+            Ask about this result
+          </button>
+        )}
       </div>
       <section
         ref={card}
@@ -176,7 +194,7 @@ export default function ProxyVerdict({ run, music = false }) {
           grades={grades}
           actual={outcome.actual}
           branchKeys={["llm", "qloo"]}
-          branchLabels={{ llm: "AI (Replicate API)", qloo: "Qloo" }}
+          branchLabels={{ llm: "AI-only (Replicate API)", qloo: "Qloo" }}
           actualMargin={actualMargin}
           fitGap={fitGap}
           marginName={music ? "Listening margin" : "Rating margin"}
@@ -186,21 +204,23 @@ export default function ProxyVerdict({ run, music = false }) {
         <div className="proxy-verdict-footer">
           <p>
             Historical preferences, not business results or causal effects. This
-            proxy never contributes to Track B.
+            proxy never contributes to the live evidence benchmark (Track B).
           </p>
-          <a href="/benchmark">View separate proxy tally ↗</a>
+          <a href="/benchmark">View separate proxy tally</a>
         </div>
       </section>
-      <VerdictChat
-        endpoint={`/api/${music ? "music-proxy" : "proxy"}/runs/${run.id}/chat`}
-        verdictKey={`${music ? "music" : "film"}-${run.id}`}
-        headers={{
-          "x-owner-token":
-            localStorage.getItem(
-              `${music ? "tastetest-music-proxy-owner" : "tastetest-proxy-owner"}-${run.id}`,
-            ) || "",
-        }}
-      />
+      {canChat && (
+        <VerdictChat
+          endpoint={`/api/${music ? "music-proxy" : "proxy"}/runs/${run.id}/chat`}
+          verdictKey={`${music ? "music" : "film"}-${run.id}`}
+          headers={{
+            "x-owner-token":
+              localStorage.getItem(
+                `${music ? "tastetest-music-proxy-owner" : "tastetest-proxy-owner"}-${run.id}`,
+              ) || "",
+          }}
+        />
+      )}
       {notice && (
         <p role="status" className="export-notice">
           {notice}

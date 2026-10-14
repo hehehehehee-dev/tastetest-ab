@@ -32,11 +32,11 @@ import "./lab.css";
 import "./finish.css";
 import "./theme.css";
 import { toPng } from "html-to-image";
-import { TasteMap } from "./interactions.jsx";
+import { TasteFlow } from "./interactions.jsx";
 import CaseStudy from "./CaseStudy.jsx";
 import AiComparison from "./AiComparison.jsx";
 import Benchmark from "./Benchmark.jsx";
-import FreezePanel from "./FreezePanel.jsx";
+import FreezePanel, { ManualFields } from "./FreezePanel.jsx";
 import ProxyCase from "./ProxyBenchmark.jsx";
 import MusicCase from "./MusicProxy.jsx";
 import FAQ from "./FAQ.jsx";
@@ -44,6 +44,8 @@ import VerdictInsights from "./VerdictInsights.jsx";
 import VerdictChat from "./VerdictChat.jsx";
 import PredictionStepFeed from "./PredictionStepFeed.jsx";
 import HeroQuestionRotator from "./HeroQuestionRotator.jsx";
+import OptionEntityPicker from "./OptionEntityPicker.jsx";
+import TestContextMeter from "./TestContextMeter.jsx";
 import PollShareCard, { VoteGoal } from "./PollShareCard.jsx";
 import { normalizedOutcomeMargin } from "./verdictReport.mjs";
 import {
@@ -87,7 +89,7 @@ const seedGuidance = {
   "Film/TV":
     "Search for a specific movie title. Studios such as A24 belong in Brands, not movie-title search.",
   Dining:
-    "Search for a named cafe or restaurant your audience actually likes. Results are individual venues, not general tastes such as independent coffee shops.",
+    "Search for a named cafe or restaurant your audience actually likes. Results are individual venues, not general tastes such as independent coffee shops. Check the address and select the exact location they like.",
   Brands:
     "Search for a named brand or studio, such as A24. Select the entity returned by Qloo; a brand is not interchangeable with one of its films.",
   Books: "Search for a specific book title your audience actually likes.",
@@ -282,10 +284,6 @@ function Header({ label }) {
           href="/"
           aria-label="TasteTest A/B — Home"
           title="Back to home"
-          onClick={(event) => {
-            event.preventDefault();
-            navigate("/");
-          }}
         >
           <span className="brand-mark">
             <BarChart3 size={20} />
@@ -293,7 +291,17 @@ function Header({ label }) {
           TasteTest<span className="brand-ab">A/B</span>
         </a>
         <div className="header-right">
-          {label && <span className="mock-pill">{label}</span>}
+          {label && (
+            <a
+              className="mock-pill"
+              href="/faq#data-sources"
+              aria-label={`${label}. Read the data-source explanation`}
+              title="Read the data-source explanation"
+            >
+              {label}
+              <CircleHelp size={14} aria-hidden="true" />
+            </a>
+          )}
           <button
             className="theme-toggle"
             type="button"
@@ -317,14 +325,7 @@ function Header({ label }) {
           >
             Explore cases
           </a>
-          <a
-            href="/create"
-            onClick={(e) => {
-              e.preventDefault();
-              navigate("/create");
-            }}
-            className="header-new"
-          >
+          <a href="/create" className="header-new">
             <Plus size={15} /> New test
           </a>
         </div>
@@ -357,15 +358,52 @@ function Steps({ active }) {
 }
 
 const heroPromptExamples = [
-  ["Two poster designs", "Two poster designs — which one gets people in?"],
-  ["Two menu specials", "Two menu specials — which one sells out first?"],
-  ["Two event themes", "Two event themes — which one fills the room?"],
+  ["Two poster designs", "Minimal poster vs Colorful poster"],
+  ["Two menu specials", "Phở gà vs Bún chả"],
+  ["Two event themes", "Acoustic night vs Dance party"],
 ];
+
+function splitHeroDecision(prompt) {
+  const withAudienceHint = (optionA, rawOptionB) => {
+    const markerPattern = /\s+(?:dành cho|for|cho)\s+/gi;
+    let marker;
+    let lastMarker = null;
+    while ((marker = markerPattern.exec(rawOptionB))) lastMarker = marker;
+    if (lastMarker) {
+      const audience = rawOptionB
+        .slice(lastMarker.index + lastMarker[0].length)
+        .trim();
+      const optionB = rawOptionB.slice(0, lastMarker.index).trim();
+      if (optionB && audience.split(/\s+/u).length >= 2)
+        return { optionA, optionB, audience };
+    }
+    return { optionA, optionB: rawOptionB };
+  };
+
+  const dashSeparator = prompt.indexOf(" - ");
+  if (dashSeparator > 0) {
+    const optionA = prompt.slice(0, dashSeparator).trim();
+    const remainder = prompt.slice(dashSeparator + 3).trim();
+    const contextSeparator = remainder.search(/\s+[—–]\s+/);
+    const optionB = (
+      contextSeparator >= 0 ? remainder.slice(0, contextSeparator) : remainder
+    ).trim();
+    if (optionA && optionB) return withAudienceHint(optionA, optionB);
+  }
+
+  const separator = prompt.match(/\s+(?:vs\.?|or|hay|hoặc)\s+/i);
+  if (separator?.index === undefined) return null;
+  const optionA = prompt.slice(0, separator.index).trim();
+  const optionB = prompt.slice(separator.index + separator[0].length).trim();
+  return optionA && optionB ? withAudienceHint(optionA, optionB) : null;
+}
 
 function HeroPromptInput() {
   const [value, setValue] = useState("");
   const [emptySubmit, setEmptySubmit] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const inputRef = useRef(null);
+  const navigationTimerRef = useRef(null);
 
   useEffect(() => {
     const focusPrompt = (event) => {
@@ -385,15 +423,29 @@ function HeroPromptInput() {
     return () => window.removeEventListener("keydown", focusPrompt);
   }, []);
 
+  useEffect(() => () => window.clearTimeout(navigationTimerRef.current), []);
+
   function submit(event) {
     event.preventDefault();
+    if (submitting) return;
     const prompt = value.trim();
     if (!prompt) {
       setEmptySubmit(true);
       inputRef.current?.focus();
       return;
     }
-    navigate(`/create?prompt=${encodeURIComponent(prompt)}`);
+
+    const split = splitHeroDecision(prompt);
+    let destination = `/create?prompt=${encodeURIComponent(prompt)}`;
+    if (split) {
+      destination = `/create?optionA=${encodeURIComponent(split.optionA)}&optionB=${encodeURIComponent(split.optionB)}${split.audience ? `&audience=${encodeURIComponent(split.audience)}` : ""}`;
+    }
+
+    setSubmitting(true);
+    navigationTimerRef.current = window.setTimeout(
+      () => navigate(destination),
+      500,
+    );
   }
 
   return (
@@ -401,6 +453,7 @@ function HeroPromptInput() {
       className={`hero-prompt${emptySubmit ? " is-empty" : ""}`}
       onSubmit={submit}
       onAnimationEnd={() => setEmptySubmit(false)}
+      aria-busy={submitting}
     >
       <label className="hero-prompt-label" htmlFor="hero-decision">
         <span>Start with your decision</span>
@@ -411,6 +464,7 @@ function HeroPromptInput() {
           id="hero-decision"
           ref={inputRef}
           value={value}
+          disabled={submitting}
           onChange={(event) => {
             setValue(event.target.value);
             setEmptySubmit(false);
@@ -418,15 +472,29 @@ function HeroPromptInput() {
           placeholder="Describe your A/B decision…"
           maxLength={100}
         />
-        <button type="submit" aria-label="Create a test from this decision">
-          <ArrowRight size={20} aria-hidden="true" />
+        <button
+          type="submit"
+          aria-label="Create a test from this decision"
+          disabled={submitting}
+        >
+          {submitting ? (
+            <Loader2 size={20} className="spin" aria-hidden="true" />
+          ) : (
+            <ArrowRight size={20} aria-hidden="true" />
+          )}
         </button>
       </div>
+      {submitting && (
+        <small className="hero-prompt-status" role="status">
+          Setting up your test…
+        </small>
+      )}
       <div className="hero-prompt-examples" aria-label="Example decisions">
         {heroPromptExamples.map(([label, example]) => (
           <button
             type="button"
             key={label}
+            disabled={submitting}
             onClick={() => {
               setValue(example);
               setEmptySubmit(false);
@@ -483,7 +551,10 @@ function HeroLivePoll({ test, onUpdate }) {
   return (
     <section className="hero-live-poll" aria-label="Live sample poll">
       <div className="hero-live-poll-heading">
-        <span>LIVE SAMPLE · {test.totalVotes} VOTES</span>
+        <span>
+          LIVE SAMPLE · {test.totalVotes}{" "}
+          {test.totalVotes === 1 ? "VOTE" : "VOTES"}
+        </span>
         <a
           href={`/poll/${test.id}`}
           onClick={(event) => {
@@ -508,8 +579,17 @@ function HeroLivePoll({ test, onUpdate }) {
             className={voted === String(index) ? "is-picked" : ""}
             onClick={() => vote(index)}
           >
+            {option.imageUrl && (
+              <img
+                className="hero-live-poll-thumb"
+                src={option.imageUrl}
+                alt=""
+                aria-hidden="true"
+                loading="eager"
+              />
+            )}
             <span>{index ? "B" : "A"}</span>
-            {option.title}
+            <strong>{option.title}</strong>
             {voting === index && <Loader2 size={14} className="spin" />}
           </button>
         ))}
@@ -533,32 +613,67 @@ function readRemixDraft() {
 }
 
 function CreateTest({ mode }) {
-  const promptPrefill = new URLSearchParams(window.location.search)
-    .get("prompt")
-    ?.trim()
-    .slice(0, 100);
+  const createParams = new URLSearchParams(window.location.search);
+  const promptPrefill = createParams.get("prompt")?.trim().slice(0, 100);
+  const optionAPrefill =
+    createParams.get("optionA")?.trim().slice(0, 100) || promptPrefill;
+  const optionBPrefill = createParams.get("optionB")?.trim().slice(0, 100);
+  const audiencePrefill = createParams.get("audience")?.trim().slice(0, 300);
+  const hasQueryPrefill = Boolean(
+    optionAPrefill || optionBPrefill || audiencePrefill,
+  );
   const remixDraft = useRef(readRemixDraft()).current;
+  const [creationMode, setCreationMode] = useState(
+    window.location.pathname === "/benchmark/new" ? "evidence" : "quick",
+  );
   const [insightCategory, setInsightCategory] = useState(
     remixDraft?.insightCategory || "Dining",
   );
   const [options, setOptions] = useState(
     remixDraft?.options || [
-      { title: promptPrefill || "", description: "", imageUrl: "" },
-      { title: "", description: "", imageUrl: "" },
+      { title: optionAPrefill || "", description: "", imageUrl: "" },
+      { title: optionBPrefill || "", description: "", imageUrl: "" },
     ],
   );
+  const [comparisonKind, setComparisonKind] = useState("concepts");
+  const [optionEntities, setOptionEntities] = useState([null, null]);
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("Music");
   const [results, setResults] = useState([]);
   const [selected, setSelected] = useState(
     remixDraft?.seeds?.slice(0, 5) || [],
   );
-  const [note, setNote] = useState(remixDraft?.audienceNote || "");
+  const [note, setNote] = useState(
+    remixDraft?.audienceNote || audiencePrefill || "",
+  );
   const [searching, setSearching] = useState(true);
   const [searchError, setSearchError] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [predictionWork, setPredictionWork] = useState(null);
+  const [evidenceMetadata, setEvidenceMetadata] = useState({
+    track:
+      window.location.pathname === "/benchmark/new" ? "track-b" : "rehearsal",
+    caseLabel: "",
+    business: "",
+    decision: "",
+    channel: "",
+    unpublished: false,
+    audienceVerified: false,
+  });
+  const emptyBranch = () => ({
+    pick: "A",
+    confidence: 50,
+    source: "",
+    answer: "",
+  });
+  const [evidenceBranches, setEvidenceBranches] = useState({
+    llm: emptyBranch(),
+    qloo: emptyBranch(),
+    agent: emptyBranch(),
+  });
+  const [originalRecordedAt, setOriginalRecordedAt] = useState("");
+  const [beforeOutcome, setBeforeOutcome] = useState(false);
   const studioQuery =
     mode === "real" &&
     category === "Film/TV" &&
@@ -595,6 +710,10 @@ function CreateTest({ mode }) {
     };
   }, [query, category]);
   function update(index, field, value) {
+    if (field === "title")
+      setOptionEntities((old) =>
+        old.map((entity, i) => (i === index ? null : entity)),
+      );
     setOptions((old) =>
       old.map((o, i) => (i === index ? { ...o, [field]: value } : o)),
     );
@@ -602,6 +721,16 @@ function CreateTest({ mode }) {
   async function submit(event) {
     event.preventDefault();
     setError("");
+    if (
+      creationMode === "quick" &&
+      comparisonKind === "entities" &&
+      optionEntities.some((entity) => !entity)
+    ) {
+      setError(
+        "Confirm the exact Qloo entity for both Option A and Option B before predicting.",
+      );
+      return;
+    }
     if (selected.length < 3) {
       setError(
         "Choose at least 3 taste seeds so the audience has enough context.",
@@ -609,21 +738,33 @@ function CreateTest({ mode }) {
       return;
     }
     setBusy(true);
-    const work = createPredictionWork({ mode, context: "track-b" });
+    const work = createPredictionWork({
+      mode,
+      context: creationMode === "quick" ? "quick-test" : "track-b",
+    });
     beginPredictionStep(work, "resolve-seeds");
     setPredictionWork(clonePredictionWork(work));
     try {
       const data = await api("/tests", {
         method: "POST",
         body: JSON.stringify({
-          options,
+          options: options.map((option, index) => ({
+            ...option,
+            ...(creationMode === "quick" && comparisonKind === "entities"
+              ? { entityId: optionEntities[index].entity_id }
+              : {}),
+          })),
+          comparisonKind:
+            creationMode === "quick" ? comparisonKind : "concepts",
           seedEntityIds: selected.map((e) => e.entity_id),
           audienceNote: note,
           insightCategory,
-          benchmarkMetadata: {
-            track:
-              location.pathname === "/benchmark/new" ? "track-b" : "rehearsal",
-          },
+          creationMode,
+          compareAi: creationMode === "quick",
+          benchmarkMetadata:
+            creationMode === "evidence"
+              ? evidenceMetadata
+              : { track: "rehearsal" },
         }),
       });
       if (!saveLocal(ownerKey(data.test.id), data.ownerToken))
@@ -638,6 +779,21 @@ function CreateTest({ mode }) {
         "tastetest-cases",
         JSON.stringify([...new Set([...cases, data.test.id])]),
       );
+      if (creationMode === "evidence") {
+        await api(`/tests/${data.test.id}/freeze`, {
+          method: "POST",
+          headers: { "x-owner-token": data.ownerToken },
+          body: JSON.stringify({
+            mode: "manual",
+            originalRecordedAt: new Date(originalRecordedAt).toISOString(),
+            llm: evidenceBranches.llm,
+            qloo: evidenceBranches.qloo,
+            agent: evidenceBranches.agent,
+            metadata: evidenceMetadata,
+            beforeOutcome,
+          }),
+        });
+      }
       navigate(`/test/${data.test.id}?view=prediction`);
     } catch (e) {
       setError(e.message);
@@ -654,6 +810,16 @@ function CreateTest({ mode }) {
       setBusy(false);
     }
   }
+  const readyOptions = options.filter(
+    (option, index) =>
+      option.title.trim() &&
+      option.description.trim() &&
+      (creationMode !== "quick" ||
+        comparisonKind !== "entities" ||
+        optionEntities[index]),
+  ).length;
+  const remainingSeeds = Math.max(0, 3 - selected.length);
+  const readiness = `${readyOptions}/2 options ready · ${remainingSeeds ? `${remainingSeeds} more audience ${remainingSeeds === 1 ? "taste" : "tastes"} needed` : `${selected.length} audience tastes selected`}`;
   return (
     <main className="container">
       <Steps active={0} />
@@ -665,23 +831,120 @@ function CreateTest({ mode }) {
         </div>
       </div>
       <form onSubmit={submit}>
-        {(promptPrefill || remixDraft) && (
+        <div className="creation-mode-control">
+          <div
+            className="segmented-control"
+            role="group"
+            aria-label="Creation mode"
+          >
+            <button
+              type="button"
+              className={creationMode === "quick" ? "selected" : ""}
+              aria-pressed={creationMode === "quick"}
+              onClick={() => setCreationMode("quick")}
+            >
+              Quick test
+            </button>
+            <button
+              type="button"
+              className={creationMode === "evidence" ? "selected" : ""}
+              aria-pressed={creationMode === "evidence"}
+              onClick={() => setCreationMode("evidence")}
+            >
+              Record as evidence
+            </button>
+          </div>
+          <p>
+            {creationMode === "quick"
+              ? "Describe two ideas, choose audience tastes, then lock a prediction before voting. Quick tests stay outside the evidence benchmark."
+              : "For the live evidence benchmark (Track B): freeze all branch records before polling and collect at least 20 real, non-tied votes."}
+          </p>
+        </div>
+        {creationMode === "quick" && (
+          <div className="qloo-comparison-mode">
+            <div
+              className="segmented-control"
+              role="group"
+              aria-label="Option type"
+            >
+              <button
+                type="button"
+                aria-pressed={comparisonKind === "concepts"}
+                className={comparisonKind === "concepts" ? "selected" : ""}
+                onClick={() => setComparisonKind("concepts")}
+              >
+                Custom ideas
+              </button>
+              <button
+                type="button"
+                aria-pressed={comparisonKind === "entities"}
+                className={comparisonKind === "entities" ? "selected" : ""}
+                disabled={mode !== "real"}
+                onClick={() => setComparisonKind("entities")}
+              >
+                Known items in Qloo
+              </button>
+            </div>
+            <p className="muted">
+              {comparisonKind === "entities"
+                ? "Compare two confirmed artists, movies, venues, brands or books using direct Qloo affinity."
+                : "For posters, menu concepts or events: Qloo supplies audience signals and the Agent evaluates your descriptions."}
+            </p>
+            {comparisonKind === "entities" && (
+              <>
+                <label htmlFor="qloo-option-category">Item category</label>
+                <select
+                  id="qloo-option-category"
+                  value={insightCategory}
+                  onChange={(event) => {
+                    setInsightCategory(event.target.value);
+                    setOptionEntities([null, null]);
+                  }}
+                >
+                  {Object.keys(categoryIcons).map((category) => (
+                    <option key={category} value={category}>
+                      {category}
+                    </option>
+                  ))}
+                </select>
+              </>
+            )}
+          </div>
+        )}
+        {(hasQueryPrefill || remixDraft) && (
           <div className="prefill-note" role="status">
             <CheckCircle2 size={18} aria-hidden="true" />
             <div>
               <strong>
                 {remixDraft
                   ? "The demo is ready to remix."
-                  : "Your decision is ready to edit."}
+                  : optionAPrefill && optionBPrefill
+                    ? "Both options are ready to edit."
+                    : "Your decision is ready to edit."}
               </strong>
               <span>
                 {remixDraft
                   ? "Both options and the demo audience are copied into this draft."
-                  : "We carried it into Option A. Add the competing option and audience below."}
+                  : optionAPrefill && optionBPrefill
+                    ? "We split your decision into Option A and Option B. Add details and choose the audience below."
+                    : "We carried it into Option A. Add the competing option and audience below."}
               </span>
             </div>
           </div>
         )}
+        <p className="option-description-guidance">
+          Give each option a name and one sentence describing what makes it
+          different.
+        </p>
+        <TestContextMeter
+          options={options}
+          seeds={selected}
+          note={note}
+          entities={optionEntities}
+          direct={creationMode === "quick" && comparisonKind === "entities"}
+          automatic={creationMode === "quick"}
+          mode={mode}
+        />
         <div className="option-grid form-options">
           {options.map((option, i) => (
             <section className="panel option-form" key={i}>
@@ -705,21 +968,58 @@ function CreateTest({ mode }) {
                 onChange={(e) => update(i, "description", e.target.value)}
                 placeholder="The mood, message, offer, and details that make it different…"
                 required
-                minLength={10}
                 maxLength={1200}
                 rows={4}
               />
-              <label htmlFor={`image-${i}`}>
-                Image URL <span className="optional">optional</span>
-              </label>
-              <input
-                id={`image-${i}`}
-                type="url"
-                value={option.imageUrl}
-                onChange={(e) => update(i, "imageUrl", e.target.value)}
-                placeholder="https://…"
-              />
-              <OptionImage option={option} />
+              {creationMode === "quick" && comparisonKind === "entities" && (
+                <OptionEntityPicker
+                  label={i ? "B" : "A"}
+                  title={option.title}
+                  category={insightCategory}
+                  selected={optionEntities[i]}
+                  onSelect={(entity) => {
+                    setOptionEntities((old) =>
+                      old.map((current, index) =>
+                        index === i ? entity : current,
+                      ),
+                    );
+                    setOptions((old) =>
+                      old.map((current, index) =>
+                        index === i
+                          ? { ...current, title: entity.name }
+                          : current,
+                      ),
+                    );
+                  }}
+                  onClear={() =>
+                    setOptionEntities((old) =>
+                      old.map((current, index) =>
+                        index === i ? null : current,
+                      ),
+                    )
+                  }
+                />
+              )}
+              <details
+                className="option-image-details"
+                open={option.imageUrl ? true : undefined}
+              >
+                <summary>
+                  Add an image{" "}
+                  <span className="optional">optional · display only</span>
+                </summary>
+                <label htmlFor={`image-${i}`}>
+                  Image URL <span className="optional">optional</span>
+                </label>
+                <input
+                  id={`image-${i}`}
+                  type="url"
+                  value={option.imageUrl}
+                  onChange={(e) => update(i, "imageUrl", e.target.value)}
+                  placeholder="https://…"
+                />
+                <OptionImage option={option} />
+              </details>
             </section>
           ))}
         </div>
@@ -728,7 +1028,8 @@ function CreateTest({ mode }) {
             <div>
               <h2>Who is this for?</h2>
               <p>
-                Choose 3–5 things your audience loves. Mix across categories.
+                Describe your audience, then choose 3–5 artists, movies, places,
+                brands or books they like. Mix across categories.
               </p>
             </div>
             <span
@@ -737,6 +1038,17 @@ function CreateTest({ mode }) {
               {selected.length} / 5 selected
             </span>
           </div>
+          <label htmlFor="audience-note">
+            Anything else about your audience?{" "}
+            <span className="optional">optional</span>
+          </label>
+          <input
+            id="audience-note"
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            maxLength={300}
+            placeholder="e.g. IU students near campus"
+          />
           <div
             className="category-tabs"
             role="tablist"
@@ -883,59 +1195,202 @@ function CreateTest({ mode }) {
               />
             ))}
           </div>
-          <label htmlFor="insight-category">Recommendation context</label>
-          <select
-            id="insight-category"
-            aria-label="Recommendation context"
-            value={insightCategory}
-            onChange={(event) => setInsightCategory(event.target.value)}
-          >
-            {Object.keys(categoryIcons).map((category) => (
-              <option key={category} value={category}>
-                {category}
-              </option>
+          {!(creationMode === "quick" && comparisonKind === "entities") && (
+            <>
+              <label htmlFor="insight-category">Recommendation context</label>
+              <select
+                id="insight-category"
+                aria-label="Recommendation context"
+                value={insightCategory}
+                onChange={(event) => {
+                  setInsightCategory(event.target.value);
+                  setOptionEntities([null, null]);
+                }}
+              >
+                {Object.keys(categoryIcons).map((category) => (
+                  <option key={category} value={category}>
+                    {category}
+                  </option>
+                ))}
+              </select>
+              <p className="muted">
+                {creationMode === "quick" && comparisonKind === "entities"
+                  ? "This category must match both confirmed options. Changing it clears their matches."
+                  : "Choose the category most relevant to your concepts. Qloo affinity comes from recommendations in this category."}
+              </p>
+            </>
+          )}
+        </section>
+        <details
+          className="panel prediction-method"
+          open={creationMode === "evidence" ? true : undefined}
+        >
+          <summary>How the prediction works</summary>
+          {creationMode === "quick" ? (
+            <>
+              <p>
+                GPT-5 runs through the configured Replicate integration. Qloo
+                supplies taste signals when available; Agent combines the two.
+              </p>
+              <p className="muted">
+                All predictions are locked before the poll opens. Quick tests
+                never enter the live evidence benchmark totals.
+              </p>
+            </>
+          ) : (
+            <>
+              <p>
+                LLM-only, Qloo and Agent. Record all three branches below;
+                submitting seals every pick before the poll can open.
+              </p>
+              <p className="muted">
+                Evidence mode keeps source, timing and eligibility fields for
+                the benchmark receipt.
+              </p>
+            </>
+          )}
+        </details>
+        {creationMode === "evidence" && (
+          <section className="panel create-evidence-fields">
+            <div className="section-heading">
+              <div>
+                <div className="eyebrow">EVIDENCE RECORD</div>
+                <h2>Record all three branches before any votes</h2>
+                <p>
+                  These declarations are sealed with the prediction receipt and
+                  cannot be edited after submission.
+                </p>
+              </div>
+            </div>
+            <label>
+              Case track
+              <select
+                value={evidenceMetadata.track}
+                onChange={(event) =>
+                  setEvidenceMetadata((old) => ({
+                    ...old,
+                    track: event.target.value,
+                  }))
+                }
+              >
+                <option value="rehearsal">
+                  Workflow rehearsal / public case
+                </option>
+                <option value="track-b">
+                  Live evidence (Track B) — unpublished taste case
+                </option>
+              </select>
+            </label>
+            <div className="freeze-context">
+              {[
+                ["caseLabel", "Case label"],
+                ["business", "Business (anonymized)"],
+                ["decision", "Decision being tested"],
+                ["channel", "Planned poll channel"],
+              ].map(([key, label]) => (
+                <label key={key}>
+                  {label}
+                  <input
+                    value={evidenceMetadata[key]}
+                    maxLength={key === "caseLabel" ? 60 : 300}
+                    onChange={(event) =>
+                      setEvidenceMetadata((old) => ({
+                        ...old,
+                        [key]: event.target.value,
+                      }))
+                    }
+                  />
+                </label>
+              ))}
+            </div>
+            <label className="check-label">
+              <input
+                type="checkbox"
+                checked={evidenceMetadata.unpublished}
+                onChange={(event) =>
+                  setEvidenceMetadata((old) => ({
+                    ...old,
+                    unpublished: event.target.checked,
+                  }))
+                }
+              />
+              This is a fresh unpublished case, with no public outcome.
+            </label>
+            <label className="check-label">
+              <input
+                type="checkbox"
+                checked={evidenceMetadata.audienceVerified}
+                onChange={(event) =>
+                  setEvidenceMetadata((old) => ({
+                    ...old,
+                    audienceVerified: event.target.checked,
+                  }))
+                }
+              />
+              The planned voters actually share the recorded taste seeds.
+            </label>
+            <label>
+              Original prediction timestamp
+              <input
+                type="datetime-local"
+                required
+                value={originalRecordedAt}
+                onChange={(event) => setOriginalRecordedAt(event.target.value)}
+              />
+            </label>
+            {[
+              ["llm", "LLM-only (external)"],
+              ["qloo", "Qloo (external)"],
+              ["agent", "Agent (external)"],
+            ].map(([key, label]) => (
+              <ManualFields
+                key={key}
+                name={label}
+                tie={key !== "llm"}
+                value={evidenceBranches[key]}
+                update={(field, value) =>
+                  setEvidenceBranches((old) => ({
+                    ...old,
+                    [key]: { ...old[key], [field]: value },
+                  }))
+                }
+              />
             ))}
-          </select>
-          <p className="muted">
-            Choose the category most relevant to your concepts. Qloo affinity
-            comes from recommendations in this category.
-          </p>
-          <label htmlFor="audience-note">
-            Anything else about your audience?{" "}
-            <span className="optional">optional</span>
-          </label>
-          <input
-            id="audience-note"
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-            maxLength={300}
-            placeholder="e.g. IU students near campus"
-          />
-        </section>
-        <section className="panel prediction-method">
-          <h2>Three recorded branches</h2>
-          <p>
-            LLM-only (manual paste), Qloo and Agent. Paste an answer obtained
-            independently on the next screen, then freeze every pick before
-            opening the poll.
-          </p>
-          <p className="muted">
-            No paid LLM API calls. Qloo and Agent currently share the existing
-            concept-fit heuristic.
-          </p>
-        </section>
+            <label className="check-label">
+              <input
+                type="checkbox"
+                required
+                checked={beforeOutcome}
+                onChange={(event) => setBeforeOutcome(event.target.checked)}
+              />
+              All predictions were recorded before collecting any outcome or
+              vote.
+            </label>
+          </section>
+        )}
         <ErrorMessage>{error}</ErrorMessage>
         <PredictionStepFeed work={predictionWork} />
         <div className="form-footer">
-          <p>
-            <CircleHelp size={15} />
-            {mode === "real"
-              ? "Real Qloo affinities ground a local concept-fit heuristic; they do not predict demand or voting probabilities."
-              : "Mock taste signals help test the flow, not predict real demand."}
-          </p>
+          <div className="creation-readiness" aria-live="polite">
+            <strong>{readiness}</strong>
+            <p>
+              <CircleHelp size={15} />
+              {mode === "real"
+                ? creationMode === "quick" && comparisonKind === "entities"
+                  ? "Confirmed items use direct Qloo affinity. Affinity is not a vote probability."
+                  : "Qloo provides audience context; custom ideas use local text scoring and Agent reasoning, not direct entity affinity."
+                : "Mock taste signals help test the flow, not predict real demand."}
+            </p>
+          </div>
           <Button className="primary" busy={busy} type="submit">
             <Sparkles size={16} />
-            {busy ? "Comparing your ideas…" : "Get agent prediction"}
+            {busy
+              ? creationMode === "quick"
+                ? "Predicting and freezing…"
+                : "Preparing evidence case…"
+              : creationMode === "quick"
+                ? "Predict & freeze"
+                : "Prepare evidence case"}
           </Button>
         </div>
       </form>
@@ -973,6 +1428,9 @@ function Prediction({
   const scores = without ? test.baseline : test.prediction;
   const winner = winnerFor(scores);
   const confidence = predictionConfidence(scores);
+  const noOptionAffinity =
+    !without && scores.every((score) => !(score.components?.affinitySum > 0));
+  const noSignalTie = noOptionAffinity && scores[0]?.score === scores[1]?.score;
   return (
     <section className={`prediction-section ${compact ? "compact" : ""}`}>
       <div className="section-heading">
@@ -1005,6 +1463,11 @@ function Prediction({
                 : "Mock cultural model · synthetic affinity + shared taste tags"}
             <span>Scores indicate fit, not vote probability.</span>
           </p>
+          {!without && test.provenance?.qlooFallback && (
+            <span className="qloo-fallback-badge">
+              Qloo: no data for these options — heuristic fallback
+            </span>
+          )}
           <ConfidenceNote
             confidence={confidence}
             without={without}
@@ -1030,7 +1493,7 @@ function Prediction({
             </div>
             <div className="score-number">
               <AnimatedNumber value={scores[i].score} />
-              <span>/ 100</span>
+              <span>/ 100 fit</span>
             </div>
             <div className="score-track">
               <div
@@ -1113,7 +1576,16 @@ function Prediction({
           </ul>
         </details>
       )}
-      {!without && test.prediction.some((p) => p.warning) && (
+      {!without && noSignalTie ? (
+        <div className="segment-note no-signal-note">
+          <AlertTriangle size={16} />
+          <div>
+            <strong>
+              No affinity signal for either option — prediction abstains.
+            </strong>
+          </div>
+        </div>
+      ) : !without && test.prediction.some((p) => p.warning) ? (
         <div className="segment-note">
           <AlertTriangle size={16} />
           <div>
@@ -1128,7 +1600,7 @@ function Prediction({
             )}
           </div>
         </div>
-      )}
+      ) : null}
     </section>
   );
 }
@@ -1205,7 +1677,13 @@ function Verdict({ test, without, setWithout }) {
           confidence: test.comparison.payload.aiOnly.confidence,
           source: test.comparison.payload.model || "Paired AI-only branch",
         },
-        qloo: {},
+        qloo: test.comparison.payload.qloo
+          ? {
+              pick: test.comparison.payload.qloo.choice,
+              confidence: test.comparison.payload.qloo.confidence,
+              source: test.comparison.payload.qloo.source || "Qloo branch",
+            }
+          : {},
         agent: {
           pick: test.comparison.payload.aiQloo.choice,
           confidence: test.comparison.payload.aiQloo.confidence,
@@ -1219,7 +1697,8 @@ function Verdict({ test, without, setWithout }) {
     (verdict.paired
       ? {
           llm: verdict.paired.aiOnly,
-          agent: verdict.paired.aiQloo,
+          qloo: verdict.paired.qloo,
+          agent: verdict.paired.agent || verdict.paired.aiQloo,
         }
       : {});
   const freezeAt =
@@ -1245,6 +1724,22 @@ function Verdict({ test, without, setWithout }) {
         ? "Matched"
         : "Missed";
   const grounding = `Verdict built from ${signalCount} Qloo affinity signals · ${test.totalVotes} votes · frozen ${freezeAt || "not recorded"} · SHA-256 ${receiptHash ? receiptHash.slice(0, 12) : "not recorded"}.${visibleSignals ? ` Top signals: ${visibleSignals}.` : ""}`;
+  function answerSampleVerdict(question) {
+    const normalized = question.toLowerCase();
+    if (normalized.includes("why") || normalized.includes("pick")) {
+      return `Option A had the stronger synthetic concept fit: ${test.prediction?.[0]?.score ?? "—"}/100 versus ${test.prediction?.[1]?.score ?? "—"}/100. The visible taste signals were ${visibleSignals || "not recorded"}. This is a fit-gap heuristic, not a calibrated probability.`;
+    }
+    if (normalized.includes("disagree") || normalized.includes("branch")) {
+      return "This illustrative cafe demo recorded one concept-fit prediction only. AI-only and Qloo were not run as separate frozen branches, so there is no branch disagreement to claim.";
+    }
+    if (normalized.includes("change") || normalized.includes("different")) {
+      return `A different audience, different taste seeds, revised poster concepts, or a different real vote split could change this verdict. In this fixed sample, Option A received ${test.votes[0]} of ${test.totalVotes} illustrative votes.`;
+    }
+    if (normalized.includes("confident") || normalized.includes("confidence")) {
+      return `Treat the ${fitGap == null ? "recorded" : `${Math.round(fitGap)}-point`} fit gap as a heuristic description of signal separation, not a calibrated probability or proof of future accuracy.`;
+    }
+    return "I only know what is in this verdict: the two poster concepts, four taste seeds, visible synthetic fit signals, the concept-fit scores, and the 52 illustrative votes.";
+  }
   async function exportImage() {
     setExporting(true);
     setNotice("");
@@ -1286,6 +1781,25 @@ function Verdict({ test, without, setWithout }) {
             <ExternalLink size={15} />
             Share verdict image
           </Button>
+          {(test.isSample ||
+            test.freeze?.payload?.metadata?.track === "track-b") && (
+            <button
+              type="button"
+              className="button subtle"
+              onClick={() => {
+                const chat = document.getElementById(
+                  `verdict-chat-${test.isSample ? "sample-cafe-verdict" : `track-b-${test.id}`}`,
+                );
+                if (chat) {
+                  chat.open = true;
+                  chat.querySelector("summary")?.focus();
+                  chat.scrollIntoView({ block: "center" });
+                }
+              }}
+            >
+              Ask about this result
+            </button>
+          )}
           {!test.isPairedComparison && (
             <label
               id="keyword-baseline"
@@ -1312,7 +1826,7 @@ function Verdict({ test, without, setWithout }) {
             {without
               ? "KEYWORD BASELINE VIEW"
               : test.freeze?.payload?.metadata?.track === "track-b"
-                ? `TRACK B · ${test.mode === "real" ? "QLOO DATA + LOCAL FIT" : "SYNTHETIC SIGNALS"}`
+                ? `LIVE EVIDENCE / TRACK B · ${test.mode === "real" ? "QLOO DATA + LOCAL FIT" : "SYNTHETIC SIGNALS"}`
                 : test.isPairedComparison
                   ? "PAIRED COMPARISON"
                   : test.mode === "real"
@@ -1460,6 +1974,13 @@ function Verdict({ test, without, setWithout }) {
               ? "Locked branch records are unchanged; this view replaces only the headline predictor with the keyword baseline."
               : null
           }
+          illustrativePick={
+            test.isSample && predicted !== null
+              ? predicted === 0
+                ? "A"
+                : "B"
+              : null
+          }
         />
         <div className="verdict-meta">
           <span>{test.title}</span>
@@ -1474,6 +1995,12 @@ function Verdict({ test, without, setWithout }) {
         <VerdictChat
           endpoint={`/api/tests/${test.id}/chat`}
           verdictKey={`track-b-${test.id}`}
+        />
+      )}
+      {test.isSample && (
+        <VerdictChat
+          verdictKey="sample-cafe-verdict"
+          localAnswer={answerSampleVerdict}
         />
       )}
       {notice && (
@@ -1628,6 +2155,24 @@ function TestView({ id, sample = false }) {
   const isTrackB =
     test.benchmarkMetadata?.track === "track-b" ||
     test.freeze?.payload?.metadata?.track === "track-b";
+  const recordedPick =
+    test.comparison?.payload?.aiQloo?.choice ??
+    test.freeze?.payload?.branches?.agent?.pick;
+  const fitWinner =
+    !test.isPairedComparison && test.prediction
+      ? winnerFor(test.prediction)
+      : undefined;
+  const displayPick =
+    recordedPick ??
+    (fitWinner === undefined
+      ? null
+      : fitWinner === null
+        ? "TIE"
+        : fitWinner === 0
+          ? "A"
+          : "B");
+  const fallback =
+    test.comparison?.payload?.qloo?.fallback || test.provenance?.qlooFallback;
   return (
     <main
       className={`container experiment-page ${activePrediction || view === "prediction" ? "prediction-view" : ""} ${test.closedAt && view === "verdict" ? "verdict-view" : ""}`}
@@ -1664,11 +2209,13 @@ function TestView({ id, sample = false }) {
                 )}
                 {test.closedAt
                   ? "Completed"
-                  : test.isPairedComparison && !test.pollOpenedAt
-                    ? "Predictions locked"
-                    : test.freezeRequired
-                      ? test.lifecycle
-                      : "Live test"}
+                  : test.creationMode === "quick"
+                    ? "Quick test · excluded from evidence benchmark"
+                    : test.isPairedComparison && !test.pollOpenedAt
+                      ? "Predictions locked"
+                      : test.freezeRequired
+                        ? test.lifecycle
+                        : "Live test"}
               </span>
               <span>
                 {test.seeds.length} taste seeds · Created{" "}
@@ -1680,7 +2227,12 @@ function TestView({ id, sample = false }) {
             </div>
           )}
           {sample ? (
-            <HeroQuestionRotator />
+            <>
+              <div className="hero-product-kicker">
+                AI + QLOO A/B DECISION TOOL
+              </div>
+              <HeroQuestionRotator />
+            </>
           ) : (
             <h1 title={test.title}>{test.title}</h1>
           )}
@@ -1690,32 +2242,37 @@ function TestView({ id, sample = false }) {
             </p>
           )}
           {sample && <HeroPromptInput />}
-          {sample && (
-            <HeroLivePoll test={liveSample} onUpdate={setLiveSample} />
-          )}
-          <p>
-            {sample
-              ? "Two creative directions. One taste-defined audience. A decision backed by votes."
-              : activePrediction
+          {!sample && (
+            <p>
+              {activePrediction
                 ? "Your hypothesis is ready. Now put it in front of real people."
                 : "See what your audience chooses, then make the call."}
-          </p>
+            </p>
+          )}
         </div>
         {!sample && <Audience test={test} />}
       </div>
+      {sample && (
+        <div className="sample-example-heading">
+          <strong>See a completed example</strong>
+          <span>Synthetic cafe signals · illustrative votes</span>
+        </div>
+      )}
       {test.closedAt && (
         <nav className="report-tabs" aria-label="Report view">
           <button
+            aria-label="Prediction"
             className={view === "prediction" ? "selected" : ""}
             onClick={() => setView("prediction")}
           >
-            Prediction
+            Prediction <small>fit /100</small>
           </button>
           <button
+            aria-label="Verdict"
             className={view === "verdict" ? "selected" : ""}
             onClick={() => setView("verdict")}
           >
-            Verdict
+            Verdict <small>vote share %</small>
           </button>
         </nav>
       )}
@@ -1725,6 +2282,53 @@ function TestView({ id, sample = false }) {
       {(!test.closedAt || view !== "verdict") && (
         <>
           <ErrorMessage>{error}</ErrorMessage>
+          {activePrediction && (
+            <section
+              className="next-panel prediction-next-step"
+              aria-label="Prediction and next step"
+            >
+              <div>
+                <div className="eyebrow">YOUR NEXT STEP</div>
+                <h2>
+                  {displayPick === "A" || displayPick === "B"
+                    ? `Agent pick: Option ${displayPick}`
+                    : displayPick === "TIE"
+                      ? "No clear pick"
+                      : "Prediction locked"}
+                </h2>
+                <p>
+                  {displayPick === "A" || displayPick === "B"
+                    ? `${test.options[displayPick === "A" ? 0 : 1].title}. `
+                    : displayPick === "TIE"
+                      ? "The prediction abstains. "
+                      : "Predictions stay private until the poll closes. "}
+                  Open the poll to learn what your audience actually chooses.
+                </p>
+                {fallback && (
+                  <span className="qloo-fallback-badge">
+                    Qloo: no data for these options — heuristic fallback
+                  </span>
+                )}
+                {test.freezeRequired && !test.frozenAt && (
+                  <p>
+                    Freeze the branch records below before opening the poll.
+                  </p>
+                )}
+              </div>
+              <Button
+                className="primary"
+                busy={busy}
+                disabled={
+                  (test.isPairedComparison && !owner) ||
+                  (test.freezeRequired && (!owner || !test.frozenAt))
+                }
+                onClick={openPoll}
+              >
+                <Radio size={16} />
+                Open live poll
+              </Button>
+            </section>
+          )}
           {test.isPairedComparison ? (
             <AiComparison test={test} />
           ) : test.prediction ? (
@@ -1770,6 +2374,12 @@ function TestView({ id, sample = false }) {
               )}
             </div>
           )}
+          {sample && (
+            <section className="sample-inline-poll" aria-label="Try the sample">
+              <div className="eyebrow">TRY IT / LIVE SAMPLE</div>
+              <HeroLivePoll test={liveSample} onUpdate={setLiveSample} />
+            </section>
+          )}
           <section className="supporting-evidence">
             <div>
               <div className="eyebrow">SUPPORTING EVIDENCE</div>
@@ -1779,31 +2389,10 @@ function TestView({ id, sample = false }) {
                   "Defined by the selected cultural tastes."}
               </p>
             </div>
-            <TasteMap seeds={test.seeds} signals={test.insights || []} />
+            <TasteFlow test={test} />
           </section>
           <FreezePanel test={test} owner={owner} onFrozen={setTest} />
-          {activePrediction ? (
-            <div className="next-panel">
-              <div>
-                <h2>A prediction is a starting point.</h2>
-                <p>
-                  Invite your audience to vote and see if the signal holds up.
-                </p>
-              </div>
-              <Button
-                className="primary"
-                busy={busy}
-                disabled={
-                  (test.isPairedComparison && !owner) ||
-                  (test.freezeRequired && (!owner || !test.frozenAt))
-                }
-                onClick={openPoll}
-              >
-                <Radio size={16} />
-                Open live poll
-              </Button>
-            </div>
-          ) : (
+          {!activePrediction && (
             <>
               <section className="poll-section">
                 <div className="section-heading">
@@ -2213,7 +2802,7 @@ function App() {
             navigate("/benchmark-lab/historical-case-01");
           }}
         >
-          Benchmark lab · Historical case 01 ↗
+          Benchmark lab · Historical case 01
         </a>
         <a
           href="/faq"
@@ -2224,8 +2813,30 @@ function App() {
         >
           FAQ
         </a>
+        <a
+          href="https://github.com/hehehehehee-dev/tastetest-ab"
+          target="_blank"
+          rel="noreferrer"
+        >
+          GitHub ↗
+        </a>
+        <a
+          href="https://github.com/hehehehehee-dev/tastetest-ab#readme"
+          target="_blank"
+          rel="noreferrer"
+        >
+          Project docs ↗
+        </a>
       </footer>
     </PageSignalContext.Provider>
   );
 }
-createRoot(document.getElementById("root")).render(<App />);
+const appRoot = createRoot(document.getElementById("root"));
+appRoot.render(<App />);
+
+// Vite can reload this entry module while a long-lived local tab is open.
+// Unmount the previous React tree before the replacement is evaluated so an
+// old test report cannot remain beside the homepage after hot updates.
+if (import.meta.hot) {
+  import.meta.hot.dispose(() => appRoot.unmount());
+}

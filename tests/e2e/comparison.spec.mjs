@@ -1,18 +1,53 @@
 import { test, expect } from "@playwright/test";
 import { mkdir, readFile } from "node:fs/promises";
 
-test("new cases use manual LLM-only answers without paid API controls", async ({
+test("new cases default to an automatic quick test without manual branch controls", async ({
   page,
 }) => {
   await page.goto("/create");
+  await expect(page.locator(".prediction-method")).not.toHaveAttribute(
+    "open",
+    "",
+  );
+  await expect(page.getByLabel("Image URL").nth(0)).toBeHidden();
+  await page.locator(".option-image-details > summary").first().click();
+  await expect(page.getByLabel("Image URL").nth(0)).toBeVisible();
+  await expect(page.locator(".creation-readiness")).toContainText(
+    "0/2 options ready · 3 more audience tastes needed",
+  );
+  await page.locator(".prediction-method > summary").click();
   await expect(
-    page.getByText(/LLM-only \(manual paste\), Qloo and Agent/),
+    page.getByText(/GPT-5 runs through the configured Replicate integration/),
   ).toBeVisible();
-  await expect(page.getByText(/No paid LLM API calls/)).toBeVisible();
+  await expect(
+    page.getByText(/Quick tests stay outside the evidence benchmark/),
+  ).toBeVisible();
   await expect(page.getByRole("radio")).toHaveCount(0);
   await expect(
-    page.getByRole("button", { name: "Get agent prediction", exact: true }),
+    page.getByRole("button", { name: "Predict & freeze", exact: true }),
   ).toBeEnabled();
+  await page.getByLabel("Give it a name").nth(0).fill("Kept option A");
+  await page
+    .getByLabel("Describe the idea")
+    .nth(0)
+    .fill("An intimate acoustic night with live local artists.");
+  await page
+    .getByRole("button", { name: "Phoebe Bridgers", exact: true })
+    .click();
+  await expect(page.locator(".creation-readiness")).toContainText(
+    "1/2 options ready · 2 more audience tastes needed",
+  );
+  await page.getByRole("button", { name: "Record as evidence" }).click();
+  await expect(page.getByLabel("Case track")).toBeVisible();
+  await expect(page.locator(".manual-branch")).toHaveCount(3);
+  await page.getByRole("button", { name: "Quick test" }).click();
+  await expect(page.getByLabel("Case track")).toHaveCount(0);
+  await expect(page.getByLabel("Give it a name").nth(0)).toHaveValue(
+    "Kept option A",
+  );
+  await expect(page.locator(".selected-seeds")).toContainText(
+    "Phoebe Bridgers",
+  );
 });
 
 test("paired UI locks, persists, downloads a safe receipt, then shows both branch grades", async ({
@@ -45,12 +80,32 @@ test("paired UI locks, persists, downloads a safe receipt, then shows both branc
           confidence: 60,
           rationale: "Synthetic browser fixture: baseline choice.",
         },
+        qloo: {
+          choice: "TIE",
+          confidence: 40,
+          rationale:
+            "No Qloo candidate entity signal was available. This branch abstains or uses the declared text heuristic fallback.",
+          source: "Text heuristic fallback",
+          fallback: true,
+          noSignalTie: true,
+        },
         aiQloo: {
           choice: "A",
           confidence: 60,
           rationale: "Synthetic browser fixture: grounded choice.",
         },
       },
+    },
+    prediction: sample.prediction.map((prediction) => ({
+      ...prediction,
+      score: 50,
+      warning: "A weaker fit fixture.",
+      components: { ...prediction.components, affinitySum: 0 },
+    })),
+    provenance: {
+      ...sample.provenance,
+      qlooFallback: true,
+      qlooOptionSignal: false,
     },
     verdict: null,
   };
@@ -92,6 +147,8 @@ test("paired UI locks, persists, downloads a safe receipt, then shows both branc
             actual: "A",
             minVotes: 10,
             aiOnly: "MISS",
+            qloo: "ABSTAIN",
+            agent: "MATCH",
             aiQloo: "MATCH",
           },
         },
@@ -115,13 +172,29 @@ test("paired UI locks, persists, downloads a safe receipt, then shows both branc
   await page.getByRole("button", { name: "Tame Impala", exact: true }).click();
   await page.getByRole("button", { name: "Taylor Swift", exact: true }).click();
   await page
-    .getByRole("button", { name: "Get agent prediction", exact: true })
+    .getByRole("button", { name: "Predict & freeze", exact: true })
     .click();
   await expect(
-    page.getByRole("heading", { name: "AI only vs. AI + Qloo", exact: true }),
+    page.getByRole("heading", { name: "Three frozen branches", exact: true }),
   ).toBeVisible();
+  await expect(
+    page.locator(".prediction-next-step .qloo-fallback-badge"),
+  ).toBeVisible();
+  await expect(page.locator(".prediction-next-step")).toContainText(
+    "Agent pick: Option A",
+  );
+  expect(
+    await page
+      .locator(".prediction-next-step")
+      .evaluate((el) =>
+        Boolean(
+          el.compareDocumentPosition(document.querySelector(".ai-comparison")) &
+          Node.DOCUMENT_POSITION_FOLLOWING,
+        ),
+      ),
+  ).toBe(true);
   await expect(page.getByText("LOCKED · Awaiting audience votes")).toHaveCount(
-    2,
+    3,
   );
   await page.reload();
   await expect(
@@ -136,7 +209,7 @@ test("paired UI locks, persists, downloads a safe receipt, then shows both branc
   );
   expect(JSON.stringify(receipt)).not.toContain("fixture-owner-token");
   expect(receipt.payload.model).toBe("fixture-model-v1");
-  await expect(page.getByRole("status")).toContainText("downloaded");
+  await expect(page.getByText(/Prediction receipt downloaded/)).toBeVisible();
   await page
     .getByRole("button", { name: "Open live poll", exact: true })
     .click();
@@ -146,6 +219,15 @@ test("paired UI locks, persists, downloads a safe receipt, then shows both branc
     .click();
   await page.getByRole("button", { name: "Prediction", exact: true }).click();
   await expect(
+    page.getByText(
+      "No affinity signal for either option — prediction abstains.",
+      { exact: true },
+    ),
+  ).toBeVisible();
+  await expect(
+    page.getByText("Not everyone shares the same taste."),
+  ).toHaveCount(0);
+  await expect(
     page.getByRole("cell", { name: "MISS", exact: true }),
   ).toBeVisible();
   await expect(
@@ -153,6 +235,12 @@ test("paired UI locks, persists, downloads a safe receipt, then shows both branc
   ).toBeVisible();
   await page.getByRole("button", { name: "Verdict", exact: true }).click();
   await expect(page.locator(".verdict-number")).toHaveText("70%");
+  await expect(page.locator(".verdict-disagreement")).toContainText(
+    "Qloo abstained",
+  );
+  await expect(page.locator(".verdict-disagreement")).not.toContainText(
+    "Qloo was not recorded",
+  );
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth > innerWidth,

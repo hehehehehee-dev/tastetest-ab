@@ -36,7 +36,7 @@ test("highest-confidence miss and unanimous miss are rule-generated", () => {
   });
   assert.match(
     surpriseNotes({ rows: highMiss, actual: "B" })[0],
-    /Highest-confidence branch LLM-only missed at 90\/100/,
+    /Highest-confidence branch AI-only missed at 90\/100/,
   );
 
   const unanimous = rows({

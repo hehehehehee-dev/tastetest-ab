@@ -1,343 +1,137 @@
-import React, { useEffect, useRef, useState } from "react";
-import {
-  Disc3,
-  Film,
-  Utensils,
-  Tag,
-  BookOpen,
-  Crosshair,
-  Move,
-} from "lucide-react";
+import React from "react";
+import { ArrowRight, Check, Crosshair, LockKeyhole } from "lucide-react";
 
-const icons = {
-  Music: Disc3,
-  "Film/TV": Film,
-  Dining: Utensils,
-  Brands: Tag,
-  Books: BookOpen,
-};
-const locations = [
-  [21, 23],
-  [79, 26],
-  [20, 76],
-  [79, 74],
-  [50, 12],
-  [50, 85],
-  [12, 50],
-  [88, 50],
-];
-// Spring the whole diagram from ordinary pointer movement. No press is needed.
-function useHoverField() {
-  const target = useRef({ x: 0, y: 0, power: 0 });
-  const physics = useRef({ x: 0, y: 0, power: 0, vx: 0, vy: 0, vp: 0 });
-  const frame = useRef(0);
-  const enabled = useRef(false);
-  const [motion, setMotion] = useState({ x: 0, y: 0, power: 0 });
-  useEffect(() => {
-    const reduced = matchMedia("(prefers-reduced-motion: reduce)");
-    const fine = matchMedia("(hover: hover) and (pointer: fine)");
-    const update = () => {
-      enabled.current = !reduced.matches && fine.matches;
-      if (!enabled.current) {
-        cancelAnimationFrame(frame.current);
-        frame.current = 0;
-        target.current = { x: 0, y: 0, power: 0 };
-        physics.current = { x: 0, y: 0, power: 0, vx: 0, vy: 0, vp: 0 };
-        setMotion({ x: 0, y: 0, power: 0 });
-      }
-    };
-    update();
-    reduced.addEventListener("change", update);
-    fine.addEventListener("change", update);
-    return () => {
-      cancelAnimationFrame(frame.current);
-      reduced.removeEventListener("change", update);
-      fine.removeEventListener("change", update);
-    };
-  }, []);
-  const animate = () => {
-    const state = physics.current;
-    let moving = false;
-    for (const [key, velocity] of [
-      ["x", "vx"],
-      ["y", "vy"],
-      ["power", "vp"],
-    ]) {
-      state[velocity] =
-        (state[velocity] + (target.current[key] - state[key]) * 0.075) * 0.74;
-      state[key] += state[velocity];
-      if (
-        Math.abs(target.current[key] - state[key]) > 0.001 ||
-        Math.abs(state[velocity]) > 0.001
-      )
-        moving = true;
-      else {
-        state[key] = target.current[key];
-        state[velocity] = 0;
-      }
-    }
-    setMotion({ x: state.x, y: state.y, power: state.power });
-    frame.current = moving ? requestAnimationFrame(animate) : 0;
-  };
-  const wake = () => {
-    if (!frame.current) frame.current = requestAnimationFrame(animate);
-  };
-  const move = (event, board) => {
-    if (!enabled.current || event.pointerType !== "mouse" || !board) return;
-    const rect = board.getBoundingClientRect();
-    target.current = {
-      x: Math.max(
-        -1,
-        Math.min(1, ((event.clientX - rect.left) / rect.width) * 2 - 1),
-      ),
-      y: Math.max(
-        -1,
-        Math.min(1, ((event.clientY - rect.top) / rect.height) * 2 - 1),
-      ),
-      power: 1,
-    };
-    wake();
-  };
-  const leave = () => {
-    target.current = { x: 0, y: 0, power: 0 };
-    wake();
-  };
-  return { motion, move, leave };
+function FlowArrow({ label }) {
+  return (
+    <div className="taste-flow-arrow" aria-hidden="true">
+      <span>{label}</span>
+      <ArrowRight size={18} />
+    </div>
+  );
 }
-export function TasteMap({ seeds, signals = [] }) {
-  const board = useRef(null);
-  const dragging = useRef(null);
-  const [positions, setPositions] = useState({});
-  const [active, setActive] = useState(null);
-  const { motion, move, leave } = useHoverField();
-  const nodes = [
-    ...seeds.map((seed) => ({ ...seed, nodeType: "seed" })),
-    ...signals
-      .filter(
-        (signal) =>
-          signal.name &&
-          Number.isFinite(signal.affinity) &&
-          !seeds.some(
-            (seed) => seed.name.toLowerCase() === signal.name.toLowerCase(),
-          ),
-      )
-      .map((signal, index) => ({
-        ...signal,
-        entity_id: `affinity-${index}-${signal.name}`,
-        category: "Affinity signal",
-        nodeType: "signal",
-      })),
-  ];
-  const activeNode = nodes.find((node) => node.entity_id === active);
-  const point = (seed, index) => {
-    const [x, y] =
-      positions[seed.entity_id] || locations[index % locations.length];
-    if (dragging.current === seed.entity_id) return [x, y];
-    const dx = x - (50 + motion.x * 50);
-    const dy = y - (50 + motion.y * 50);
-    const distance = Math.hypot(dx, dy) || 1;
-    const repel = Math.max(0, 1 - distance / 48) * 13 * motion.power;
-    return [
-      Math.max(
-        20,
-        Math.min(80, x + (dx / distance) * repel + motion.x * 3 * motion.power),
-      ),
-      Math.max(
-        24,
-        Math.min(76, y + (dy / distance) * repel + motion.y * 4 * motion.power),
-      ),
-    ];
-  };
-  const coreX = 50 + motion.x * 3 * motion.power;
-  const coreY = 50 + motion.y * 4 * motion.power;
-  const finishDrag = (event) => {
-    if (dragging.current) {
-      event.currentTarget.releasePointerCapture?.(event.pointerId);
-      dragging.current = null;
-    }
-  };
+
+export function TasteFlow({ test }) {
+  const seeds = test.seeds || [];
+  const signals = (test.insights || []).filter(
+    (signal) => signal.name && Number.isFinite(signal.affinity),
+  );
+  const scores = test.prediction || [];
+  const direct =
+    test.comparison?.payload?.qloo?.method === "direct-entity-affinity";
+  const qlooBranch = test.comparison?.payload?.qloo;
+  const higherScorePolicy = qlooBranch?.decisionPolicy === "higher-score-v1";
+  const winner = direct
+    ? ({ A: 0, B: 1 }[test.comparison.payload.qloo.choice] ?? null)
+    : scores.length < 2 || scores[0].score === scores[1].score
+      ? null
+      : scores[0].score > scores[1].score
+        ? 0
+        : 1;
+  const modeLabel =
+    test.mode === "real" ? "Qloo API signals" : "Synthetic demo signals";
+
   return (
     <figure
-      className="taste-map"
-      aria-label="Interactive map of the selected audience tastes"
-      onPointerMove={(event) => move(event, board.current)}
-      onPointerLeave={leave}
-      onBlur={(event) => {
-        if (!event.currentTarget.contains(event.relatedTarget)) leave();
-      }}
+      className="taste-flow"
+      aria-label="How TasteTest turns audience tastes into an A/B prediction"
     >
-      <figcaption className="map-caption">
+      <figcaption className="taste-flow-caption">
         <span>
-          <Crosshair size={13} />
-          TASTE NETWORK
+          <Crosshair size={13} /> HOW THE PICK IS BUILT
         </span>
-        <span>
-          {String(seeds.length).padStart(2, "0")} SEEDS ·{" "}
-          {String(nodes.length - seeds.length).padStart(2, "0")} AFFINITIES
-        </span>
+        <span>CASE DATA · NO HIDDEN STEPS</span>
       </figcaption>
-      <div
-        className="map-board"
-        ref={board}
-        style={{
-          "--field-x": motion.x,
-          "--field-y": motion.y,
-          "--field-power": motion.power,
-        }}
-        data-hover-power={motion.power.toFixed(2)}
-      >
-        <div
-          className="map-hover-halo"
-          aria-hidden="true"
-          style={{
-            left: `${50 + motion.x * 50}%`,
-            top: `${50 + motion.y * 50}%`,
-            opacity: motion.power * 0.65,
-          }}
-        />
-        <svg
-          className="map-links"
-          viewBox="0 0 100 100"
-          preserveAspectRatio="none"
-          aria-hidden="true"
-        >
-          <ellipse
-            cx={coreX}
-            cy={coreY}
-            rx={30 + motion.power * 3}
-            ry={34 - motion.power * 2}
-            className="map-orbit"
-          />
-          <ellipse
-            cx={coreX}
-            cy={coreY}
-            rx="18"
-            ry="21"
-            className="map-orbit inner"
-          />
-          <line x1="0" y1="50" x2="100" y2="50" className="map-guide" />
-          <line x1="50" y1="0" x2="50" y2="100" className="map-guide" />
-          {nodes.map((node, i) => {
-            const [x, y] = point(node, i);
-            return (
-              <g
-                key={node.entity_id}
-                className={active === node.entity_id ? "lit" : ""}
-              >
-                <line
-                  x1={coreX}
-                  y1={coreY}
-                  x2={x}
-                  y2={y}
-                  className="map-connection"
-                />
-                <circle r=".55" cx={x} cy={y} className="map-dot" />
-                <circle
-                  r=".6"
-                  className="map-traveler"
-                  style={{ opacity: motion.power }}
-                >
-                  <animate
-                    attributeName="cx"
-                    values={`${x};${coreX}`}
-                    dur={`${1.4 + i * 0.2}s`}
-                    repeatCount="indefinite"
-                  />
-                  <animate
-                    attributeName="cy"
-                    values={`${y};${coreY}`}
-                    dur={`${1.4 + i * 0.2}s`}
-                    repeatCount="indefinite"
-                  />
-                </circle>
-              </g>
-            );
-          })}
-        </svg>
-        <div
-          className="map-core"
-          style={{ left: `${coreX}%`, top: `${coreY}%` }}
-        >
-          <span className="core-wireframe" aria-hidden="true">
-            <i />
-            <i />
-            <i />
+
+      <div className="taste-flow-track">
+        <section className="taste-flow-stage taste-flow-inputs">
+          <span className="taste-flow-step">01 · INPUT</span>
+          <h3>{seeds.length} taste seeds</h3>
+          <div className="taste-flow-chips">
+            {seeds.map((seed) => (
+              <span key={seed.entity_id}>{seed.name}</span>
+            ))}
+          </div>
+        </section>
+
+        <FlowArrow label="resolve" />
+
+        <section className="taste-flow-stage taste-flow-engine">
+          <span className="taste-flow-step">02 · QLOO</span>
+          <h3>Taste intelligence</h3>
+          <div className="taste-flow-signals">
+            {signals.slice(0, 3).map((signal) => (
+              <div key={signal.name}>
+                <span>{signal.name}</span>
+                <strong>{signal.affinity.toFixed(3)}</strong>
+              </div>
+            ))}
+          </div>
+          <small>{modeLabel}</small>
+        </section>
+
+        <FlowArrow label="score" />
+
+        <section className="taste-flow-stage taste-flow-output">
+          <span className="taste-flow-step">
+            {direct ? "03 · DIRECT AFFINITY" : "03 · A/B FIT"}
           </span>
-          <Crosshair size={24} />
-          <span>YOUR AUDIENCE</span>
-          <strong>{seeds.length} tastes</strong>
-        </div>
-        {nodes.map((node, i) => {
-          const Icon = icons[node.category] || Crosshair;
-          const [x, y] = point(node, i);
-          return (
-            <button
-              type="button"
-              key={node.entity_id}
-              className={`map-node ${node.nodeType === "signal" ? "is-affinity" : ""} ${active === node.entity_id ? "lit" : ""}`}
-              style={{ left: `${x}%`, top: `${y}%` }}
-              aria-label={`Explore ${node.name}${Number.isFinite(node.affinity) ? `, affinity ${node.affinity.toFixed(3)}` : ""}`}
-              aria-pressed={active === node.entity_id}
-              onMouseEnter={() => setActive(node.entity_id)}
-              onFocus={() => setActive(node.entity_id)}
-              onClick={() => setActive(node.entity_id)}
-              onPointerDown={(event) => {
-                if (event.pointerType !== "mouse") return;
-                dragging.current = node.entity_id;
-                setActive(node.entity_id);
-                event.currentTarget.setPointerCapture(event.pointerId);
-              }}
-              onPointerMove={(event) => {
-                if (dragging.current !== node.entity_id || !board.current)
-                  return;
-                const rect = board.current.getBoundingClientRect();
-                setPositions((old) => ({
-                  ...old,
-                  [node.entity_id]: [
-                    Math.min(
-                      80,
-                      Math.max(
-                        20,
-                        ((event.clientX - rect.left) / rect.width) * 100,
-                      ),
-                    ),
-                    Math.min(
-                      76,
-                      Math.max(
-                        24,
-                        ((event.clientY - rect.top) / rect.height) * 100,
-                      ),
-                    ),
-                  ],
-                }));
-              }}
-              onPointerUp={finishDrag}
-              onPointerCancel={finishDrag}
-            >
-              <span className="map-node-icon">
-                <Icon size={17} />
-              </span>
-              <span className="map-node-name">{node.name}</span>
-            </button>
-          );
-        })}
+          <h3>
+            {winner === null
+              ? "Too close to call"
+              : direct
+                ? "Qloo pick"
+                : "Predicted pick"}
+          </h3>
+          <div className="taste-flow-scores">
+            {test.options.slice(0, 2).map((option, index) => (
+              <div
+                className={winner === index ? "is-winner" : ""}
+                key={option.title}
+                title={option.title}
+              >
+                <span>
+                  {index === 0 ? "A" : "B"} · {option.title}
+                </span>
+                <strong>
+                  {direct && Number.isFinite(scores[index]?.score)
+                    ? scores[index].score.toFixed(1)
+                    : (scores[index]?.score ?? "—")}
+                </strong>
+              </div>
+            ))}
+          </div>
+          {winner !== null && (
+            <p>
+              <Check size={13} /> {winner === 0 ? "A" : "B"} has the stronger
+              {direct && higherScorePolicy
+                ? " recorded affinity"
+                : " audience fit"}
+            </p>
+          )}
+          {direct && (
+            <small>
+              {higherScorePolicy
+                ? winner === null
+                  ? "Equal affinity; neither option is higher. "
+                  : qlooBranch.lowSeparation
+                    ? "Low separation; the pick follows higher affinity. "
+                    : ""
+                : winner === null
+                  ? "Qloo abstains below a 10-point fit gap. "
+                  : ""}
+              Fit /100 = affinity × 100; not vote probability.
+            </small>
+          )}
+        </section>
       </div>
-      <div className="map-readout" aria-live="polite">
-        {activeNode ? (
-          <>
-            <span>{activeNode.name}</span>
-            <strong>
-              {Number.isFinite(activeNode.affinity)
-                ? `Affinity ${activeNode.affinity.toFixed(3)} · Qloo audience signal`
-                : `Audience seed · ${activeNode.category}`}
-            </strong>
-          </>
-        ) : (
-          <>
-            <Move size={12} />
-            <span>Move your mouse through the network.</span>
-          </>
-        )}
+
+      <div className="taste-flow-footer">
+        <LockKeyhole size={13} />
+        <span>Freeze the prediction</span>
+        <ArrowRight size={13} />
+        <span>poll real people</span>
+        <ArrowRight size={13} />
+        <strong>reveal the verdict</strong>
       </div>
     </figure>
   );

@@ -88,7 +88,7 @@ export function makeFreeze(
           method: "not-run",
           answer: "No AI prediction was recorded.",
         }
-      : validateManual(body.llm, "LLM-only", !!test.proxyCaseId)),
+      : validateManual(body.llm, "AI-only", !!test.proxyCaseId)),
     ...(test.proxyLlmPrediction
       ? {
           method: test.proxyLlmPrediction.method,
@@ -136,10 +136,25 @@ export function makeFreeze(
   }
   const qloo = manual
     ? validateManual(body.qloo, "Qloo", true)
-    : { ...automatic };
+    : test.provenance?.qlooFallback
+      ? {
+          ...automatic,
+          fallback: true,
+          source: "Text heuristic fallback",
+          method:
+            "No Qloo candidate entity signal; declared text heuristic fallback",
+        }
+      : { ...automatic };
   const agent = manual
     ? validateManual(body.agent, "Agent", true)
-    : { ...automatic };
+    : test.provenance?.qlooFallback
+      ? {
+          ...automatic,
+          qlooFallback: true,
+          source: "Agent · text heuristic fallback",
+          method: "Combined view with no Qloo candidate entity signal",
+        }
+      : { ...automatic };
   hooks.branchesRecorded?.({ llm, qloo, agent });
   const payload = {
     schemaVersion: 1,
@@ -147,6 +162,7 @@ export function makeFreeze(
     caseLabel: metadata.caseLabel || `TB-${test.id.slice(0, 8).toUpperCase()}`,
     frozenAt: now,
     mode: manual ? "manual" : test.mode === "real" ? "real-qloo" : "mock",
+    signalMode: test.mode === "real" ? "real" : "mock",
     metadata,
     options: test.options.map(({ title, description }) => ({
       title,
@@ -180,8 +196,8 @@ export function makeFreeze(
             : {}),
           timing:
             test.proxyDomain === "music"
-              ? "Retrospective music proxy: listening records pre-exist this freeze. Only reveal occurs after predictions are sealed."
-              : "Retrospective proxy: ratings pre-exist this freeze. Only reveal occurs after predictions are sealed.",
+              ? "Historical music proxy: listening records pre-exist this freeze. Only reveal occurs after predictions are sealed."
+              : "Historical proxy: ratings pre-exist this freeze. Only reveal occurs after predictions are sealed.",
         }
       : {}),
     originalRecordedAt: manual
@@ -193,7 +209,9 @@ export function makeFreeze(
         ? test.proxyDecisionPolicy === "always-pick-v1"
           ? "Qloo and Agent share direct candidate affinity and always-pick-v1; higher score wins, exact ties choose A. Not independent predictors."
           : "Qloo and Agent share the same direct candidate affinity and abstention rule; not independent predictors."
-        : "Qloo and agent currently use the same local scoreOption heuristic and are not independent predictors.",
+        : test.provenance?.qlooFallback
+          ? "Qloo had no candidate entity signal. Qloo is labeled as a text-heuristic fallback, and Agent uses the same fallback rather than an independent Qloo result."
+          : "Qloo and agent currently use the same local scoreOption heuristic and are not independent predictors.",
     minVotes: 20,
     minCases: 20,
   };
@@ -213,7 +231,8 @@ export function scoreFreeze(freeze, counts) {
   if (!actual) reasons.push(total ? "tied outcome" : "no votes");
   if (p.metadata.track !== "track-b" || !p.metadata.unpublished)
     reasons.push("workflow rehearsal / public case");
-  if (p.mode === "mock") reasons.push("mock signals, workflow only");
+  if (p.mode === "mock" || p.signalMode === "mock")
+    reasons.push("mock signals, workflow only");
   if (!p.metadata.audienceVerified)
     reasons.push("audience taste membership unverified");
   const grade = (branch) =>

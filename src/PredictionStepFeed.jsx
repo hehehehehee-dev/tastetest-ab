@@ -29,6 +29,10 @@ export default function PredictionStepFeed({ work }) {
   if (!work?.steps?.length) return null;
   const complete = work.steps.every((step) => step.status === "done");
   const done = work.steps.filter((step) => step.status === "done").length;
+  const waitingForEvidence =
+    work.context === "track-b" &&
+    done === 4 &&
+    work.steps.slice(4).every((step) => step.status === "pending");
   const summary = complete
     ? `6 steps · ${seconds(predictionWorkElapsed(work))} · frozen #${work.sha256?.slice(0, 6) || "pending"}`
     : `Agent work · ${done} of 6 steps`;
@@ -63,6 +67,11 @@ export default function PredictionStepFeed({ work }) {
             );
           })}
         </ol>
+        {waitingForEvidence && (
+          <p className="prediction-step-waiting">
+            Waiting for you to record and freeze the evidence fields below.
+          </p>
+        )}
         <p className="prediction-step-honesty">
           Showing the agent&apos;s work — this does not prove the prediction is
           correct.

@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 
 export const verdictChatStarters = [
-  "Why did you pick A?",
+  "Why this pick?",
   "Where did the branches disagree?",
   "What would change this verdict?",
   "How confident should I be?",
@@ -148,7 +148,7 @@ function optionName(context, label) {
 }
 
 function branchSentence(context) {
-  const labels = { llm: "LLM-only", qloo: "Qloo", agent: "Agent" };
+  const labels = { llm: "AI-only", qloo: "Qloo", agent: "Agent" };
   return Object.entries(context.branches)
     .map(([key, branch]) => {
       const declared = branch.pick || "Not run";

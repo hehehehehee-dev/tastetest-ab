@@ -88,7 +88,7 @@ export default function CaseStudy() {
                 </thead>
                 <tbody>
                   <tr>
-                    <th scope="row">AI (LLM-only)</th>
+                    <th scope="row">AI-only</th>
                     <td>{revealed.branches.llm.pick || "Not recorded"}</td>
                     <td>{revealed.branches.llm.note}</td>
                   </tr>
@@ -153,8 +153,8 @@ export default function CaseStudy() {
         </p>
         <p>
           For a measured comparison, use the film or music proxy, or a fresh
-          Track B case. Those flows retain prediction freezing before reveal or
-          polling.
+          live evidence case (Track B). Those flows retain prediction freezing
+          before reveal or polling.
         </p>
       </details>
     </main>

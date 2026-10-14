@@ -214,10 +214,24 @@ test("proxy admin seeding, ownership, freeze-before-reveal, hidden payloads, imm
     (await call(base + "/reveal", "POST", {}, ownerToken)).data.revealedAt,
     revealed.revealedAt,
   );
-  assert.equal((await call(base)).data.outcome, undefined);
+  const publicRevealed = (await call(base)).data;
+  assert.equal(publicRevealed.outcome.actual, revealed.outcome.actual);
+  assert.equal(publicRevealed.freeze.sha256, revealed.freeze.sha256);
+  assert.ok(publicRevealed.freeze.payload.branches.qloo);
+  assert.equal(publicRevealed.prediction, undefined);
   const list = (await call("/proxy")).data;
   assert.equal(list.tally.mock.cases, 1);
   assert.equal(list.tally.real.cases, 0);
+  assert.deepEqual(list.completedRuns, [
+    {
+      id: run.id,
+      caseId: inputs.cases[0].id,
+      mode: "mock",
+      frozenAt: revealed.frozenAt,
+      revealedAt: revealed.revealedAt,
+      scoringVersion: "proxy-genre-mock-v1",
+    },
+  ]);
   assert.equal(
     /"(?:actual|mean|overallRatings|segmentUsers)"\s*:/.test(
       JSON.stringify(list),

@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from "react";
 
 const starters = [
-  "Why did you pick A?",
+  "Why this pick?",
   "Where did the branches disagree?",
   "What would change this verdict?",
   "How confident should I be?",
@@ -17,7 +17,12 @@ function sessionId(key) {
   return value;
 }
 
-export default function VerdictChat({ endpoint, verdictKey, headers = {} }) {
+export default function VerdictChat({
+  endpoint,
+  verdictKey,
+  headers = {},
+  localAnswer,
+}) {
   const session = useMemo(() => sessionId(verdictKey), [verdictKey]);
   const [messages, setMessages] = useState([]);
   const [question, setQuestion] = useState("");
@@ -32,6 +37,17 @@ export default function VerdictChat({ endpoint, verdictKey, headers = {} }) {
     setQuestion("");
     setBusy(true);
     try {
+      if (localAnswer) {
+        const answer = localAnswer(text);
+        const nextCount = count + 1;
+        setMessages((current) => [
+          ...current,
+          { role: "assistant", text: answer },
+        ]);
+        setCount(nextCount);
+        setCapped(nextCount >= 10);
+        return;
+      }
       const response = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json", ...headers },
@@ -60,13 +76,13 @@ export default function VerdictChat({ endpoint, verdictKey, headers = {} }) {
   }
 
   return (
-    <details className="panel verdict-chat">
+    <details className="panel verdict-chat" id={`verdict-chat-${verdictKey}`}>
       <summary>
         <span>
           <b>Ask about this result</b>
           <small>Grounded in this frozen verdict only</small>
         </span>
-        <span aria-hidden="true">↗</span>
+        <span aria-hidden="true">⌄</span>
       </summary>
       <div className="verdict-chat-body">
         <p className="verdict-chat-guardrail">

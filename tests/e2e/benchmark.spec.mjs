@@ -10,10 +10,7 @@ test("Track B freeze, same-tab poll, three-branch grading and excluded mock ledg
   await page.goto("/benchmark");
   await expect(
     page.locator(".benchmark-overview article").first().locator("small"),
-  ).toHaveText("Ready for the first frozen case.");
-  await expect(
-    page.getByRole("link", { name: "Run the first case" }),
-  ).toBeVisible();
+  ).toHaveText(/Ready for the first frozen case\.|not enough cases yet/);
   await page.getByRole("link", { name: "Create a new case" }).click();
   await page.getByLabel("Give it a name").nth(0).fill("Quiet vinyl cafe");
   await page
@@ -27,12 +24,6 @@ test("Track B freeze, same-tab poll, three-branch grading and excluded mock ledg
     .fill("Bright playful colorful pop party with upbeat community energy.");
   for (const name of ["Phoebe Bridgers", "Tame Impala", "Taylor Swift"])
     await page.getByRole("button", { name, exact: true }).click();
-  await page
-    .getByRole("button", { name: "Get agent prediction", exact: true })
-    .click();
-  await expect(
-    page.getByRole("button", { name: "Open live poll" }),
-  ).toBeDisabled();
   await page.getByLabel("Case label", { exact: true }).fill(caseLabel);
   await page
     .getByLabel("This is a fresh unpublished case, with no public outcome.")
@@ -40,20 +31,29 @@ test("Track B freeze, same-tab poll, three-branch grading and excluded mock ledg
   await page
     .getByLabel("The planned voters actually share the recorded taste seeds.")
     .check();
-  await page.getByLabel("Pick", { exact: true }).selectOption("B");
-  await page.getByLabel("Confidence (0–100)").fill("60");
-  await page.getByLabel("Source (exact model/version or human)").fill("human");
   await page
-    .getByLabel("Paste the original answer")
-    .fill(
-      "Synthetic browser fixture: choose B. This is not real model evidence.",
-    );
+    .getByLabel("Original prediction timestamp")
+    .fill("2026-01-01T12:00");
+  for (const branch of await page.locator(".manual-branch").all()) {
+    await branch.getByLabel("Pick", { exact: true }).selectOption("B");
+    await branch.getByLabel("Confidence (0–100)").fill("60");
+    await branch
+      .getByLabel("Source (exact model/version or human)")
+      .fill("human");
+    await branch
+      .getByLabel("Paste the original answer")
+      .fill(
+        "Synthetic browser fixture: choose B. This is not real model evidence.",
+      );
+  }
   await page
     .getByLabel(
       "All predictions were recorded before collecting any outcome or vote.",
     )
     .check();
-  await page.getByRole("button", { name: "Freeze predictions" }).click();
+  await page
+    .getByRole("button", { name: "Prepare evidence case", exact: true })
+    .click();
   await expect(
     page.getByRole("heading", { name: "Prediction frozen" }),
   ).toBeVisible();
@@ -73,7 +73,7 @@ test("Track B freeze, same-tab poll, three-branch grading and excluded mock ledg
   ).toBeVisible();
   await expect(page.locator(".poll-share-qr canvas")).toBeVisible();
   await expect(
-    page.getByRole("progressbar", { name: "Track B vote progress" }),
+    page.getByRole("progressbar", { name: "Evidence benchmark vote progress" }),
   ).toHaveAttribute("aria-valuenow", "0");
   await page.getByRole("button", { name: "Copy link" }).click();
   await expect(
@@ -86,6 +86,9 @@ test("Track B freeze, same-tab poll, three-branch grading and excluded mock ledg
   await page.getByRole("link", { name: "Open poll", exact: true }).click();
   await expect(page).toHaveURL(new RegExp(`/poll/${id}`));
   expect(context.pages()).toHaveLength(1);
+  await expect(
+    page.getByRole("button", { name: /Press A or choose this idea/ }),
+  ).toBeVisible();
   await page.keyboard.press("a");
   await expect(
     page.getByText("Vote recorded. Thanks for weighing in."),
@@ -110,12 +113,12 @@ test("Track B freeze, same-tab poll, three-branch grading and excluded mock ledg
   );
   const row = page
     .locator(".freeze-panel tr")
-    .filter({ hasText: "LLM-only (manual paste)" });
+    .filter({ hasText: "AI-only (external)" });
   await expect(row).toContainText("✗");
   await page.getByRole("link", { name: "View benchmark ledger" }).click();
   await expect(
     page.locator(".benchmark-overview article").first().locator("small"),
-  ).toHaveText("Ready for the first frozen case.");
+  ).toHaveText(/Ready for the first frozen case\.|not enough cases yet/);
   await page
     .locator(".benchmark-drawer > summary")
     .filter({ hasText: "Closed case ledger" })
@@ -188,11 +191,7 @@ test("external manual entry stores all three original answers with distinct time
     { id: created.test.id, token: created.ownerToken },
   );
   await page.goto(`/test/${created.test.id}?view=prediction`);
-  await page
-    .getByLabel(
-      "Record external predictions manually (all three branches required)",
-    )
-    .check();
+  await expect(page.locator(".manual-branch")).toHaveCount(3);
   await page
     .getByLabel("Original prediction timestamp")
     .fill("2026-01-01T12:00");

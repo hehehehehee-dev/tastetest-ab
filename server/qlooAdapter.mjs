@@ -180,6 +180,10 @@ export const qlooAdapter = {
     (isMockMode() ? mockQlooAdapter : client()).resolveEntities(...args),
   getInsights: (...args) =>
     (isMockMode() ? mockQlooAdapter : client()).getInsights(...args),
+  getTasteProfile: (...args) =>
+    isMockMode()
+      ? Promise.resolve({ mode: "mock", status: "unavailable", tags: [] })
+      : client().getTasteProfile(...args),
   // Qloo supplies real entities/affinities; concept-to-tag mapping remains our declared heuristic.
   scoreOption: (...args) => mockQlooAdapter.scoreOption(...args),
 };

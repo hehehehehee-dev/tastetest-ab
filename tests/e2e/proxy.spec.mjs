@@ -6,6 +6,10 @@ test("proxy UI hides ratings until an immutable freeze then reveals separate moc
   page,
   request,
 }, testInfo) => {
+  const initialTrackTally = (await (await request.get("/api/benchmark")).json())
+    .tally;
+  const initialTrackCounts =
+    initialTrackTally.decisionCounts || initialTrackTally.counts;
   const input = {
     id: "PX-001",
     dataset: "synthetic-browser-fixture",
@@ -135,7 +139,7 @@ test("proxy UI hides ratings until an immutable freeze then reveals separate moc
     .click();
   await expect(
     page.locator(".benchmark-overview article").first().locator("strong"),
-  ).toHaveText("LLM 0/0 · Qloo 0/0 · Agent 0/0");
+  ).toHaveText(/AI-only 0\/\d+ · Qloo 0\/\d+ · Agent 0\/\d+/);
   await expect(
     page.getByRole("heading", {
       name: "Proxy benchmark — real preference data",
@@ -170,7 +174,7 @@ test("proxy UI hides ratings until an immutable freeze then reveals separate moc
   await page.locator(".verdict-chat > summary").click();
   await page
     .locator(".verdict-chat")
-    .getByRole("button", { name: "Why did you pick A?" })
+    .getByRole("button", { name: "Why this pick?" })
     .click();
   await expect(page.locator(".verdict-chat")).toContainText(
     "Fixture candidate A",
@@ -190,7 +194,7 @@ test("proxy UI hides ratings until an immutable freeze then reveals separate moc
     /Historical preferences, not business results/,
   );
   await expect(page.locator(".verdict-disagreement")).toContainText(
-    "AI (Replicate API)",
+    "AI-only (Replicate API)",
   );
   await expect(page.locator(".verdict-disagreement")).not.toContainText(
     "Agent",
@@ -215,7 +219,7 @@ test("proxy UI hides ratings until an immutable freeze then reveals separate moc
       ),
   ).toBe(true);
   await expect(
-    page.getByRole("row").filter({ hasText: "AI (Replicate API)" }),
+    page.getByRole("row").filter({ hasText: "AI-only (Replicate API)" }),
   ).toContainText("NOT RUN");
   await mkdir("artifacts", { recursive: true });
   const downloadEvent = page.waitForEvent("download");
@@ -253,16 +257,18 @@ test("proxy UI hides ratings until an immutable freeze then reveals separate moc
     .click();
   await expect(
     page.getByRole("heading", {
-      name: "Mock proxy workflow · 1 completed cases",
+      name: "Mock proxy workflow · 1 completed case",
     }),
   ).toBeVisible();
-  await expect(page.locator(".proxy-section")).toContainText("AI 0/0");
+  await expect(page.locator(".proxy-section")).toContainText("AI-only 0/0");
   await expect(
     page.locator(".benchmark-overview article").first().locator("strong"),
-  ).toHaveText("LLM 0/0 · Qloo 0/0 · Agent 0/0");
+  ).toHaveText(
+    `AI-only ${initialTrackCounts.llm.correct}/${initialTrackCounts.llm.total} · Qloo ${initialTrackCounts.qloo.correct}/${initialTrackCounts.qloo.total} · Agent ${initialTrackCounts.agent.correct}/${initialTrackCounts.agent.total}`,
+  );
   expect(
     (await (await request.get("/api/benchmark")).json()).tally.evaluableCases,
-  ).toBe(0);
+  ).toBe(initialTrackTally.evaluableCases);
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth > innerWidth,
@@ -380,7 +386,9 @@ test("the fixed GPT-5 model runs and reveals without manual prediction fields", 
   ).toBeVisible();
   await expect(page.getByRole("table")).toContainText("Replicate");
   await expect(page.getByRole("table")).toContainText("GPT-5");
-  await expect(page.getByRole("table")).toContainText("AI (Replicate API)");
+  await expect(page.getByRole("table")).toContainText(
+    "AI-only (Replicate API)",
+  );
   await expect(page.getByRole("table")).not.toContainText("manual paste");
   await expect(page.getByRole("table")).not.toContainText("a".repeat(64));
   await expect(page.getByRole("table")).not.toContainText("Agent");

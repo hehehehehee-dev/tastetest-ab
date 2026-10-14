@@ -17,14 +17,14 @@ export function VoteGoal({ total, goal = 20 }) {
               <CheckCircle2 size={14} /> Evidence threshold reached
             </>
           ) : (
-            `${goal - total} more to reach Track B eligibility`
+            `${goal - total} more real votes to qualify for the evidence benchmark`
           )}
         </span>
       </div>
       <div
         className="vote-goal-track"
         role="progressbar"
-        aria-label="Track B vote progress"
+        aria-label="Evidence benchmark vote progress"
         aria-valuemin="0"
         aria-valuemax={goal}
         aria-valuenow={Math.min(total, goal)}

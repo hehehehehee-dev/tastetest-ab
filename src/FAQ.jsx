@@ -54,8 +54,11 @@ const questions = [
       MovieLens outcomes show mean ratings out of 5. Last.fm outcomes show mean
       observed listens per segment user, not vote shares. Qloo affinity measures
       cultural fit, not the probability of winning a poll. AI confidence is
-      self-reported; Qloo confidence is a score-gap heuristic. Neither is
-      calibrated as a success probability.
+      self-reported. The Qloo branch shows its actual affinity gap; separation
+      levels are calculated by TasteTest, not confidence supplied by Qloo.
+      Custom-option fallback uses a local text-score gap. Legacy receipts keep
+      their app-assigned 40/65/80 ratings for audit. These are not calibrated
+      success probabilities.
     </p>,
   ],
   [
@@ -64,18 +67,18 @@ const questions = [
       A freeze seals the predictions with an ISO timestamp and SHA-256 receipt
       hash, so later changes can be detected. It does not prove prediction
       accuracy. Proxy data already existed before the run; only its reveal is
-      delayed. Fresh Track B cases must freeze before their poll opens.
+      delayed. Fresh live evidence cases (Track B) must freeze before their poll
+      opens.
     </p>,
   ],
   [
-    "Do film and music results count toward Track B?",
+    "What is Track B, and do film or music results count?",
     <p>
-      No. Film proxy, music proxy and Track B have separate tallies. The proxies
-      use historical preference data, not business outcomes or causal
-      experiments. Their selected audience segments can overlap, so results
-      describe this case set rather than general model superiority. A fresh
-      Track B case needs at least 20 real, non-tied audience votes and must
-      satisfy the benchmark protocol to count.
+      Track B is the live evidence benchmark: predictions are frozen before a
+      fresh audience poll opens, and a case needs at least 20 real, non-tied
+      votes plus the stated eligibility checks before it counts toward accuracy.
+      Film and music proxies use historical preference data instead, so they
+      have separate tallies and never enter Track B.
     </p>,
   ],
   [
@@ -115,11 +118,36 @@ const questions = [
   ],
 ];
 
+const questionIds = [
+  "what-tastetest-does",
+  "trying-proxy-cases",
+  "optional-prediction",
+  "ai-and-qloo",
+  "ai-model",
+  "scores-and-confidence",
+  "freeze-receipt",
+  "track-b-eligibility",
+  "abstentions",
+  "data-sources",
+];
+
 function Questions() {
+  React.useEffect(() => {
+    if (!window.location.hash) return;
+    const target = document.querySelector(window.location.hash);
+    if (!target?.classList.contains("faq-question")) return;
+    requestAnimationFrame(() => target.scrollIntoView({ block: "center" }));
+  }, []);
+
   return (
     <div className="faq-questions">
-      {questions.map(([question, answer]) => (
-        <details className="faq-question" key={question}>
+      {questions.map(([question, answer], index) => (
+        <details
+          className="faq-question"
+          id={questionIds[index]}
+          key={question}
+          open={window.location.hash === `#${questionIds[index]}` || undefined}
+        >
           <summary>{question}</summary>
           <div className="faq-answer">{answer}</div>
         </details>
@@ -142,7 +170,7 @@ export default function FAQ({ compact = false }) {
           </summary>
           <Questions />
           <a className="faq-page-link" href="/faq">
-            View all frequently asked questions ↗
+            View all frequently asked questions
           </a>
         </details>
       </section>

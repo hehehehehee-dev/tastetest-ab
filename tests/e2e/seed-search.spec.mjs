@@ -112,7 +112,7 @@ test("studio lookup changes category explicitly; a broad cafe preference never b
       .fill("Synthetic browser fixture, no actual model or customer evidence.");
   }
   await page
-    .getByRole("button", { name: "Get agent prediction", exact: true })
+    .getByRole("button", { name: "Predict & freeze", exact: true })
     .click();
   await expect(page.getByRole("alert")).toContainText("Synthetic test stops");
   expect(payload.seedEntityIds).toEqual([id(1), id(2), id(4)]);

@@ -1,54 +1,39 @@
 import { test, expect } from "@playwright/test";
-import { mkdir } from "node:fs/promises";
 
-test("taste network reacts to pointer movement without pressing and rests on exit", async ({
-  page,
-}, testInfo) => {
-  await page.goto("/");
-  const board = page.locator(".map-board");
-  await expect(board).toBeVisible();
-  await board.scrollIntoViewIfNeeded();
-  const firstNode = page.locator(".map-node").first();
-  const initial = await firstNode.getAttribute("style");
-  const box = await board.boundingBox();
-  // No mouse.down(), click(), or drag: movement alone must animate the graph.
-  await page.mouse.move(box.x + box.width * 0.65, box.y + box.height * 0.48);
-  if (testInfo.project.name === "mobile") {
-    await expect(board).toHaveAttribute("data-hover-power", "0.00");
-    await expect(firstNode).toHaveAttribute("style", initial);
-    return;
-  }
-  await expect
-    .poll(async () => Number(await board.getAttribute("data-hover-power")))
-    .toBeGreaterThan(0.9);
-  await expect.poll(() => firstNode.getAttribute("style")).not.toBe(initial);
-  const moved = await firstNode.getAttribute("style");
-  await page.mouse.move(box.x + box.width * 0.22, box.y + box.height * 0.32);
-  await expect.poll(() => firstNode.getAttribute("style")).not.toBe(moved);
-  await mkdir("artifacts", { recursive: true });
-  await page
-    .locator(".taste-map")
-    .screenshot({ path: "artifacts/hover-network.png" });
-  await page.mouse.move(3, 3);
-  await expect(board).toHaveAttribute("data-hover-power", "0.00");
-  await expect(firstNode).toHaveAttribute("style", initial);
-  // Reduced motion must suppress the pointer animation even on a fine pointer.
-  await page.emulateMedia({ reducedMotion: "reduce" });
-  await page.mouse.move(box.x + box.width * 0.7, box.y + box.height * 0.45);
-  await expect(board).toHaveAttribute("data-hover-power", "0.00");
-  await expect(firstNode).toHaveAttribute("style", initial);
-  await expect(page.locator(".map-hover-halo")).toBeHidden();
-});
-
-test("taste network exposes grounded affinity values on hover and focus", async ({
+test("taste flow explains the real case pipeline in three fixed stages", async ({
   page,
 }) => {
   await page.goto("/");
-  const signal = page.locator(".map-node.is-affinity").first();
-  await signal.scrollIntoViewIfNeeded();
-  await signal.focus();
-  await expect(page.locator(".map-readout")).toContainText(/Affinity 0\.\d{3}/);
-  await expect(page.locator(".map-readout")).toContainText(
-    "Qloo audience signal",
-  );
+  const flow = page.getByRole("figure", {
+    name: "How TasteTest turns audience tastes into an A/B prediction",
+  });
+  await expect(flow).toBeVisible();
+  await expect(flow.locator(".taste-flow-stage")).toHaveCount(3);
+  await expect(flow).toContainText("01 · INPUT");
+  await expect(flow).toContainText("Phoebe Bridgers");
+  await expect(flow).toContainText("02 · QLOO");
+  await expect(flow).toContainText("Small-batch & handmade");
+  await expect(flow).toContainText("Synthetic demo signals");
+  await expect(flow).toContainText("03 · A/B FIT");
+  await expect(flow).toContainText("A · Slow mornings club");
+  await expect(flow).toContainText("Freeze the prediction");
+  await expect(flow).toContainText("poll real people");
+  await expect(flow).toContainText("reveal the verdict");
+});
+
+test("taste flow stays inside the viewport without overlapping at narrow widths", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/");
+  const flow = page.locator(".taste-flow");
+  await flow.scrollIntoViewIfNeeded();
+  const box = await flow.boundingBox();
+  expect(box.x).toBeGreaterThanOrEqual(0);
+  expect(box.x + box.width).toBeLessThanOrEqual(390);
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth > innerWidth,
+    ),
+  ).toBe(false);
 });

@@ -7,26 +7,27 @@ export default function CaseNavigation() {
         <span className="case-navigation-kicker">Start here · 2 minutes</span>
         <strong>Try a preference case</strong>
         <p>
-          AI + Qloo → freeze → reveal historical data. Separate from Track B.
+          AI + Qloo → freeze → reveal historical data. These practice cases do
+          not enter the live audience benchmark (Track B).
         </p>
       </div>
       <div className="case-navigation-primary">
-        <a href="/benchmark/film/PX-001" aria-label="Film · start PX-001 ↗">
+        <a href="/benchmark/film/PX-001" aria-label="Film · start PX-001">
           <span>
             <small>Film proxy</small>
             <b>Start PX-001</b>
           </span>
           <span className="case-navigation-arrow" aria-hidden="true">
-            ↗
+            →
           </span>
         </a>
-        <a href="/benchmark/music/MX-001" aria-label="Music · start MX-001 ↗">
+        <a href="/benchmark/music/MX-001" aria-label="Music · start MX-001">
           <span>
             <small>Music proxy</small>
             <b>Start MX-001</b>
           </span>
           <span className="case-navigation-arrow" aria-hidden="true">
-            ↗
+            →
           </span>
         </a>
       </div>

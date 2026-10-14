@@ -6,13 +6,16 @@ test("Track B excluded-note registry and CSV preserve unknown TB-001 timing with
   await page.goto("/benchmark");
   await page
     .locator(".benchmark-drawer > summary")
-    .filter({ hasText: "Track B case register" })
+    .filter({ hasText: "Live evidence case register" })
     .click();
   await expect(
-    page.getByRole("heading", { name: "Track B case register", exact: true }),
+    page.getByRole("heading", {
+      name: "Live evidence case register (Track B)",
+      exact: true,
+    }),
   ).toBeVisible();
   await expect(page.locator(".excluded-record-notes")).toContainText(
-    "excluded from the record count and every Track B tally",
+    "excluded from the record count and every live evidence tally",
   );
   const data = await (await request.get("/api/benchmark")).json();
   expect(data.pending.some((row) => row.caseLabel === "TB-001")).toBe(false);
@@ -31,7 +34,7 @@ test("Track B excluded-note registry and CSV preserve unknown TB-001 timing with
     page.getByText(/Entered into ledger on 2026-10-09/),
   ).toBeVisible();
   await expect(
-    page.getByRole("link", { name: "Export Track B CSV", exact: true }),
+    page.getByRole("link", { name: "Export live evidence CSV", exact: true }),
   ).toHaveAttribute("href", "/api/benchmark/export.csv");
   const csv = await request.get("/api/benchmark/export.csv");
   expect(csv.headers()["content-type"]).toContain("text/csv");

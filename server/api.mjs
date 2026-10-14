@@ -55,9 +55,10 @@ const json = (data, status = 200) =>
 const hash = (value) => createHash("sha256").update(value).digest("hex");
 
 async function predict(input, adapter = qlooAdapter, aiPredictor) {
+  const direct = input.comparisonKind === "entities";
   const work = createPredictionWork({
     mode: isMockMode() ? "mock" : "real",
-    context: "track-b",
+    context: input.creationMode === "quick" ? "quick-test" : "track-b",
   });
   const seeds = await runPredictionStep(
     work,
@@ -67,22 +68,99 @@ async function predict(input, adapter = qlooAdapter, aiPredictor) {
       `${value.length} of ${input.seedEntityIds.length} seeds resolved.`,
     "Couldn't resolve the taste seeds in Qloo. No prediction was recorded.",
   );
-  await runPredictionStep(
+  const candidates = await runPredictionStep(
     work,
     "resolve-candidates",
-    async () => input.options,
-    "0 of 2 candidates resolved as entities; Track B keeps custom concepts as text inputs.",
+    async () => {
+      if (!direct) return [];
+      const resolved = await adapter.resolveEntities(
+        input.options.map((o) => o.entityId),
+      );
+      return input.options.map((option) => {
+        const entity = resolved.find(
+          (e) => e.entity_id.toLowerCase() === option.entityId.toLowerCase(),
+        );
+        if (!entity || !entity.types?.includes(input.insightType))
+          fail(
+            "A confirmed option does not match the selected Qloo category. Select it again.",
+          );
+        return entity;
+      });
+    },
+    (value) =>
+      direct
+        ? `${value.length} of 2 confirmed option entities resolved.`
+        : "Custom ideas remain text inputs; direct entity affinity is unavailable.",
     "Couldn't prepare the two candidate concepts. No prediction was recorded.",
   );
+  const resolvedCandidateCount = candidates.length;
+  const options = direct
+    ? input.options.map((option, index) => ({
+        ...option,
+        title: candidates[index].name,
+      }))
+    : input.options;
+  let tasteProfile;
   const insights = await runPredictionStep(
     work,
     "fetch-affinities",
-    () =>
-      adapter.getInsights(input.seedEntityIds, [
-        input.insightType || typeUrns.Dining,
-      ]),
+    async () => {
+      const result = await adapter.getInsights(
+        input.seedEntityIds,
+        [input.insightType || typeUrns.Dining],
+        direct ? candidates.map((e) => e.entity_id) : [],
+      );
+      if (
+        direct &&
+        (result.mode !== "real" ||
+          candidates.some((candidate) => {
+            const signal = result.results.entities.find(
+              (e) =>
+                e.entity_id.toLowerCase() === candidate.entity_id.toLowerCase(),
+            );
+            return (
+              !Number.isFinite(signal?.query?.affinity) ||
+              signal.query.affinity < 0 ||
+              signal.query.affinity > 1
+            );
+          }))
+      )
+        fail(
+          "Qloo did not return real affinity for both confirmed options. No text score was substituted.",
+          502,
+        );
+      if (
+        input.compareAi &&
+        result.mode === "real" &&
+        typeof adapter.getTasteProfile === "function"
+      ) {
+        try {
+          tasteProfile = await adapter.getTasteProfile(
+            input.seedEntityIds,
+            input.insightType,
+          );
+          if (tasteProfile?.mode !== "real")
+            throw Error("No real profile returned");
+        } catch {
+          tasteProfile = {
+            mode: "real",
+            status: "unavailable",
+            tags: [],
+            note: "Taste Analysis was unavailable. Only the successfully recorded Qloo signals are used.",
+          };
+        }
+      }
+      return result;
+    },
     (value) =>
-      `${value.results.entities.length} audience affinity signals returned from one combined-seed query.`,
+      (direct
+        ? "2 direct candidate affinities returned from the combined-seed query."
+        : `${value.results.entities.length} audience affinity signals returned from one combined-seed query.`) +
+      (tasteProfile
+        ? tasteProfile.status === "available"
+          ? ` Taste Analysis returned ${tasteProfile.tags.length} context tags.`
+          : " Taste Analysis returned no usable profile; no profile tags were substituted."
+        : ""),
     "Couldn't reach Qloo for audience affinity signals. No prediction was recorded.",
   );
   work.mode = insights.mode || work.mode;
@@ -91,41 +169,118 @@ async function predict(input, adapter = qlooAdapter, aiPredictor) {
     work,
     "score-fit",
     async () => ({
-      prediction: await Promise.all(
-        input.options.map((o) => adapter.scoreOption(o, profile)),
-      ),
-      baseline: input.options.map((o) =>
+      prediction: direct
+        ? candidates.map((candidate) => {
+            const signal = insights.results.entities.find(
+              (e) =>
+                e.entity_id.toLowerCase() === candidate.entity_id.toLowerCase(),
+            );
+            const affinity = signal.query.affinity;
+            return {
+              score: affinity * 100,
+              components: {
+                baseline: 0,
+                affinity: affinity * 100,
+                tagOverlap: 0,
+                segmentWarning: 0,
+                affinitySum: affinity,
+              },
+              matchedTags: [],
+              reasons: [
+                `Score = 100 × ${candidate.name}'s Qloo affinity to the selected audience tastes. This is not a vote probability.`,
+              ],
+              warning: null,
+            };
+          })
+        : await Promise.all(
+            input.options.map((o) => adapter.scoreOption(o, profile)),
+          ),
+      baseline: options.map((o) =>
         scoreWithoutQloo(o, seeds, input.audienceNote),
       ),
     }),
-    "Two text concepts scored with the declared concept-tag fit heuristic.",
+    (value) =>
+      direct
+        ? "Both confirmed options scored directly from Qloo affinity; no text heuristic was used."
+        : resolvedCandidateCount < 2 ||
+            value.prediction.every(
+              (result) => !(result.components?.affinitySum > 0),
+            )
+          ? "Fell back to text heuristic — no Qloo entity signal"
+          : "Two text concepts scored with Qloo affinity contributions and the declared concept-tag fit heuristic.",
     "Couldn't score audience fit. No prediction was recorded.",
   );
+  const qlooFallback =
+    !direct &&
+    (resolvedCandidateCount < 2 ||
+      scored.prediction.every(
+        (result) => !(result.components?.affinitySum > 0),
+      ));
+  let comparison;
+  if (input.compareAi) {
+    beginPredictionStep(work, "record-branches");
+    comparison = await createComparison(
+      { ...input, options },
+      seeds,
+      insights,
+      aiPredictor,
+      scored.prediction,
+      qlooFallback,
+      direct ? "direct-entity-affinity" : "custom-concept-fit",
+      tasteProfile,
+    );
+    finishPredictionStep(
+      work,
+      "record-branches",
+      direct
+        ? "LLM-only, direct Qloo affinity and combined Agent predictions recorded."
+        : "LLM-only, Qloo fallback and combined Agent predictions recorded.",
+    );
+    beginPredictionStep(work, "freeze");
+    finishPredictionStep(
+      work,
+      "freeze",
+      `Frozen at ${comparison.payload.committedAt} · SHA-256 ${comparison.sha256.slice(0, 12)}.`,
+    );
+    completePredictionWork(work, {
+      payload: { frozenAt: comparison.payload.committedAt },
+      sha256: comparison.sha256,
+    });
+  }
   return {
-    seeds,
-    ...(input.compareAi
-      ? {
-          comparison: await createComparison(
-            input,
-            seeds,
-            insights,
-            aiPredictor,
-          ),
-        }
+    ...(direct
+      ? { options, title: `${options[0].title} vs. ${options[1].title}` }
       : {}),
+    seeds,
+    ...(comparison ? { comparison } : {}),
     prediction: scored.prediction,
     baseline: scored.baseline,
     insights: insights.results.entities
       .slice(0, 3)
       .map((e) => ({ name: e.name, affinity: e.query.affinity })),
     mode: insights.mode,
-    scoringVersion: "concept-tag-fit-v2",
+    scoringVersion: direct
+      ? "qloo-candidate-affinity-v1"
+      : "concept-tag-fit-v2",
     provenance: {
       source: insights.mode === "real" ? "Qloo API" : "Synthetic fixtures",
       fetchedAt: insights.fetchedAt || null,
       targetTypes: insights.targetTypes || [],
       mapping:
         "Local concept/tag overlap heuristic; Qloo affinity is not a prediction of votes.",
+      resolvedCandidateCount,
+      qlooOptionSignal: direct,
+      qlooFallback,
+      ...(direct
+        ? {
+            candidateEntityIds: candidates.map((e) => e.entity_id),
+            mapping:
+              "fit score = 100 × confirmed candidate Qloo affinity; not a vote probability.",
+          }
+        : {}),
+      fallbackLabel: qlooFallback
+        ? "Qloo: no data for these options — heuristic fallback"
+        : null,
     },
     predictionWork: work,
   };
@@ -133,6 +288,17 @@ async function predict(input, adapter = qlooAdapter, aiPredictor) {
 function validateInput(body) {
   if (!body || !Array.isArray(body.options) || body.options.length !== 2)
     fail("Please provide two options.");
+  const creationMode =
+    body.creationMode === "quick" || body.compareAi === true
+      ? "quick"
+      : "evidence";
+  const comparisonKind = body.comparisonKind || "concepts";
+  if (!["concepts", "entities"].includes(comparisonKind))
+    fail("Choose custom ideas or confirmed Qloo entities.");
+  if (comparisonKind === "entities" && creationMode !== "quick")
+    fail("Direct entity comparison is available in Quick test only.");
+  if (comparisonKind === "entities" && body.compareAi !== true)
+    fail("Direct entity comparison requires automatic branch predictions.");
   const options = body.options.map((o, index) => {
     if (
       !o ||
@@ -143,10 +309,12 @@ function validateInput(body) {
       fail(`Option ${index ? "B" : "A"} needs a title of 1–100 characters.`);
     if (
       typeof o.description !== "string" ||
-      o.description.trim().length < 10 ||
+      !o.description.trim() ||
       o.description.length > 1200
     )
-      fail(`Describe option ${index ? "B" : "A"} in 10–1,200 characters.`);
+      fail(
+        `Option ${index ? "B" : "A"} needs a description of 1–1,200 characters.`,
+      );
     const imageUrl = typeof o.imageUrl === "string" ? o.imageUrl.trim() : "";
     if (
       imageUrl &&
@@ -167,20 +335,45 @@ function validateInput(body) {
       title: o.title.trim(),
       description: o.description.trim(),
       imageUrl,
+      ...(comparisonKind === "entities"
+        ? {
+            entityId:
+              typeof o.entityId === "string" &&
+              /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(
+                o.entityId,
+              )
+                ? o.entityId.toLowerCase()
+                : fail(
+                    `Confirm a Qloo entity for Option ${index ? "B" : "A"}.`,
+                  ),
+          }
+        : {}),
     };
   });
   if (
     !Array.isArray(body.seedEntityIds) ||
     body.seedEntityIds.length < 3 ||
     body.seedEntityIds.length > 5 ||
+    body.seedEntityIds.some((id) => typeof id !== "string") ||
     new Set(body.seedEntityIds).size !== body.seedEntityIds.length
   )
     fail("Choose 3–5 different taste seeds.");
+  if (
+    comparisonKind === "entities" &&
+    (options[0].entityId === options[1].entityId ||
+      options.some((option) =>
+        body.seedEntityIds.some((id) => id.toLowerCase() === option.entityId),
+      ))
+  )
+    fail(
+      "Choose two different options, separate from the audience taste seeds.",
+    );
   if (
     body.audienceNote != null &&
     (typeof body.audienceNote !== "string" || body.audienceNote.length > 300)
   )
     fail("Keep the audience note under 300 characters.");
+  const benchmarkMetadata = validateMetadata(body.benchmarkMetadata);
   return {
     options,
     seedEntityIds: body.seedEntityIds,
@@ -190,7 +383,17 @@ function validateInput(body) {
       typeUrns[body.insightCategory || "Dining"] ||
       fail("Select a supported recommendation context."),
     compareAi: body.compareAi === true,
-    benchmarkMetadata: validateMetadata(body.benchmarkMetadata),
+    comparisonKind,
+    creationMode,
+    benchmarkMetadata:
+      creationMode === "quick"
+        ? {
+            ...benchmarkMetadata,
+            track: "rehearsal",
+            unpublished: false,
+            audienceVerified: false,
+          }
+        : benchmarkMetadata,
   };
 }
 function verdict(test, counts) {
@@ -374,7 +577,7 @@ export function createApi(
           ai: {
             configured: false,
             provider: "manual",
-            label: "LLM-only (manual paste)",
+            label: "AI-only (external)",
           },
         });
       if (
@@ -565,11 +768,6 @@ export function createApi(
       }
       if (pathname === "/api/tests" && request.method === "POST") {
         const input = validateInput(await readBody(request));
-        if (input.compareAi && !aiPredictor)
-          fail(
-            "Paid LLM calls are disabled. Use LLM-only (manual paste).",
-            503,
-          );
         const ownerToken = randomBytes(32).toString("hex");
         const test = {
           ...input,
@@ -578,7 +776,7 @@ export function createApi(
           ownerHash: hash(ownerToken),
           createdAt: new Date().toISOString(),
           closedAt: null,
-          freezeRequired: !input.compareAi,
+          freezeRequired: input.creationMode === "evidence",
         };
         await store.set(`tests/${test.id}`, test);
         return json({ test: await snapshot(test, true), ownerToken }, 201);
@@ -610,6 +808,11 @@ export function createApi(
         );
       }
       if (action === "freeze") {
+        if (test.creationMode === "quick")
+          fail(
+            "Quick tests already have an automatic receipt and are not eligible for Track B.",
+            409,
+          );
         if (!owns(test, request))
           fail("Only the creating browser can freeze predictions.", 403);
         if (await store.get(`freezes/${id}`))
@@ -632,7 +835,7 @@ export function createApi(
               finishPredictionStep(
                 work,
                 "record-branches",
-                "LLM-only, Qloo and Agent branches validated and recorded.",
+                "AI-only, Qloo and combined branches validated and recorded.",
               );
               beginPredictionStep(work, "freeze");
             },

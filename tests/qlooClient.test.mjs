@@ -9,6 +9,121 @@ const entity = {
   tags: [{ name: "Indie Folk", tag_id: "urn:tag:fixture:indie" }],
 };
 const json = (body) => new Response(JSON.stringify(body), { status: 200 });
+
+test("Taste Analysis uses scoped tag parameters, modern/legacy IDs and one cached request", async () => {
+  let calls = 0;
+  const client = createQlooClient({
+    key: "fixture",
+    fetchImpl: async (url) => {
+      calls++;
+      assert.equal(url.pathname, "/v2/insights");
+      assert.equal(url.searchParams.get("filter.type"), "urn:tag");
+      assert.equal(
+        url.searchParams.get("filter.parents.types"),
+        "urn:entity:artist",
+      );
+      assert.equal(
+        url.searchParams.get("filter.tag.types"),
+        "urn:tag:genre:music",
+      );
+      assert.equal(url.searchParams.get("signal.interests.entities"), id);
+      assert.equal(url.searchParams.get("take"), "5");
+      return json({
+        results: {
+          tags: [
+            {
+              id: "urn:tag:genre:music:indie",
+              name: " Indie ",
+              query: { affinity: 0.8 },
+            },
+            {
+              tag_id: "urn:tag:genre:music:jazz",
+              name: "Jazz",
+              query: { affinity: 0.9 },
+            },
+          ],
+        },
+      });
+    },
+  });
+  const [first, second] = await Promise.all([
+    client.getTasteProfile([id], "urn:entity:artist"),
+    client.getTasteProfile([id], "urn:entity:artist"),
+  ]);
+  assert.equal(calls, 1);
+  assert.deepEqual(first, second);
+  assert.equal(first.mode, "real");
+  assert.equal(first.status, "available");
+  assert.deepEqual(
+    first.tags.map((t) => [t.name, t.affinity]),
+    [
+      ["Jazz", 0.9],
+      ["Indie", 0.8],
+    ],
+  );
+  assert.ok(first.fetchedAt);
+});
+test("Taste Analysis distinguishes empty data and rejects schema, scope and invalid inputs", async () => {
+  for (const body of [
+    { results: { entities: [] } },
+    {
+      results: {
+        tags: [
+          {
+            id: "urn:tag:credit_card:place:discover",
+            name: "Unrelated",
+            query: { affinity: 1 },
+          },
+        ],
+      },
+    },
+    {
+      results: {
+        tags: [
+          {
+            id: "urn:tag:genre:music:indie",
+            name: "Indie",
+            query: { affinity: 2 },
+          },
+        ],
+      },
+    },
+    {
+      results: {
+        tags: [
+          {
+            id: "urn:tag:genre:music:indie",
+            name: "Indie",
+            query: { affinity: "0.8" },
+          },
+        ],
+      },
+    },
+  ])
+    await assert.rejects(
+      createQlooClient({
+        key: "fixture",
+        fetchImpl: async () => json(body),
+      }).getTasteProfile([id], "urn:entity:artist"),
+      /unsupported|scoped/,
+    );
+  const client = createQlooClient({
+    key: "fixture",
+    fetchImpl: async () => json({ results: { tags: [] } }),
+  });
+  assert.equal(
+    (await client.getTasteProfile([id], "urn:entity:artist")).status,
+    "empty",
+  );
+  await assert.rejects(
+    client.getTasteProfile(["mock-seed"], "urn:entity:artist"),
+    /valid audience/,
+  );
+  await assert.rejects(
+    client.getTasteProfile([id], "unsupported"),
+    /supported category/,
+  );
+});
 test("entity normalization preserves release year so remakes can be resolved without guessing", () => {
   assert.equal(
     normalizeEntity({ ...entity, properties: { release_year: 1997 } })

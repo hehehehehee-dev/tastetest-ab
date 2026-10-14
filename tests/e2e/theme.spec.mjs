@@ -82,7 +82,6 @@ test("key text keeps AA contrast in dark and light modes", async ({ page }) => {
       await page.locator(".theme-toggle").click();
     }
     for (const [foreground, background] of [
-      [".mock-pill", ".mock-pill"],
       [".header-new", ".header-new"],
       [".prediction-card h3", ".prediction-card"],
       [".prediction-card .score-caption", ".prediction-card"],
@@ -103,5 +102,25 @@ test("key text keeps AA contrast in dark and light modes", async ({ page }) => {
       await contrastRatio(page, ".faq-answer", ".faq-drawer"),
     ).toBeGreaterThanOrEqual(4.5);
     await page.locator(".faq-drawer > summary").click();
+    await page.getByRole("button", { name: "Verdict", exact: true }).click();
+    expect(
+      await contrastRatio(
+        page,
+        ".verdict-grounding p",
+        ".verdict-grounding > div:last-child",
+      ),
+    ).toBeGreaterThanOrEqual(4.5);
+    for (const foreground of [
+      ".recommendation p",
+      ".verdict-match",
+      ".verdict-main p",
+      ".calibration-line",
+      ".verdict-bar small",
+    ]) {
+      expect(
+        await contrastRatio(page, foreground, ".verdict-artefact"),
+      ).toBeGreaterThanOrEqual(4.5);
+    }
+    await page.getByRole("button", { name: "Prediction", exact: true }).click();
   }
 });

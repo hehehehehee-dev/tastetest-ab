@@ -74,7 +74,7 @@ test("four-part verdict handles matched, missed, unanimous and abstained branche
         agent: { pick: "B", confidence: 60, gap: 35, source: "fixture-agent" },
       },
       grades: { llm: "✗", qloo: "✓", agent: "✓" },
-      note: "Highest-confidence branch LLM-only missed at 90/100.",
+      note: "Highest-confidence branch AI-only missed at 90/100.",
     },
     {
       name: "unanimous",
@@ -94,7 +94,7 @@ test("four-part verdict handles matched, missed, unanimous and abstained branche
         agent: { pick: "B", confidence: 60, gap: 35, source: "fixture-agent" },
       },
       grades: { llm: "✓", qloo: "ABSTAIN", agent: "✓" },
-      note: "Qloo abstained while LLM-only and Agent declared a pick.",
+      note: "Qloo abstained while AI-only and Agent declared a pick.",
     },
   ];
 

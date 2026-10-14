@@ -12,7 +12,7 @@ export const excludedTrackBNotes = [
     frozenAt: null,
     originalRecordedAt: null,
     missing:
-      "Situation, audience, taste seeds, Option A/B, LLM-only/Qloo/Agent picks, confidences, source/model, original prediction time and outcome status are all unconfirmed. The original record cannot be recovered. Do not count TB-001 in Track B tallies or use it as evidence. Do not rerun any branch, present a rerun as the original prediction, or backdate anything. Fresh Track B cases use separate records, frozen before any poll opens.",
+      "Situation, audience, taste seeds, Option A/B, AI-only/Qloo/combined picks, confidences, source/model, original prediction time and outcome status are all unconfirmed. The original record cannot be recovered. Do not count TB-001 in Track B tallies or use it as evidence. Do not rerun any branch, present a rerun as the original prediction, or backdate anything. Fresh Track B cases use separate records, frozen before any poll opens.",
     timing:
       "Entered into ledger on 2026-10-09; original prediction and outcome timing remain unconfirmed. Registry note closed as unverifiable; no poll closure, freeze or outcome timestamp is claimed. Not scored. No rerun or backdating.",
   },

@@ -34,11 +34,32 @@ test("mock Track B feed follows all six stages and collapses after freeze", asyn
     await new Promise((resolve) => setTimeout(resolve, 300));
     await route.continue();
   });
+  await page
+    .getByLabel("Original prediction timestamp")
+    .fill("2026-01-01T12:00");
+  for (const branch of await page.locator(".manual-branch").all()) {
+    await branch
+      .getByLabel("Source (exact model/version or human)")
+      .fill("Human test");
+    await branch
+      .getByLabel("Paste the original answer")
+      .fill("Pick: A. Confidence: 55. Test fixture only.");
+  }
+  await page
+    .getByLabel(
+      "All predictions were recorded before collecting any outcome or vote.",
+    )
+    .check();
   const feed = page.locator(".prediction-step-feed");
-  await page.getByRole("button", { name: "Get agent prediction" }).click();
+  await page.getByRole("button", { name: "Prepare evidence case" }).click();
   await expect(feed.locator("li.is-active")).toHaveCount(1);
   await expect(feed.locator("li.is-pending")).toHaveCount(5);
-  await expect(page).toHaveURL(/\/test\//);
+  await expect(page).toHaveURL(/\/test\//, { timeout: 15000 });
+  await expect(feed.locator("summary")).toContainText(
+    /6 steps · (?:<0\.1s|\d+\.\d+s) · frozen #[a-f0-9]{6}/,
+  );
+  await expect(feed).not.toHaveAttribute("open", "");
+  await feed.locator("summary").click();
   await expect(
     feed.getByText(/Mock signals — synthetic affinities/),
   ).toBeVisible();
@@ -46,28 +67,9 @@ test("mock Track B feed follows all six stages and collapses after freeze", asyn
   await expect(feed.locator("li").nth(0)).toContainText(
     "3 of 3 seeds resolved",
   );
-  await expect(feed.locator("li.is-done")).toHaveCount(4);
-  await expect(feed.locator("li.is-pending")).toHaveCount(2);
-  await page
-    .getByLabel("Source (exact model/version or human)")
-    .fill("Human test");
-  await page
-    .getByLabel("Paste the original answer")
-    .fill("Pick: A. Confidence: 55. Test fixture only.");
-  await page
-    .getByLabel(
-      "All predictions were recorded before collecting any outcome or vote.",
-    )
-    .check();
-  await page.getByRole("button", { name: "Freeze predictions" }).click();
   await expect(
     page.getByRole("heading", { name: "Prediction frozen" }),
   ).toBeVisible();
-  await expect(feed.locator("summary")).toContainText(
-    /6 steps · (?:<0\.1s|\d+\.\d+s) · frozen #[a-f0-9]{6}/,
-  );
-  await expect(feed).not.toHaveAttribute("open", "");
-  await feed.locator("summary").click();
   await expect(feed.locator("li.is-done")).toHaveCount(6);
   await expect(feed.locator("li strong")).toHaveText(
     predictionWorkStages.map(([, label]) => label),

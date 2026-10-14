@@ -1,3 +1,9 @@
+:root {
+  --text-primary: #f4f2f7;
+  --text-secondary: #bcb6c5;
+  --text-muted: #aaa3b1;
+  --text-on-primary: #17141c;
+}
 .theme-toggle {
   display: inline-grid;
   width: 44px;
@@ -28,8 +34,12 @@ html[data-theme="light"] {
   --surface: #fff;
   --border: #d9d6df;
   --muted: #66616e;
-  --dim: #817b88;
+  --dim: #686270;
   --lab: #25222a;
+  --text-primary: #28242d;
+  --text-secondary: #514a59;
+  --text-muted: #625a69;
+  --text-on-primary: #ffffff;
 }
 html[data-theme="light"] body,
 html[data-theme="light"] #root {
@@ -159,6 +169,7 @@ html[data-theme="light"] .audience-panel,
 html[data-theme="light"] .next-panel,
 html[data-theme="light"] .share-panel,
 html[data-theme="light"] .taste-map,
+html[data-theme="light"] .taste-flow,
 html[data-theme="light"] .case-panel,
 html[data-theme="light"] .case-option,
 html[data-theme="light"] .freeze-panel,
@@ -175,6 +186,47 @@ html[data-theme="light"] .prediction-step-feed {
   color: #28242d;
   background: #fff;
   box-shadow: 0 14px 42px rgba(42, 34, 50, 0.06);
+}
+html[data-theme="light"] .taste-flow-caption,
+html[data-theme="light"] .taste-flow-footer {
+  border-color: #ddd7e2;
+  color: #665d70;
+}
+html[data-theme="light"] .taste-flow-stage {
+  border-color: #ddd7e2;
+  color: #28242d;
+  background: #faf8fc;
+}
+html[data-theme="light"] .taste-flow-engine {
+  border-color: #9f72cb;
+  background: linear-gradient(145deg, #f5edfc, #fbf9fc 70%);
+}
+html[data-theme="light"] .taste-flow-chips span,
+html[data-theme="light"] .taste-flow-scores > div {
+  border-color: #ddd7e2;
+  color: #514a58;
+  background: #f0edf3;
+}
+html[data-theme="light"] .taste-flow-scores > div.is-winner {
+  color: #1d1720;
+  background: linear-gradient(90deg, #b57aff, #ff9b7e);
+}
+html[data-theme="light"] .taste-flow-output p,
+html[data-theme="light"] .taste-flow-footer strong {
+  color: #413849;
+}
+html[data-theme="light"] .completed-proxy-index {
+  border-color: #ddd7e2;
+  background: #faf8fc;
+}
+html[data-theme="light"] .hero-product-kicker {
+  color: #69517d;
+}
+html[data-theme="light"] .report-tabs button small {
+  color: #625a69;
+}
+html[data-theme="light"] .report-tabs button.selected small {
+  color: #f4eef8;
 }
 html[data-theme="light"] .prediction-card.agent-winner,
 html[data-theme="light"] .case-option:has(input:checked),
@@ -235,6 +287,10 @@ html[data-theme="light"] .verdict-empty-branches {
   color: #57505d;
   background: #f4f1f6;
 }
+html[data-theme="light"] .verdict-grounding > div:last-child {
+  border-color: #d8d2dc;
+  background: #f4f1f6;
+}
 html[data-theme="light"] .prediction-step-body,
 html[data-theme="light"] .benchmark-drawer > .panel,
 html[data-theme="light"] .benchmark-methodology,
@@ -293,6 +349,9 @@ html[data-theme="light"] .hero-prompt-field input {
 html[data-theme="light"] .hero-prompt-field input::placeholder {
   color: #77707d;
 }
+html[data-theme="light"] .hero-prompt-status {
+  color: #62586b;
+}
 html[data-theme="light"] .hero-prompt-examples button {
   border-color: #cec7d5;
   color: #4d4555;
@@ -303,6 +362,22 @@ html[data-theme="light"] .hero-prompt-examples button:focus-visible {
   border-color: #806c98;
   color: #211b27;
   background: #eee8f3;
+}
+html[data-theme="light"] .segmented-control {
+  border-color: #cec7d5;
+  background: #eeeaf1;
+}
+html[data-theme="light"] .segmented-control button {
+  color: #62586b;
+}
+html[data-theme="light"] .segmented-control button.selected {
+  color: #fff;
+  background: #302936;
+}
+html[data-theme="light"] .qloo-fallback-badge {
+  border-color: #9a6b37;
+  color: #624018;
+  background: #fff2df;
 }
 html[data-theme="light"] .hero-live-poll {
   border-color: #d0c7d8;
@@ -336,6 +411,10 @@ html[data-theme="light"] .hero-live-poll-options button.is-picked {
   color: #2b2032;
   background: #eadff1;
 }
+html[data-theme="light"] .hero-live-poll-thumb {
+  border-color: #c8becf;
+  background: #fff;
+}
 html[data-theme="light"] .prefill-note {
   border-color: #cabfd3;
   color: #28222e;
@@ -362,4 +441,225 @@ html[data-theme="light"] .evidence-footer a {
   .theme-toggle {
     order: 2;
   }
+}
+
+html[data-theme="light"] .verdict-artefact .recommendation p {
+  color: #3f3947;
+}
+html[data-theme="light"] .verdict-main p,
+html[data-theme="light"] .verdict-headline-meta,
+html[data-theme="light"] .calibration-line,
+html[data-theme="light"] .verdict-bar small,
+html[data-theme="light"] .verdict-meta,
+html[data-theme="light"] .verdict-section-label,
+html[data-theme="light"] .page-heading p,
+html[data-theme="light"] .audience-panel .section-heading p,
+html[data-theme="light"] .creation-mode-control > p,
+html[data-theme="light"] .seed-guidance p,
+html[data-theme="light"] .prediction-method p,
+html[data-theme="light"] .next-panel p,
+html[data-theme="light"] .option-description-guidance,
+html[data-theme="light"] .sample-example-heading > span {
+  color: #625a69;
+}
+html[data-theme="light"] .verdict-chat > summary small,
+html[data-theme="light"] .verdict-chat-count,
+html[data-theme="light"] .verdict-chat-guardrail,
+html[data-theme="light"] .verdict-rule-note,
+html[data-theme="light"] .verdict-context-note,
+html[data-theme="light"] .verdict-grounding p,
+html[data-theme="light"] .proxy-verdict-option p,
+html[data-theme="light"] .proxy-verdict-footer p {
+  color: #625a69;
+}
+html[data-theme="light"]
+  .proxy-verdict-option.is-winner
+  .proxy-verdict-bar-label {
+  color: #28242d;
+}
+html[data-theme="light"] .verdict-match,
+html[data-theme="light"] .verdict-branch-status {
+  color: #3f344b;
+  border-color: #a99cb5;
+}
+html[data-theme="light"] input::placeholder,
+html[data-theme="light"] textarea::placeholder {
+  color: #706776;
+}
+
+/* Use readable foregrounds for every branch state, including abstention. */
+.ai-pick,
+.ai-grade {
+  color: var(--text-primary);
+}
+html[data-theme="light"] .ai-grade {
+  border-color: #918497;
+  background: #f2edf6;
+}
+.vote-cta {
+  color: var(--text-on-primary);
+}
+html[data-theme="light"] .poll-intro,
+html[data-theme="light"] .poll-choice p,
+html[data-theme="light"] .poll-footnote,
+html[data-theme="light"] .poll-empty p,
+html[data-theme="light"] .poll-verdict p,
+html[data-theme="light"] .mobile-results .section-heading > span,
+html[data-theme="light"] .vote-bar-label small,
+html[data-theme="light"] .report-footer,
+html[data-theme="light"] .report-footer > span,
+html[data-theme="light"] .share-panel p {
+  color: var(--text-muted);
+}
+html[data-theme="light"] .poll-choice:hover:not(:disabled),
+html[data-theme="light"] .poll-choice.your-vote,
+html[data-theme="light"] .poll-choice.vote-pending {
+  color: var(--text-primary);
+  border-color: #7f6698;
+  background: #f4eef9;
+}
+html[data-theme="light"] .voted-message {
+  color: #3f344b;
+  border-color: #918497;
+  background: #efe8f5;
+}
+html[data-theme="light"] .seed-button {
+  color: var(--text-primary);
+  border-color: #918497;
+  background: #ffffff;
+}
+html[data-theme="light"] .seed-button:hover,
+html[data-theme="light"] .seed-button.picked {
+  color: var(--text-primary);
+  border-color: #7f6698;
+  background: #efe8f5;
+}
+html[data-theme="light"] .seed-result-text small,
+html[data-theme="light"] .prediction-step-feed time {
+  color: var(--text-muted);
+}
+html[data-theme="light"] .prediction-step-feed li.is-failed {
+  color: #9b2342;
+}
+html[data-theme="light"] .prediction-step-feed li.is-failed svg {
+  color: #9b2342;
+}
+html[data-theme="light"] .prediction-step-feed li.is-pending {
+  color: var(--text-muted);
+}
+html[data-theme="light"] .prediction-step-feed li.is-done svg {
+  color: #286b46;
+}
+html[data-theme="light"] .error {
+  color: #92243e;
+  border-color: #aa7180;
+  background: #fff1f4;
+}
+
+.score-details small,
+.verdict-section-label,
+.case-navigation-links span,
+.case-navigation-browse > span,
+.prediction-step-feed li.is-pending {
+  color: var(--text-muted);
+}
+html[data-theme="light"] .score-number > span,
+html[data-theme="light"] .reason-list li,
+html[data-theme="light"] .score-details summary,
+html[data-theme="light"] .score-details summary span,
+html[data-theme="light"] .score-details dt,
+html[data-theme="light"] .score-details dd,
+html[data-theme="light"] .comparison-note span,
+html[data-theme="light"] .vote-count,
+html[data-theme="light"] .steps,
+html[data-theme="light"] .steps .step-number,
+html[data-theme="light"] .selection-count,
+html[data-theme="light"] .taste-flow-step,
+html[data-theme="light"] .taste-flow-arrow,
+html[data-theme="light"] .taste-flow-engine small,
+html[data-theme="light"] .verdict-kicker,
+html[data-theme="light"] .verdict-surprises ul,
+html[data-theme="light"] .benchmark-drawer > summary > span,
+html[data-theme="light"] .benchmark-page .panel p,
+html[data-theme="light"] .benchmark-drawer p,
+html[data-theme="light"] .benchmark-table th,
+html[data-theme="light"] .qloo-provenance p,
+html[data-theme="light"] .receipt-hash {
+  color: var(--text-muted);
+}
+html[data-theme="light"] .proxy-verdict-tag,
+html[data-theme="light"] .proxy-winner-hero h2 span,
+html[data-theme="light"] .proxy-verdict-bar-label b,
+html[data-theme="light"] .chip-text small {
+  color: var(--text-muted);
+}
+html[data-theme="light"] .proxy-winner-letter {
+  color: var(--text-primary);
+}
+html[data-theme="light"] .freeze-panel p,
+html[data-theme="light"] .freeze-panel .pasted-answer {
+  color: var(--text-muted);
+}
+html[data-theme="light"] .case-option strong,
+html[data-theme="light"] .faq-page .faq-page-link {
+  color: var(--text-primary);
+}
+html[data-theme="light"] .verdict-branch {
+  border-color: #d8d2dc;
+  color: var(--text-primary);
+  background: #f4f1f6;
+}
+html[data-theme="light"] .verdict-branch > span,
+html[data-theme="light"] .verdict-branch > small {
+  color: var(--text-muted);
+}
+html[data-theme="light"] .confidence-note strong,
+html[data-theme="light"] .benchmark-overview strong,
+html[data-theme="light"] .benchmark-tally,
+html[data-theme="light"] .qloo-provenance summary {
+  color: var(--text-primary);
+}
+html[data-theme="light"] .case-navigation-kicker,
+html[data-theme="light"] .case-navigation-primary small,
+html[data-theme="light"] .case-navigation-arrow,
+html[data-theme="light"] .taste-flow-signals strong,
+html[data-theme="light"] .freeze-certificate-seal {
+  color: #684080;
+}
+html[data-theme="light"] .verdict-artefact .verdict-number {
+  background-image: linear-gradient(115deg, #7240b0, #b4452e);
+}
+html[data-theme="light"] .faq-page .faq-answer,
+html[data-theme="light"] .faq-page .faq-answer p,
+html[data-theme="light"] .faq-page .faq-answer a,
+html[data-theme="light"] .faq-page .faq-question > summary {
+  color: var(--text-secondary);
+}
+.qloo-evidence,
+.qloo-option-confirmed,
+.qloo-comparison-mode {
+  color: var(--text-primary);
+}
+.qloo-evidence p,
+.qloo-evidence small,
+.qloo-option-confirmed small {
+  color: var(--text-secondary);
+}
+.qloo-evidence-signals > div {
+  background: var(--surface);
+}
+.qloo-evidence .eyebrow {
+  color: var(--text-secondary);
+}
+.prediction-step-feed .prediction-step-waiting {
+  color: var(--text-primary);
+}
+.qloo-explanation,
+.qloo-profile-tags {
+  color: var(--text-primary);
+}
+.qloo-explanation p,
+.qloo-taste-profile p,
+.qloo-profile-unavailable {
+  color: var(--text-secondary);
 }

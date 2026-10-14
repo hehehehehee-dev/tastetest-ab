@@ -10,7 +10,7 @@ import {
   createPredictionWork,
   failPredictionStep,
 } from "../shared/predictionWork.mjs";
-const labels = { llm: "AI", qloo: "Qloo" };
+const labels = { llm: "AI-only", qloo: "Qloo" };
 const ownerKey = (id) => `tastetest-proxy-owner-${id}`;
 export const proxyHonesty =
   "Individual titles may be familiar to language models; the segment's actual ratings — the thing being predicted — are not published per-segment and were computed from raw ratings for this benchmark.";
@@ -34,6 +34,8 @@ function Counts({ value }) {
     </p>
   );
 }
+const completedLabel = (count) =>
+  `${count} completed ${count === 1 ? "case" : "cases"}`;
 export function ProxySection({ browseOpen = false }) {
   const [data, setData] = useState(null),
     [error, setError] = useState(""),
@@ -66,12 +68,15 @@ export function ProxySection({ browseOpen = false }) {
   }, []);
   return (
     <section className="panel proxy-section">
-      <div className="eyebrow">SEPARATE RETROSPECTIVE PROXY / NOT TRACK B</div>
+      <div className="eyebrow">
+        HISTORICAL PROXY / EXCLUDED FROM LIVE EVIDENCE
+      </div>
       <h2>Proxy benchmark — real preference data</h2>
       <p>
         Predict which movie a taste-defined segment rated more highly. These are
         historical preferences, not business results, live A/B outcomes or a
-        causal experiment. Proxy results never enter Track B totals.
+        causal experiment. Proxy results never enter the live evidence
+        benchmark (Track B).
       </p>
       <p>{proxyHonesty}</p>
       <p>
@@ -92,21 +97,25 @@ export function ProxySection({ browseOpen = false }) {
             scoring method.
           </p>
           {data.tally.methods?.length > 0 && (
-            <p>
-              Scoring methods in these counts: {data.tally.methods.join(" · ")}.
-              Counts across different methods do not establish the accuracy of
-              one method.
-            </p>
+            <p>{`Scoring methods in these counts: ${data.tally.methods.join(" · ")}. Counts across different methods do not establish the accuracy of one method.`}</p>
           )}
-          <p>
-            {data.cases.length} cases ·{" "}
-            {data.manifest?.dataset || "dataset not generated"} ·{" "}
-            {data.manifest?.rules.minOverallRatings || 500} minimum overall
-            ratings/candidate.
-          </p>
-          <h3>Real Qloo proxy · {data.tally.real.cases} completed cases</h3>
+          <p>{`${data.cases.length} cases · ${data.manifest?.dataset || "dataset not generated"} · ${data.manifest?.rules.minOverallRatings || 500} minimum overall ratings/candidate.`}</p>
+          <h3>Real Qloo proxy · {completedLabel(data.tally.real.cases)}</h3>
           <Counts value={data.tally.real} />
-          <h3>Mock proxy workflow · {data.tally.mock.cases} completed cases</h3>
+          <div className="completed-proxy-index">
+            <h4>Completed real-Qloo results</h4>
+            {(data.completedRuns || [])
+              .filter((row) => row.mode === "real-qloo")
+              .map((row) => (
+                <a key={row.id} href={`/benchmark/film/run/${row.id}`}>
+                  {row.caseId} · revealed · real Qloo
+                </a>
+              ))}
+            {!(data.completedRuns || []).some(
+              (row) => row.mode === "real-qloo",
+            ) && <p>No real-Qloo result has been revealed yet.</p>}
+          </div>
+          <h3>Mock proxy workflow · {completedLabel(data.tally.mock.cases)}</h3>
           <Counts value={data.tally.mock} />
           <p>
             Mock counts validate the workflow only; they do not measure Qloo
@@ -121,23 +130,43 @@ export function ProxySection({ browseOpen = false }) {
           )}
           <details className="proxy-case-list" open={browseOpen || undefined}>
             <summary>Browse {data.cases.length} proxy cases</summary>
-            {data.cases.map((input) => (
-              <div key={input.id} className="proxy-case-entry">
-                <a href={`/benchmark/film/${input.id}`}>
-                  {input.id} ·{" "}
-                  {input.options
-                    .map((m) => `${m.title} (${m.year})`)
-                    .join(" vs. ")}
-                </a>
-                <p>Seeds: {input.seeds.map((m) => m.title).join(" · ")}</p>
-              </div>
-            ))}
+            {data.cases.map((input) => {
+              const completed = (data.completedRuns || []).find(
+                (row) => row.caseId === input.id && row.mode === "real-qloo",
+              );
+              return (
+                <div key={input.id} className="proxy-case-entry">
+                  <a
+                    href={
+                      completed
+                        ? `/benchmark/film/run/${completed.id}`
+                        : `/benchmark/film/${input.id}`
+                    }
+                  >
+                    {input.id} ·{" "}
+                    {input.options
+                      .map((m) => `${m.title} (${m.year})`)
+                      .join(" vs. ")}
+                    {completed ? " · revealed · real Qloo" : " · start case"}
+                  </a>
+                  <p>Seeds: {input.seeds.map((m) => m.title).join(" · ")}</p>
+                  {completed && (
+                    <a
+                      className="proxy-start-another"
+                      href={`/benchmark/film/${input.id}`}
+                    >
+                      Start another run
+                    </a>
+                  )}
+                </div>
+              );
+            })}
           </details>
         </>
       )}
       {runs.length > 0 && (
         <>
-          <h3>Your proxy runs</h3>
+          <h3>Runs owned by this browser</h3>
           {runs.map((run) => (
             <p key={run.id}>
               <a href={`/benchmark/film/run/${run.id}`}>
@@ -318,7 +347,7 @@ export default function ProxyCase({ caseId, runId }) {
       <div className="page-heading">
         <div>
           <div className="eyebrow">
-            PROXY BENCHMARK / RETROSPECTIVE PREFERENCES
+            PROXY BENCHMARK / HISTORICAL PREFERENCES
           </div>
           <h1>{input?.id || "Loading proxy case…"}</h1>
           <p>
@@ -375,7 +404,7 @@ export default function ProxyCase({ caseId, runId }) {
       )}
       {run && (
         <>
-          {run.result && <ProxyVerdict run={run} />}
+          {run.result && <ProxyVerdict run={run} canChat={isOwner} />}
           <section className="panel">
             <h2>
               {run.result
@@ -445,7 +474,7 @@ export default function ProxyCase({ caseId, runId }) {
                     .filter(([key]) => key !== "agent")
                     .map(([key, branch]) => (
                       <p className="receipt-hash" key={key}>
-                        {key === "llm" ? "AI" : "Qloo"} · full source:{" "}
+                        {key === "llm" ? "AI-only" : "Qloo"} · full source:{" "}
                         {branch.source}
                       </p>
                     ))}

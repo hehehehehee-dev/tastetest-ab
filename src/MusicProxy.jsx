@@ -10,7 +10,7 @@ import {
   createPredictionWork,
   failPredictionStep,
 } from "../shared/predictionWork.mjs";
-const labels = { llm: "AI", qloo: "Qloo" };
+const labels = { llm: "AI-only", qloo: "Qloo" };
 const ownerKey = (id) => `tastetest-music-proxy-owner-${id}`;
 export const musicHonesty =
   "Artist names may be familiar to models. Segment listen counts were computed from raw listening data and are not published per segment.";
@@ -34,6 +34,8 @@ function Counts({ value }) {
     </p>
   );
 }
+const completedLabel = (count) =>
+  `${count} completed ${count === 1 ? "case" : "cases"}`;
 export function MusicSection({ browseOpen = false }) {
   const [data, setData] = useState(null),
     [error, setError] = useState(""),
@@ -68,13 +70,16 @@ export function MusicSection({ browseOpen = false }) {
   }, []);
   return (
     <section className="panel music-proxy-section">
-      <div className="eyebrow">SEPARATE RETROSPECTIVE PROXY / NOT TRACK B</div>
+      <div className="eyebrow">
+        HISTORICAL PROXY / EXCLUDED FROM LIVE EVIDENCE
+      </div>
       <h2>Proxy — music · real preference data</h2>
       <p>Proxy benchmark — real preference data</p>
       <p>
         Predict which artist a taste-defined segment listened to more. These are
         historical preferences, not business results, live A/B outcomes or a
-        causal experiment. Proxy results never enter Track B totals.
+        causal experiment. Proxy results never enter the live evidence
+        benchmark (Track B).
       </p>
       <p>{musicHonesty}</p>
       <p>
@@ -95,25 +100,29 @@ export function MusicSection({ browseOpen = false }) {
             scoring method.
           </p>
           {data.tally.methods?.length > 0 && (
-            <p>
-              Scoring methods in these counts: {data.tally.methods.join(" · ")}.
-              Counts across different methods do not establish the accuracy of
-              one method.
-            </p>
+            <p>{`Scoring methods in these counts: ${data.tally.methods.join(" · ")}. Counts across different methods do not establish the accuracy of one method.`}</p>
           )}
-          <p>
-            {data.cases.length} cases ·{" "}
-            {data.manifest?.dataset || "dataset not generated"} ·{" "}
-            {data.manifest?.rules.minOverallListeners || 200} minimum overall
-            listeners/candidate.
-          </p>
+          <p>{`${data.cases.length} cases · ${data.manifest?.dataset || "dataset not generated"} · ${data.manifest?.rules.minOverallListeners || 200} minimum overall listeners/candidate.`}</p>
           <h3>
-            Music proxy · real Qloo · {data.tally.real.cases} completed cases
+            Music proxy · real Qloo · {completedLabel(data.tally.real.cases)}
           </h3>
           <Counts value={data.tally.real} />
+          <div className="completed-proxy-index">
+            <h4>Completed real-Qloo results</h4>
+            {(data.completedRuns || [])
+              .filter((row) => row.mode === "real-qloo")
+              .map((row) => (
+                <a key={row.id} href={`/benchmark/music/run/${row.id}`}>
+                  {row.caseId} · revealed · real Qloo
+                </a>
+              ))}
+            {!(data.completedRuns || []).some(
+              (row) => row.mode === "real-qloo",
+            ) && <p>No real-Qloo result has been revealed yet.</p>}
+          </div>
           <h3>
-            Music proxy · mock workflow · {data.tally.mock.cases} completed
-            cases
+            Music proxy · mock workflow ·{" "}
+            {completedLabel(data.tally.mock.cases)}
           </h3>
           <Counts value={data.tally.mock} />
           <p>
@@ -129,20 +138,41 @@ export function MusicSection({ browseOpen = false }) {
           )}
           <details className="proxy-case-list" open={browseOpen || undefined}>
             <summary>Browse {data.cases.length} proxy cases</summary>
-            {data.cases.map((input) => (
-              <div key={input.id} className="proxy-case-entry">
-                <a href={`/benchmark/music/${input.id}`}>
-                  {input.id} · {input.options.map((m) => m.name).join(" vs. ")}
-                </a>
-                <p>Seeds: {input.seeds.map((m) => m.name).join(" · ")}</p>
-              </div>
-            ))}
+            {data.cases.map((input) => {
+              const completed = (data.completedRuns || []).find(
+                (row) => row.caseId === input.id && row.mode === "real-qloo",
+              );
+              return (
+                <div key={input.id} className="proxy-case-entry">
+                  <a
+                    href={
+                      completed
+                        ? `/benchmark/music/run/${completed.id}`
+                        : `/benchmark/music/${input.id}`
+                    }
+                  >
+                    {input.id} ·{" "}
+                    {input.options.map((m) => m.name).join(" vs. ")}
+                    {completed ? " · revealed · real Qloo" : " · start case"}
+                  </a>
+                  <p>Seeds: {input.seeds.map((m) => m.name).join(" · ")}</p>
+                  {completed && (
+                    <a
+                      className="proxy-start-another"
+                      href={`/benchmark/music/${input.id}`}
+                    >
+                      Start another run
+                    </a>
+                  )}
+                </div>
+              );
+            })}
           </details>
         </>
       )}
       {runs.length > 0 && (
         <>
-          <h3>Your proxy runs</h3>
+          <h3>Runs owned by this browser</h3>
           {runs.map((run) => (
             <p key={run.id}>
               <a href={`/benchmark/music/run/${run.id}`}>
@@ -169,7 +199,8 @@ export function MusicSection({ browseOpen = false }) {
           listeners in segment, ≥200 overall listeners, ≥20% relative mean gap.
           One case per seed triple; audience segments may overlap. Missing
           records contribute zero observed listens, not evidence of dislike.
-          Proxy results never enter Track B or film totals.
+          Proxy results never enter the live evidence benchmark (Track B) or
+          film totals.
         </p>
       </footer>
     </section>
@@ -320,7 +351,7 @@ export default function MusicCase({ caseId, runId }) {
       <div className="page-heading">
         <div>
           <div className="eyebrow">
-            PROXY BENCHMARK / RETROSPECTIVE PREFERENCES
+            PROXY BENCHMARK / HISTORICAL PREFERENCES
           </div>
           <h1>{input?.id || "Loading proxy case…"}</h1>
           <p>
@@ -373,7 +404,7 @@ export default function MusicCase({ caseId, runId }) {
       )}
       {run && (
         <>
-          {run.result && <ProxyVerdict run={run} music />}
+          {run.result && <ProxyVerdict run={run} music canChat={isOwner} />}
           <section className="panel">
             <h2>
               {run.result
@@ -443,7 +474,7 @@ export default function MusicCase({ caseId, runId }) {
                     .filter(([key]) => key !== "agent")
                     .map(([key, branch]) => (
                       <p className="receipt-hash" key={key}>
-                        {key === "llm" ? "AI" : "Qloo"} · full source:{" "}
+                        {key === "llm" ? "AI-only" : "Qloo"} · full source:{" "}
                         {branch.source}
                       </p>
                     ))}

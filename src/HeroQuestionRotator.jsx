@@ -7,8 +7,8 @@ export const HERO_QUESTIONS = [
   "Which theme fills the room?",
 ];
 
-const VISIBLE_MS = 2800;
-const TRANSITION_MS = 500;
+const VISIBLE_MS = 3800;
+const FADE_MS = 450;
 
 function prefersReducedMotion() {
   return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -16,7 +16,7 @@ function prefersReducedMotion() {
 
 export default function HeroQuestionRotator() {
   const [index, setIndex] = useState(0);
-  const [nextIndex, setNextIndex] = useState(null);
+  const [isFading, setIsFading] = useState(false);
   const [reducedMotion, setReducedMotion] = useState(prefersReducedMotion);
   const [tabVisible, setTabVisible] = useState(() => !document.hidden);
 
@@ -26,7 +26,7 @@ export default function HeroQuestionRotator() {
       setReducedMotion(media.matches);
       if (media.matches) {
         setIndex(0);
-        setNextIndex(null);
+        setIsFading(false);
       }
     };
     media.addEventListener("change", updateMotionPreference);
@@ -37,7 +37,7 @@ export default function HeroQuestionRotator() {
     const updateVisibility = () => {
       const visible = !document.hidden;
       setTabVisible(visible);
-      if (visible) setNextIndex(null);
+      if (visible) setIsFading(false);
     };
     document.addEventListener("visibilitychange", updateVisibility);
     return () =>
@@ -47,12 +47,11 @@ export default function HeroQuestionRotator() {
   useEffect(() => {
     if (reducedMotion || !tabVisible) return undefined;
 
-    const next = (index + 1) % HERO_QUESTIONS.length;
-    const leaveTimer = window.setTimeout(() => setNextIndex(next), VISIBLE_MS);
+    const leaveTimer = window.setTimeout(() => setIsFading(true), VISIBLE_MS);
     const nextTimer = window.setTimeout(() => {
-      setIndex(next);
-      setNextIndex(null);
-    }, VISIBLE_MS + TRANSITION_MS);
+      setIndex((current) => (current + 1) % HERO_QUESTIONS.length);
+      setIsFading(false);
+    }, VISIBLE_MS + FADE_MS);
 
     return () => {
       window.clearTimeout(leaveTimer);
@@ -68,20 +67,9 @@ export default function HeroQuestionRotator() {
       data-question-index={index}
       data-rotation={reducedMotion ? "static" : "active"}
     >
-      {nextIndex === null ? (
-        <span key={index} className="hero-question">
-          {HERO_QUESTIONS[index]}
-        </span>
-      ) : (
-        <>
-          <span className="hero-question is-leaving" aria-hidden="true">
-            {HERO_QUESTIONS[index]}
-          </span>
-          <span key={nextIndex} className="hero-question is-entering">
-            {HERO_QUESTIONS[nextIndex]}
-          </span>
-        </>
-      )}
+      <span className={`hero-question${isFading ? " is-fading" : ""}`}>
+        {HERO_QUESTIONS[index]}
+      </span>
     </h1>
   );
 }

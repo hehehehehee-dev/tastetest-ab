@@ -15,7 +15,7 @@ export async function benchmarkApi(path, options = {}) {
   }
   return data;
 }
-const labels = { llm: "LLM-only (manual paste)", qloo: "Qloo", agent: "Agent" };
+const labels = { llm: "AI-only (external)", qloo: "Qloo", agent: "Agent" };
 const modelLabel = (source = "") =>
   source
     .replace(/^openai\//, "")
@@ -42,12 +42,17 @@ export function BranchTable({ branches, result, proxy = false }) {
               <tr key={key}>
                 <td data-label="Branch">
                   {key === "llm" && proxy
-                    ? "AI (Replicate API)"
+                    ? "AI-only (Replicate API)"
                     : key === "llm" && branch.method === "automatic blind API"
-                      ? "LLM-only (API)"
+                      ? "AI-only (API)"
                       : key === "agent"
                         ? "Agent (same Qloo predictor)"
                         : labels[key]}
+                  {key === "qloo" && branch.fallback && (
+                    <small className="qloo-fallback-badge">
+                      Qloo: no data for these options — heuristic fallback
+                    </small>
+                  )}
                 </td>
                 <td data-label="Pick">
                   {branch.pick == null
@@ -130,11 +135,12 @@ export default function Benchmark() {
     <main className="container benchmark-page">
       <div className="page-heading">
         <div>
-          <div className="eyebrow">TRACK B / FRESH TASTE CASES</div>
+          <div className="eyebrow">LIVE EVIDENCE BENCHMARK / TRACK B</div>
           <h1>Evidence before claims.</h1>
           <p>
-            Draft → predictions frozen → collecting → closed. Three committed
-            choices, one audience outcome.
+            Track B is the evidence track: freeze three predictions before
+            polling, then collect at least 20 real, non-tied audience votes
+            before the case can count toward accuracy.
           </p>
         </div>
       </div>
@@ -144,13 +150,13 @@ export default function Benchmark() {
       </a>
       <div className="benchmark-overview">
         <article>
-          <span>Track B tally</span>
+          <span>Live evidence tally</span>
           <strong>
             {data
               ? Object.entries(data.tally.decisionCounts || data.tally.counts)
                   .map(
                     ([k, c]) =>
-                      `${k === "llm" ? "LLM" : labels[k]} ${c.correct}/${c.total}`,
+                      `${k === "llm" ? "AI-only" : labels[k]} ${c.correct}/${c.total}`,
                   )
                   .join(" · ")
               : "Loading…"}
@@ -171,12 +177,12 @@ export default function Benchmark() {
                   .filter(([k]) => k !== "agent")
                   .map(
                     ([k, c]) =>
-                      `${k === "llm" ? "LLM" : labels[k]} ${c.correct}/${c.total}`,
+                      `${k === "llm" ? "AI-only" : labels[k]} ${c.correct}/${c.total}`,
                   )
                   .join(" · ")
               : "Loading…"}
           </strong>
-          <small>Historical preferences · separate from Track B</small>
+          <small>Historical preferences · separate from live evidence</small>
         </article>
         <article>
           <span>Cases recorded</span>
@@ -186,7 +192,7 @@ export default function Benchmark() {
                 (data.pending?.length || 0) +
                 (data.openCases?.length || 0)
               : "…"}{" "}
-            Track B records
+            live evidence records
           </strong>
           <small>
             {data
@@ -246,12 +252,12 @@ export default function Benchmark() {
       </details>
       <details className="benchmark-drawer">
         <summary>
-          Track B case register<span>Open section</span>
+          Live evidence case register (Track B)<span>Open section</span>
         </summary>
         <section className="panel">
-          <h2>Track B case register</h2>
+          <h2>Live evidence case register (Track B)</h2>
           <a className="button" href="/api/benchmark/export.csv" download>
-            Export Track B CSV
+            Export live evidence CSV
           </a>
           <p>
             Open and partial records are visible here, but never count as closed
@@ -272,7 +278,8 @@ export default function Benchmark() {
               <h3>Excluded notes — not evidence</h3>
               <p>
                 These are administrative notes, not completed experiments. They
-                are excluded from the record count and every Track B tally.
+                are excluded from the record count and every live evidence
+                tally.
               </p>
               {data.excludedNotes.map((row) => (
                 <article key={row.caseLabel}>
@@ -319,7 +326,7 @@ export default function Benchmark() {
                   <th>Case / mode</th>
                   <th>Context / seeds</th>
                   <th>Prediction timing</th>
-                  <th>LLM-only (manual paste)</th>
+                  <th>AI-only (external)</th>
                   <th>Qloo</th>
                   <th>Agent</th>
                   <th>Votes A / B</th>
@@ -403,13 +410,13 @@ export default function Benchmark() {
           <p>
             Famous answers may be memorized. Cookie Cats reveals observed data
             directly and marks missing AI/Qloo predictions. These examples never
-            count as Track B accuracy.
+            count as live evidence accuracy.
           </p>
           <a href="/benchmark-lab/historical-case-01">
-            Cookie Cats · Historical case 01 ↗
+            Cookie Cats · Historical case 01
           </a>
           <p>
-            <a href="/">Synthetic cafe example ↗</a>
+            <a href="/">Synthetic cafe example</a>
           </p>
         </section>
       </details>
@@ -427,7 +434,7 @@ export default function Benchmark() {
               Object.entries(data.tally.decisionCounts || data.tally.counts)
                 .map(
                   ([key, count]) =>
-                    `${key === "llm" ? "LLM-only" : labels[key]} ${count.correct}/${count.total}`,
+                    `${key === "llm" ? "AI-only" : labels[key]} ${count.correct}/${count.total}`,
                 )
                 .join(" · ")}
           </p>
@@ -437,7 +444,7 @@ export default function Benchmark() {
               {Object.entries(data.tally.decisionCounts)
                 .map(
                   ([key, c]) =>
-                    `${key === "llm" ? "LLM-only" : labels[key]} ${c.abstained}/${c.cases}`,
+                    `${key === "llm" ? "AI-only" : labels[key]} ${c.abstained}/${c.cases}`,
                 )
                 .join(" · ")}
               . Abstentions are not counted as wrong picks.

@@ -160,7 +160,7 @@ export function proxyTally(rows) {
       ...new Set(rows.map((r) => r.scoringVersion || "concept-tag-fit-v2")),
     ],
     policy:
-      "First completed prediction freeze per case and mode; all attempts retained. Retrospective proxy, never Track B.",
+      "First completed prediction freeze per case and mode; all attempts retained. Historical proxy, never Track B.",
   };
 }
 const movieName = (movie) =>
@@ -469,11 +469,11 @@ export function createProxyApi(
       ...safe,
       lifecycle: result ? "revealed" : freeze ? "predictions frozen" : "draft",
       frozenAt: freeze?.payload.frozenAt || null,
-      ...(owner && freeze ? { freeze } : {}),
+      ...(freeze && (owner || result) ? { freeze } : {}),
       ...(owner
         ? { llmPrediction: await store.get(`proxy-ai/${run.id}`) }
         : {}),
-      ...(owner && result
+      ...(result
         ? {
             result: result.result,
             outcome: result.outcome,
@@ -514,6 +514,27 @@ export function createProxyApi(
           (await store.list("proxy-results/")).map((k) => store.get(k)),
         )
       ).filter((row) => row?.caseSetHash === catalog.caseSetHash);
+      const completedSeen = new Set();
+      const completedRuns = rows
+        .slice()
+        .sort(
+          (a, b) =>
+            a.frozenAt.localeCompare(b.frozenAt) || a.id.localeCompare(b.id),
+        )
+        .filter((row) => {
+          const key = `${row.mode}:${row.caseId}`;
+          if (completedSeen.has(key)) return false;
+          completedSeen.add(key);
+          return true;
+        })
+        .map((row) => ({
+          id: row.id,
+          caseId: row.caseId,
+          mode: row.mode,
+          frozenAt: row.frozenAt,
+          revealedAt: row.revealedAt,
+          scoringVersion: row.scoringVersion || "concept-tag-fit-v2",
+        }));
       return {
         data: {
           ...catalog,
@@ -527,6 +548,7 @@ export function createProxyApi(
             `proxy-outcomes/${catalog.caseSetHash}`,
           )),
           tally: proxyTally(rows),
+          completedRuns,
           mode: mockMode() ? "mock" : "real",
         },
       };
@@ -719,7 +741,7 @@ export function createProxyApi(
               finishPredictionStep(
                 work,
                 "record-branches",
-                `${automated ? "AI" : "LLM-only marked Not run"}; Qloo and Agent branches recorded from the existing predictor.`,
+                `${automated ? "AI-only" : "AI-only marked Not run"}; Qloo branch recorded from the existing predictor.`,
               );
               beginPredictionStep(work, "freeze");
             },

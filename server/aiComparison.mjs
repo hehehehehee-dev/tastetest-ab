@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { predictionConfidence } from "../shared/confidence.mjs";
 import {
   createReplicateChatResponder,
   createReplicatePredictor,
@@ -146,7 +147,16 @@ export function createAiPredictor({ key, model, fetchImpl = fetch } = {}) {
     };
   };
 }
-export async function createComparison(input, seeds, insights, predictor) {
+export async function createComparison(
+  input,
+  seeds,
+  insights,
+  predictor,
+  scores = [],
+  qlooFallback = false,
+  signalMethod = "custom-concept-fit",
+  tasteProfile,
+) {
   if (insights.mode !== "real")
     fail(
       "AI + Qloo comparison requires real Qloo signals. Mock fixtures cannot be benchmark evidence.",
@@ -184,6 +194,23 @@ export async function createComparison(input, seeds, insights, predictor) {
     limitation:
       "Recommendation affinities do not directly score these custom concepts or predict votes.",
   };
+  if (tasteProfile) {
+    qlooSignals.tasteProfile = tasteProfile;
+    qlooSignals.tasteProfileLimitation =
+      "Profile tags are associations with the supplied tastes, not direct preferences for custom concepts or facts about an individual's identity. Do not infer age, gender or other personal traits from them.";
+  }
+  if (signalMethod === "direct-entity-affinity") {
+    qlooSignals.method = signalMethod;
+    qlooSignals.limitation =
+      "The recommendations are affinities for the user-confirmed option entities. Affinity is not a vote probability.";
+    qlooSignals.candidates = input.options.map(
+      ({ entityId, title }, index) => ({
+        label: index ? "B" : "A",
+        entityId,
+        title,
+      }),
+    );
+  }
   // Separate stateless calls: neither branch can see the other's answer or any poll result.
   const aiOnly = await predictor({ ...common, qlooSignals: null });
   const aiQloo = await predictor({ ...common, qlooSignals });
@@ -196,6 +223,51 @@ export async function createComparison(input, seeds, insights, predictor) {
       "The provider returned different model versions or generation settings. No fair paired comparison was committed.",
       502,
     );
+  const separation = scores.length === 2 ? predictionConfidence(scores) : null;
+  const qloo = separation
+    ? {
+        choice:
+          scores[0].score === scores[1].score
+            ? "TIE"
+            : scores[0].score > scores[1].score
+              ? "A"
+              : "B",
+        confidence: separation.tooClose
+          ? 40
+          : separation.level === "Moderate"
+            ? 65
+            : 80,
+        rationale: qlooFallback
+          ? "No direct Qloo candidate entity signal was available. This branch uses the declared text heuristic fallback and selects the higher score; equal scores abstain."
+          : signalMethod === "direct-entity-affinity"
+            ? "Choice follows the higher direct Qloo affinity for the confirmed entities, even when the gap is small. Equal affinities abstain. Affinity is not a vote probability."
+            : "Choice follows the higher declared concept-fit score, even when the gap is small. Equal scores abstain.",
+        decisionPolicy: "higher-score-v1",
+        scoreGap: separation.gap,
+        lowSeparation: separation.tooClose,
+        source: qlooFallback
+          ? "Text heuristic fallback"
+          : signalMethod === "direct-entity-affinity"
+            ? "Direct Qloo entity affinity"
+            : "Qloo-informed concept fit",
+        ...(signalMethod === "direct-entity-affinity"
+          ? {
+              method: signalMethod,
+              affinities: scores.map((score, index) => ({
+                label: index ? "B" : "A",
+                entityId: input.options[index].entityId,
+                name: input.options[index].title,
+                affinity: score.components.affinitySum,
+              })),
+            }
+          : {}),
+        fallback: qlooFallback,
+        noSignalTie:
+          (qlooFallback || signalMethod === "direct-entity-affinity") &&
+          scores[0].score === scores[1].score &&
+          scores.every((score) => !(score.components?.affinitySum > 0)),
+      }
+    : null;
   const payload = {
     protocol: promptVersion,
     provider: aiOnly.provider || "test-fixture",
@@ -204,7 +276,9 @@ export async function createComparison(input, seeds, insights, predictor) {
     minVotes: 10,
     committedAt: new Date().toISOString(),
     aiOnly,
+    qloo,
     aiQloo,
+    qlooEvidence: { source: "Qloo API", ...qlooSignals },
   };
   return { payload, sha256: receiptHash(payload) };
 }
@@ -237,6 +311,8 @@ export function scoreComparison(comparison, counts, closed) {
     actual,
     minVotes: comparison.payload.minVotes,
     aiOnly: grade(comparison.payload.aiOnly),
+    qloo: comparison.payload.qloo ? grade(comparison.payload.qloo) : null,
+    agent: grade(comparison.payload.aiQloo),
     aiQloo: grade(comparison.payload.aiQloo),
   };
 }

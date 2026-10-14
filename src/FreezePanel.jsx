@@ -7,7 +7,7 @@ import {
   failPredictionStep,
 } from "../shared/predictionWork.mjs";
 const initial = () => ({ pick: "A", confidence: 50, source: "", answer: "" });
-function ManualFields({ name, value, update, tie = false }) {
+export function ManualFields({ name, value, update, tie = false }) {
   return (
     <fieldset className="manual-branch">
       <legend>{name}</legend>
@@ -59,12 +59,13 @@ function ManualFields({ name, value, update, tie = false }) {
   );
 }
 export default function FreezePanel({ test, owner, onFrozen }) {
+  const evidenceMode = test.creationMode === "evidence";
   const [branches, setBranches] = useState({
     llm: initial(),
     qloo: initial(),
     agent: initial(),
   });
-  const [manual, setManual] = useState(false),
+  const [manual, setManual] = useState(evidenceMode),
     [originalRecordedAt, setOriginal] = useState("");
   const [beforeOutcome, setBefore] = useState(false),
     [busy, setBusy] = useState(false),
@@ -138,7 +139,7 @@ export default function FreezePanel({ test, owner, onFrozen }) {
             .filter(([, b]) => b.answer)
             .map(([key, b]) => (
               <div key={key}>
-                <h3>{key === "llm" ? "LLM-only (manual paste)" : key}</h3>
+                <h3>{key === "llm" ? "AI-only (external)" : key}</h3>
                 <p className="pasted-answer">{b.answer}</p>
               </div>
             ))}
@@ -155,7 +156,7 @@ export default function FreezePanel({ test, owner, onFrozen }) {
               `${test.totalVotes} votes`}
           </p>
         )}
-        <a href="/benchmark">View benchmark ledger ↗</a>
+        <a href="/benchmark">View benchmark ledger</a>
       </section>
     );
   }
@@ -212,8 +213,9 @@ export default function FreezePanel({ test, owner, onFrozen }) {
       <div className="eyebrow">BEFORE ANY VOTES</div>
       <h2>Record, then freeze.</h2>
       <p>
-        Paste an independently obtained LLM answer. No LLM API call is made by
-        this app. Once frozen, all fields are locked.
+        {evidenceMode
+          ? "Record all three independently obtained branch answers. Evidence mode does not auto-fill benchmark evidence. Once frozen, every field is locked."
+          : "Paste an independently obtained AI answer. Once frozen, all fields are locked."}
       </p>
       <PredictionStepFeed work={predictionWork || test.predictionWork} />
       <form onSubmit={freeze}>
@@ -224,7 +226,9 @@ export default function FreezePanel({ test, owner, onFrozen }) {
             onChange={(e) => setMeta("track", e.target.value)}
           >
             <option value="rehearsal">Workflow rehearsal / public case</option>
-            <option value="track-b">Track B — unpublished taste case</option>
+            <option value="track-b">
+              Live evidence (Track B) — unpublished taste case
+            </option>
           </select>
         </label>
         <div className="freeze-context">
@@ -260,16 +264,23 @@ export default function FreezePanel({ test, owner, onFrozen }) {
           />
           The planned voters actually share the recorded taste seeds.
         </label>
-        <label className="check-label">
-          <input
-            type="checkbox"
-            checked={manual}
-            onChange={(e) => setManual(e.target.checked)}
-          />
-          Record external predictions manually (all three branches required)
-        </label>
+        {evidenceMode ? (
+          <p className="comparison-note">
+            Record external predictions manually — all three branches are
+            required for evidence mode.
+          </p>
+        ) : (
+          <label className="check-label">
+            <input
+              type="checkbox"
+              checked={manual}
+              onChange={(e) => setManual(e.target.checked)}
+            />
+            Record external predictions manually (all three branches required)
+          </label>
+        )}
         <ManualFields
-          name="LLM-only (manual paste)"
+          name="AI-only (external)"
           value={branches.llm}
           update={(key, value) =>
             setBranches((old) => ({

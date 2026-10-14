@@ -24,7 +24,7 @@ test("sample, creation, independent voter, live update, closure and print", asyn
     "Keyword baseline",
   );
   await page.getByRole("checkbox", { name: "Keyword baseline" }).uncheck();
-  await expect(scores.first()).toHaveText("100/ 100");
+  await expect(scores.first()).toHaveText("100/ 100 fit");
   await mkdir("artifacts", { recursive: true });
   await page.screenshot({
     path: `artifacts/sample-${testInfo.project.name}.png`,
@@ -35,6 +35,7 @@ test("sample, creation, independent voter, live update, closure and print", asyn
   );
   expect(overflow).toBe(false);
   await page.getByRole("link", { name: "New test" }).click();
+  await page.getByRole("button", { name: "Record as evidence" }).click();
   await page.getByLabel("Give it a name").nth(0).fill("Slow mornings club");
   await page
     .getByLabel("Describe the idea")
@@ -55,25 +56,28 @@ test("sample, creation, independent voter, live update, closure and print", asyn
   await page
     .getByLabel("Anything else about your audience?")
     .fill("IU students near campus");
-  await page.screenshot({
-    path: `artifacts/create-${testInfo.project.name}.png`,
-    fullPage: true,
-  });
-  await page.getByRole("button", { name: "Get agent prediction" }).click();
-  await expect(page).toHaveURL(/\/test\//, { timeout: 15000 });
-  await expect(
-    page.getByRole("button", { name: "Open live poll" }),
-  ).toBeDisabled();
-  await page.getByLabel("Source (exact model/version or human)").fill("human");
   await page
-    .getByLabel("Paste the original answer")
-    .fill("Synthetic workflow fixture: option A seems more suitable.");
+    .getByLabel("Original prediction timestamp")
+    .fill("2026-01-01T12:00");
+  for (const branch of await page.locator(".manual-branch").all()) {
+    await branch
+      .getByLabel("Source (exact model/version or human)")
+      .fill("human");
+    await branch
+      .getByLabel("Paste the original answer")
+      .fill("Synthetic workflow fixture: option A seems more suitable.");
+  }
   await page
     .getByLabel(
       "All predictions were recorded before collecting any outcome or vote.",
     )
     .check();
-  await page.getByRole("button", { name: "Freeze predictions" }).click();
+  await page.screenshot({
+    path: `artifacts/create-${testInfo.project.name}.png`,
+    fullPage: true,
+  });
+  await page.getByRole("button", { name: "Prepare evidence case" }).click();
+  await expect(page).toHaveURL(/\/test\//, { timeout: 15000 });
   await expect(
     page.getByRole("heading", { name: "Prediction frozen" }),
   ).toBeVisible({

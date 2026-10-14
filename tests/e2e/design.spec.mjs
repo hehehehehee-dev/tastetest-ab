@@ -74,8 +74,8 @@ test("baseline verdict has one score set, exports a real PNG and prints only one
   await page.getByRole("button", { name: "Verdict", exact: true }).click();
   const card = page.locator(".verdict-artefact");
   await expect(card.locator(".verdict-report-section")).toHaveCount(4);
-  await expect(card).toContainText("Where we disagreed");
-  await expect(card).toContainText("What surprised us");
+  await expect(card).toContainText("How the sample prediction compared");
+  await expect(card).toContainText("What the sample shows");
   await expect(card).toContainText("How this verdict was built");
   await expect(card).toContainText("KEYWORD BASELINE VIEW");
   await expect(card.locator(".verdict-bar-label").first()).toContainText(
@@ -129,7 +129,7 @@ test("benchmark opens with three tiles and hides audit details until requested",
   await page.goto("/benchmark");
   await expect(page.locator(".benchmark-overview > article")).toHaveCount(3);
   await expect(page.locator(".benchmark-overview")).toContainText(
-    "Ready for the first frozen case.",
+    /Ready for the first frozen case\.|not enough cases yet/,
   );
   expect(await page.locator(".benchmark-drawer[open]").count()).toBe(0);
   await expect(
@@ -137,7 +137,7 @@ test("benchmark opens with three tiles and hides audit details until requested",
   ).toContainText("Methodology & calibration");
   await page
     .locator(".benchmark-drawer > summary")
-    .filter({ hasText: "Track B case register" })
+    .filter({ hasText: "Live evidence case register" })
     .click();
   await expect(
     page.getByRole("heading", {

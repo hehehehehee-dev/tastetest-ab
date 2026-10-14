@@ -13,14 +13,17 @@ export function usePageSignal(record) {
   }, [record, publish]);
 }
 export function pageSignalLabel(route, config, record) {
-  if (route === "/") return "Cafe demo · synthetic signals";
+  // The homepage already explains that its sample uses synthetic signals in
+  // the report itself. Repeating that status in the header looked actionable
+  // even though it was only an informational label.
+  if (route === "/") return null;
   if (
     ["/benchmark-lab/historical-case-01", "/case-study/cookie-cats"].includes(
       route,
     )
   )
     return "Historical case · observed data only";
-  if (route === "/benchmark") return "Benchmark · see each case’s data source";
+  if (route === "/benchmark") return null;
   if (/^\/benchmark\/(?:film|proxy)\/PX-\d{3}$/.test(route))
     return "Proxy case · prediction not started";
   if (

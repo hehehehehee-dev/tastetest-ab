@@ -27,6 +27,21 @@ const decision = (choice, context) => ({
 });
 const realShapedAdapter = {
   ...mockQlooAdapter,
+  async getTasteProfile(ids, targetType) {
+    return {
+      mode: "real",
+      status: "available",
+      targetType,
+      tagType: "urn:tag:cuisine:qloo",
+      tags: [
+        {
+          tag_id: "urn:tag:cuisine:qloo:fixture",
+          name: "Synthetic fixture tag",
+          affinity: 0.8,
+        },
+      ],
+    };
+  },
   async getInsights(ids) {
     return {
       ...(await mockQlooAdapter.getInsights(ids)),
@@ -71,6 +86,35 @@ test("two stateless AI calls use identical shared context and only one gets Qloo
   assert.equal(scoreComparison(receipt, [2, 1], true).status, "INSUFFICIENT");
   assert.equal(scoreComparison(receipt, [5, 5], true).status, "TIED");
   assert.equal(scoreComparison(receipt, [7, 3], false).status, "PENDING");
+  const noSignalReceipt = await createComparison(
+    sampleInput,
+    seeds,
+    insights,
+    async (context) => decision("A", context),
+    [
+      { score: 50, components: { affinitySum: 0 } },
+      { score: 50, components: { affinitySum: 0 } },
+    ],
+    true,
+  );
+  assert.equal(noSignalReceipt.payload.qloo.choice, "TIE");
+  assert.equal(noSignalReceipt.payload.qloo.fallback, true);
+  assert.equal(noSignalReceipt.payload.qloo.noSignalTie, true);
+  const closeFallback = await createComparison(
+    sampleInput,
+    seeds,
+    insights,
+    async (context) => decision("A", context),
+    [
+      { score: 17, components: { affinitySum: 0 } },
+      { score: 10, components: { affinitySum: 0 } },
+    ],
+    true,
+  );
+  assert.equal(closeFallback.payload.qloo.choice, "A");
+  assert.equal(closeFallback.payload.qloo.fallback, true);
+  assert.equal(closeFallback.payload.qloo.lowSeparation, true);
+  assert.equal(closeFallback.payload.qloo.decisionPolicy, "higher-score-v1");
   tampered.aiOnly.choice = "TIE";
   assert.equal(
     scoreComparison({ payload: tampered }, [7, 3], true).aiOnly,
@@ -218,8 +262,44 @@ test("paired lifecycle: predictions private before closing, votes blocked until 
   assert.equal(created.status, 201);
   const { test: project, ownerToken } = created.data;
   assert.equal(calls, 2);
+  assert.equal(project.creationMode, "quick");
+  assert.equal(project.freezeRequired, false);
+  assert.equal(project.benchmarkMetadata.track, "rehearsal");
+  assert.equal(project.benchmarkMetadata.unpublished, false);
+  assert.equal(project.benchmarkMetadata.audienceVerified, false);
+  assert.equal(project.provenance.qlooFallback, true);
+  assert.equal(project.provenance.qlooOptionSignal, false);
+  assert.equal(project.comparison.payload.qloo.fallback, true);
+  assert.equal(
+    project.comparison.payload.qlooEvidence.tasteProfile.tags[0].name,
+    "Synthetic fixture tag",
+  );
+  assert.equal(
+    JSON.parse(project.comparison.payload.aiOnly.prompt.input).qlooSignals,
+    null,
+  );
+  assert.equal(
+    JSON.parse(project.comparison.payload.aiQloo.prompt.input).qlooSignals
+      .tasteProfile.status,
+    "available",
+  );
+  assert.equal(
+    project.comparison.payload.qloo.source,
+    "Text heuristic fallback",
+  );
+  assert.equal(
+    project.predictionWork.steps.find((step) => step.id === "score-fit").detail,
+    "Fell back to text heuristic — no Qloo entity signal",
+  );
+  assert.ok(
+    project.predictionWork.steps.every((step) => step.status === "done"),
+  );
   assert.equal(project.pollOpenedAt, null);
   const route = `/tests/${project.id}`;
+  assert.equal(
+    (await call(`${route}/freeze`, "POST", {}, ownerToken)).status,
+    409,
+  );
   const publicBefore = (await call(route)).data;
   assert.equal(publicBefore.comparison, undefined);
   assert.equal(publicBefore.prediction, undefined);
