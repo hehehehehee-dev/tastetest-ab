@@ -123,6 +123,8 @@ for (const { kind, prefix, api } of [
         new RegExp(`/benchmark/${kind}/run/${ids[1]}$`),
       );
       await expect(page.locator(".proxy-outcome")).toBeVisible();
+      await expect(page.locator("main")).toHaveCount(1);
+      await expect(page.locator("main h1")).toHaveText(cases[1].id);
       await expect(page.locator(".mock-pill")).toContainText(
         "direct Qloo affinity",
       );

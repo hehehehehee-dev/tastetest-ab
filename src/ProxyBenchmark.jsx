@@ -235,12 +235,7 @@ export default function ProxyCase({ caseId, runId }) {
             (row) => row.caseId === caseId && row.mode === "real-qloo",
           );
         if (completed) {
-          window.history.replaceState(
-            {},
-            "",
-            `/benchmark/film/run/${completed.id}`,
-          );
-          window.dispatchEvent(new Event("popstate"));
+          window.location.replace(`/benchmark/film/run/${completed.id}`);
           return;
         }
         setCatalog(data);

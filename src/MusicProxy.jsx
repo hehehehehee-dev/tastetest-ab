@@ -237,12 +237,7 @@ export default function MusicCase({ caseId, runId }) {
             (row) => row.caseId === caseId && row.mode === "real-qloo",
           );
         if (completed) {
-          window.history.replaceState(
-            {},
-            "",
-            `/benchmark/music/run/${completed.id}`,
-          );
-          window.dispatchEvent(new Event("popstate"));
+          window.location.replace(`/benchmark/music/run/${completed.id}`);
           return;
         }
         setCatalog(data);
