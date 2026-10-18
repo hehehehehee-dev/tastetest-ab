@@ -55,7 +55,7 @@ export default function AiComparison({ test }) {
   const threeBranches = !!payload.qloo;
   const branches = threeBranches
     ? [
-        ["aiOnly", "LLM-only", "Concepts + audience tastes"],
+        ["aiOnly", "AI-only", "Concepts + audience tastes"],
         [
           "qloo",
           "Qloo",
@@ -66,7 +66,7 @@ export default function AiComparison({ test }) {
         ["aiQloo", "Agent", "LLM + available Qloo audience context"],
       ]
     : [
-        ["aiOnly", "AI only", "Concepts + audience tastes"],
+        ["aiOnly", "AI-only", "Concepts + audience tastes"],
         ["aiQloo", "AI + Qloo", "Same input + real Qloo tags and affinities"],
       ];
   function download() {
@@ -104,7 +104,7 @@ export default function AiComparison({ test }) {
         <div>
           <div className="eyebrow">LOCKED BEFORE VOTING</div>
           <h2>
-            {threeBranches ? "Three frozen branches" : "AI only vs. AI + Qloo"}
+            {threeBranches ? "Three frozen branches" : "AI-only vs. AI + Qloo"}
           </h2>
         </div>
         <button className="button subtle" onClick={download}>
@@ -182,7 +182,7 @@ export default function AiComparison({ test }) {
             <table>
               <thead>
                 <tr>
-                  <th>{threeBranches ? "LLM-only" : "AI only"}</th>
+                  <th>{threeBranches ? "AI-only" : "AI-only"}</th>
                   {threeBranches && <th>Qloo</th>}
                   <th>{threeBranches ? "Agent" : "AI + Qloo"}</th>
                   <th>Audience</th>

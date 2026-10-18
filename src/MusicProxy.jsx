@@ -78,8 +78,8 @@ export function MusicSection({ browseOpen = false }) {
       <p>
         Predict which artist a taste-defined segment listened to more. These are
         historical preferences, not business results, live A/B outcomes or a
-        causal experiment. Proxy results never enter the live evidence
-        benchmark (Track B).
+        causal experiment. Proxy results never enter the live evidence benchmark
+        (Track B).
       </p>
       <p>{musicHonesty}</p>
       <p>
@@ -159,7 +159,7 @@ export function MusicSection({ browseOpen = false }) {
                   {completed && (
                     <a
                       className="proxy-start-another"
-                      href={`/benchmark/music/${input.id}`}
+                      href={`/benchmark/music/${input.id}?new=1`}
                     >
                       Start another run
                     </a>
@@ -207,6 +207,8 @@ export function MusicSection({ browseOpen = false }) {
   );
 }
 export default function MusicCase({ caseId, runId }) {
+  const newAttempt =
+    new URLSearchParams(window.location.search).get("new") === "1";
   const [catalog, setCatalog] = useState(null),
     [run, setRun] = useState(null),
     [busy, setBusy] = useState(false),
@@ -227,7 +229,23 @@ export default function MusicCase({ caseId, runId }) {
     let active = true;
     benchmarkApi("/music-proxy")
       .then((data) => {
-        if (active) setCatalog(data);
+        if (!active) return;
+        const completed =
+          !runId &&
+          !newAttempt &&
+          (data.completedRuns || []).find(
+            (row) => row.caseId === caseId && row.mode === "real-qloo",
+          );
+        if (completed) {
+          window.history.replaceState(
+            {},
+            "",
+            `/benchmark/music/run/${completed.id}`,
+          );
+          window.dispatchEvent(new Event("popstate"));
+          return;
+        }
+        setCatalog(data);
       })
       .catch((e) => setError(e.message));
     if (runId) {
@@ -247,7 +265,7 @@ export default function MusicCase({ caseId, runId }) {
     return () => {
       active = false;
     };
-  }, [caseId, runId]);
+  }, [caseId, runId, newAttempt]);
   const input = run?.input || catalog?.cases.find((c) => c.id === caseId);
   async function act(action) {
     setBusy(true);

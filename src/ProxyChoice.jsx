@@ -12,12 +12,13 @@ export default function ProxyChoice({
     <div className="proxy-visitor-choice">
       <h3>Your guess · optional</h3>
       <p>
-        {hasAi
-          ? "AI is already recorded."
-          : aiAvailable
-            ? "AI will run automatically before the outcome is revealed."
-            : "AI is unavailable on this server and will be marked Not run."}{" "}
-        You can make your own guess or skip it.
+        {`${
+          hasAi
+            ? "AI is already recorded."
+            : aiAvailable
+              ? "AI will run automatically before the outcome is revealed."
+              : "AI is unavailable on this server and will be marked Not run."
+        } You can make your own guess or skip it.`}
       </p>
       <div className="case-navigation-links">
         {options.map((option, i) => {

@@ -52,11 +52,7 @@ export default function VerdictInsights({
       <section className="verdict-report-section verdict-disagreement">
         <div className="verdict-section-label">02</div>
         <div>
-          <h3>
-            {hasRecordedBranch
-              ? "Where we disagreed"
-              : "How the sample prediction compared"}
-          </h3>
+          <h3>Where we disagreed</h3>
           {baselineNote && (
             <p className="verdict-context-note">{baselineNote}</p>
           )}
@@ -67,6 +63,11 @@ export default function VerdictInsights({
                   <article className="verdict-branch" key={row.key}>
                     <span>{row.label}</span>
                     <strong>{pickLabel(row.pick)}</strong>
+                    {row.key === "qloo" && branches.qloo?.fallback && (
+                      <span className="qloo-fallback-badge">
+                        Qloo: no data for these options — heuristic fallback
+                      </span>
+                    )}
                     <small>
                       {row.confidence === null
                         ? "Confidence not recorded"
@@ -89,13 +90,7 @@ export default function VerdictInsights({
             </>
           ) : (
             <p className="verdict-empty-branches">
-              This demo records one concept-fit prediction: Option{" "}
-              {illustrativePick}
-              {fitGap == null
-                ? ""
-                : ` with a ${Math.round(fitGap)}-point fit gap`}
-              . AI-only and Qloo were not run as separate branches for this
-              illustrative sample.
+              {`This demo records one concept-fit prediction${["A", "B"].includes(illustrativePick) ? `: Option ${illustrativePick}` : ""}${fitGap == null ? "" : ` with a ${Math.round(fitGap)}-point fit gap`}. AI-only and Qloo were not run as separate branches for this illustrative sample.`}
             </p>
           )}
         </div>
@@ -103,9 +98,7 @@ export default function VerdictInsights({
       <section className="verdict-report-section verdict-surprises">
         <div className="verdict-section-label">03</div>
         <div>
-          <h3>
-            {hasRecordedBranch ? "What surprised us" : "What the sample shows"}
-          </h3>
+          <h3>What surprised us</h3>
           <ul>
             {displayedSurprises.map((note) => (
               <li key={note}>{note}</li>

@@ -3,7 +3,7 @@ export const predictionWorkStages = [
   ["resolve-candidates", "Resolving the two candidates → entities"],
   ["fetch-affinities", "Fetching affinity signals"],
   ["score-fit", "Scoring audience fit"],
-  ["record-branches", "Recording branch predictions (LLM-only / Qloo / Agent)"],
+  ["record-branches", "Recording branch predictions (AI-only / Qloo / Agent)"],
   ["freeze", "Freezing the prediction (timestamp + SHA-256)"],
 ];
 

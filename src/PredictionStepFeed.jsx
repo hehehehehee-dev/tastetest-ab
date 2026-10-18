@@ -55,9 +55,16 @@ export default function PredictionStepFeed({ work }) {
               <li className={`is-${step.status}`} key={step.id}>
                 <Icon aria-hidden="true" size={16} />
                 <div>
-                  <strong>{step.label}</strong>
+                  <strong>
+                    {step.label.replaceAll("LLM-only", "AI-only")}
+                  </strong>
                   {(step.detail || step.message) && (
-                    <small>{step.message || step.detail}</small>
+                    <small>
+                      {(step.message || step.detail).replaceAll(
+                        "LLM-only",
+                        "AI-only",
+                      )}
+                    </small>
                   )}
                 </div>
                 <time>

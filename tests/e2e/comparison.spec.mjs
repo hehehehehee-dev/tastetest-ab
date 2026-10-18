@@ -235,6 +235,9 @@ test("paired UI locks, persists, downloads a safe receipt, then shows both branc
   ).toBeVisible();
   await page.getByRole("button", { name: "Verdict", exact: true }).click();
   await expect(page.locator(".verdict-number")).toHaveText("70%");
+  await expect(
+    page.locator(".verdict-disagreement .qloo-fallback-badge"),
+  ).toHaveText("Qloo: no data for these options — heuristic fallback");
   await expect(page.locator(".verdict-disagreement")).toContainText(
     "Qloo abstained",
   );

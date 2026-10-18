@@ -1240,7 +1240,7 @@ function CreateTest({ mode }) {
           ) : (
             <>
               <p>
-                LLM-only, Qloo and Agent. Record all three branches below;
+                AI-only, Qloo and Agent. Record all three branches below;
                 submitting seals every pick before the poll can open.
               </p>
               <p className="muted">
@@ -1339,7 +1339,7 @@ function CreateTest({ mode }) {
               />
             </label>
             {[
-              ["llm", "LLM-only (external)"],
+              ["llm", "AI-only (external)"],
               ["qloo", "Qloo (external)"],
               ["agent", "Agent (external)"],
             ].map(([key, label]) => (
@@ -1682,6 +1682,7 @@ function Verdict({ test, without, setWithout }) {
               pick: test.comparison.payload.qloo.choice,
               confidence: test.comparison.payload.qloo.confidence,
               source: test.comparison.payload.qloo.source || "Qloo branch",
+              fallback: test.comparison.payload.qloo.fallback === true,
             }
           : {},
         agent: {

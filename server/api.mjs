@@ -233,8 +233,8 @@ async function predict(input, adapter = qlooAdapter, aiPredictor) {
       work,
       "record-branches",
       direct
-        ? "LLM-only, direct Qloo affinity and combined Agent predictions recorded."
-        : "LLM-only, Qloo fallback and combined Agent predictions recorded.",
+        ? "AI-only, direct Qloo affinity and combined Agent predictions recorded."
+        : "AI-only, Qloo fallback and combined Agent predictions recorded.",
     );
     beginPredictionStep(work, "freeze");
     finishPredictionStep(
