@@ -179,7 +179,7 @@ test("paired UI locks, persists, downloads a safe receipt, then shows both branc
   ).toBeVisible();
   await expect(
     page.locator(".prediction-next-step .qloo-fallback-badge"),
-  ).toBeVisible();
+  ).toHaveText("Qloo: no data — heuristic fallback");
   await expect(page.locator(".prediction-next-step")).toContainText(
     "Agent pick: Option A",
   );

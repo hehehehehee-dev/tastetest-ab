@@ -1465,7 +1465,7 @@ function Prediction({
           </p>
           {!without && test.provenance?.qlooFallback && (
             <span className="qloo-fallback-badge">
-              Qloo: no data for these options — heuristic fallback
+              Qloo: no data — heuristic fallback
             </span>
           )}
           <ConfidenceNote
@@ -2307,7 +2307,7 @@ function TestView({ id, sample = false }) {
                 </p>
                 {fallback && (
                   <span className="qloo-fallback-badge">
-                    Qloo: no data for these options — heuristic fallback
+                    Qloo: no data — heuristic fallback
                   </span>
                 )}
                 {test.freezeRequired && !test.frozenAt && (

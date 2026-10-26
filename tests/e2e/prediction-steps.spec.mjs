@@ -77,6 +77,9 @@ test("mock Track B feed follows all six stages and collapses after freeze", asyn
   await expect(feed).toContainText(
     "Showing the agent's work — this does not prove the prediction is correct.",
   );
+  await expect(feed.locator("summary .qloo-fallback-badge")).toHaveText(
+    "Qloo: no data — heuristic fallback",
+  );
 });
 
 test("real-mode Qloo failure marks the exact stage without exposing a traceback", async ({
@@ -121,5 +124,6 @@ test("real-mode Qloo failure marks the exact stage without exposing a traceback"
     "Couldn't reach Qloo for candidate affinities. No prediction was recorded.",
   );
   await expect(feed.getByText(/Mock signals/)).toHaveCount(0);
+  await expect(feed.locator(".qloo-fallback-badge")).toHaveCount(0);
   await expect(page.locator("body")).not.toContainText(/trace|stack|socket/i);
 });

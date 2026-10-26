@@ -276,6 +276,7 @@ test("results expose recorded direct affinities and custom audience signals with
     "Too close to call",
   );
   await expect(page.locator(".taste-flow-scores .is-winner")).toHaveCount(0);
+  await expect(page.locator(".no-signal-note")).toHaveCount(0);
   await expect(page.locator(".taste-flow-scores strong").first()).toHaveText(
     "97.6",
   );
@@ -334,6 +335,7 @@ test("results expose recorded direct affinities and custom audience signals with
   result = {
     ...result,
     insights: [{ name: "Fixture audience taste", affinity: 0.912 }],
+    provenance: { ...result.provenance, qlooOptionSignal: false },
     comparison: {
       ...result.comparison,
       payload: {
@@ -343,6 +345,7 @@ test("results expose recorded direct affinities and custom audience signals with
           confidence: 40,
           rationale: "No direct option signal. Fixture fallback.",
           fallback: true,
+          noSignalTie: false,
         },
       },
     },
@@ -352,9 +355,22 @@ test("results expose recorded direct affinities and custom audience signals with
     page.getByRole("heading", { name: "Qloo audience signals received" }),
   ).toBeVisible();
   await expect(page.locator(".qloo-evidence-signals")).toContainText("0.912");
-  await expect(
-    page.locator(".ai-comparison .qloo-fallback-badge"),
-  ).toBeVisible();
+  await expect(qlooCard.locator(".qloo-fallback-badge")).toHaveText(
+    "Qloo: no data — heuristic fallback",
+  );
+  const feed = page.locator(".ai-comparison .prediction-step-feed");
+  await expect(feed).not.toHaveAttribute("open", "");
+  await expect(feed.locator("summary .qloo-fallback-badge")).toBeVisible();
+  await expect(feed.locator("summary .qloo-fallback-badge")).toHaveText(
+    "Qloo: no data — heuristic fallback",
+  );
+  await expect(page.locator(".no-signal-note")).toHaveText(
+    "No affinity signal for either option — prediction abstains.",
+  );
+  result.comparison.payload.qloo.choice = "A";
+  await page.reload();
+  await expect(qlooCard.locator(".ai-pick")).toHaveText("Option A");
+  await expect(page.locator(".no-signal-note")).toHaveCount(0);
   result = { ...result, mode: "mock" };
   await page.reload();
   await expect(page.locator(".qloo-evidence")).toHaveCount(0);

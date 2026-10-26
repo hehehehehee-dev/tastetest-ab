@@ -25,8 +25,16 @@ const icons = {
   failed: X,
 };
 
-export default function PredictionStepFeed({ work }) {
+export default function PredictionStepFeed({ work, qlooFallback = false }) {
   if (!work?.steps?.length) return null;
+  const hasQlooFallback =
+    qlooFallback ||
+    work.steps.some(
+      (step) =>
+        step.id === "score-fit" &&
+        step.status === "done" &&
+        step.detail === "Fell back to text heuristic — no Qloo entity signal",
+    );
   const complete = work.steps.every((step) => step.status === "done");
   const done = work.steps.filter((step) => step.status === "done").length;
   const waitingForEvidence =
@@ -41,7 +49,19 @@ export default function PredictionStepFeed({ work }) {
       className="prediction-step-feed panel"
       open={!complete || undefined}
     >
-      <summary>{summary}</summary>
+      <summary>
+        <span>
+          {summary}
+          {hasQlooFallback && (
+            <>
+              <br />
+              <span className="qloo-fallback-badge">
+                Qloo: no data — heuristic fallback
+              </span>
+            </>
+          )}
+        </span>
+      </summary>
       <div className="prediction-step-body">
         {work.mode === "mock" && (
           <p className="prediction-mock-label">

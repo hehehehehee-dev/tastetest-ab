@@ -51,6 +51,13 @@ export default function AiComparison({ test }) {
       </section>
     );
   const { payload } = receipt;
+  // Older receipts can record an abstention without setting noSignalTie.
+  // Explain the recorded choice without changing that receipt or its result.
+  const noSignalTie =
+    payload.qloo?.noSignalTie ||
+    (payload.qloo?.fallback &&
+      payload.qloo.choice === "TIE" &&
+      test.provenance?.qlooOptionSignal === false);
   const result = test.verdict?.paired;
   const threeBranches = !!payload.qloo;
   const branches = threeBranches
@@ -98,7 +105,10 @@ export default function AiComparison({ test }) {
     <section className="ai-comparison" aria-label="Paired AI comparison">
       <QlooEvidence test={test} />
       {test.predictionWork?.steps?.every((step) => step.status === "done") && (
-        <PredictionStepFeed work={test.predictionWork} />
+        <PredictionStepFeed
+          work={test.predictionWork}
+          qlooFallback={payload.qloo?.fallback}
+        />
       )}
       <div className="section-heading">
         <div>
@@ -137,7 +147,7 @@ export default function AiComparison({ test }) {
             </p>
             {key === "qloo" && payload[key].fallback && (
               <span className="qloo-fallback-badge">
-                Qloo: no data for these options — heuristic fallback
+                Qloo: no data — heuristic fallback
               </span>
             )}
             {key === "qloo" &&
@@ -168,7 +178,7 @@ export default function AiComparison({ test }) {
           </article>
         ))}
       </div>
-      {payload.qloo?.noSignalTie && (
+      {noSignalTie && (
         <div className="segment-note no-signal-note" role="status">
           <strong>
             No affinity signal for either option — prediction abstains.
